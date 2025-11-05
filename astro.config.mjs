@@ -36,6 +36,9 @@ export default defineConfig({
    env: {
     schema: {
       SECRET_ENVIRONMENT_STATUS: envField.string({ context: "server", access: "public", default: "live" }),
+      SUPABASE_URL: envField.string({ context: "server", access: "public" }),
+      SUPABASE_ANON_KEY: envField.string({ context: "server", access: "public" }),
+      // MAP_BOX_KEY: envField.string({ context: "server", access: "public" }),
     },
   },
   vite: {

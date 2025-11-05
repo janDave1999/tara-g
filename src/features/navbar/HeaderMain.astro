@@ -1,75 +1,115 @@
 ---
-import { supabase } from '@/lib/supabase' // example helper
-// const { supabase } = await supabase()
-const { data: { user } } = await supabase.auth.getUser()
-console.log(user)
+import { supabase } from "@/lib/supabase";
+
+let user = null;
+try {
+  const { data } = await supabase.auth.getUser();
+  console.log(data);
+  user = data?.user ?? null;
+} catch (err) {
+  console.error("Error fetching user:", err);
+}
 ---
 
-<header class="w-full bg-white shadow-md shadow-gray-200">
-  <nav class="max-w-6xl mx-auto flex items-center justify-between h-16 px-6">
-    <!-- Logo -->
-    <a href="/" class="text-2xl font-bold text-blue-700 tracking-tight hover:text-blue-800 transition">
-      Tara G!
-    </a>
+<header class="w-full bg-white shadow-md">
+  <nav class="px-4 w-full flex justify-between items-center h-16">
+    <!-- Left section: logo + burger -->
+    <div class="flex items-center gap-3">
+      <!-- Hamburger (mobile only) -->
+      <button id="menu-btn" class="md:hidden focus:outline-none">
+        <svg class="w-7 h-7 text-gray-800" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
-    <!-- Navigation links -->
-    <ul class="hidden md:flex items-center gap-6 text-gray-700">
-      <li><a href="/about" class="hover:text-blue-600 transition">About</a></li>
-      <li><a href="/discover" class="hover:text-blue-600 transition">Discover</a></li>
-      <li><a href="/newsroom" class="hover:text-blue-600 transition">Newsroom</a></li>
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2">
+        <img
+          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
+          alt="Logo" class="w-8 h-8" />
+        <span class="text-2xl font-bold text-gray-800">Tara G!</span>
+      </a>
+    </div>
 
+    <!-- Desktop Menu -->
+    <ul class="hidden md:flex space-x-6 items-center font-medium text-gray-700">
+      <li><a href="/about" class="hover:text-blue-600">About</a></li>
+      <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
+      <li><a href="/newsroom" class="hover:text-blue-600">Newsroom</a></li>
+    </ul>
+
+    <!-- Right section: profile or sign in -->
+    <div class="relative">
+      {user ? (
+        <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
+          {/* Profile picture */}
+          <img src={user.user_metadata.avatar_url} alt="Profile" class="w-8 h-8 rounded-full" />
+          <span class="hidden md:inline">{user.user_metadata.full_name}</span>
+        </button>
+      ) : (
+        <a href="/signin" class="font-medium text-gray-700 hover:text-blue-600">Sign in</a>
+      )}
+
+      <!-- Profile dropdown -->
+      {user && (
+        <ul id="profile-menu"
+          class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+          <li><a href="/profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Trips</a></li>
+          <li><a href="/settings" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a></li>
+          <li><a href="/api/auth/signout" class="block px-4 py-2 text-red-500 hover:bg-gray-100">Logout</a></li>
+        </ul>
+      )}
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="hidden md:hidden bg-gray-50 border-t border-gray-200">
+    <ul class="flex flex-col p-6 space-y-3 text-gray-700 text-lg font-semibold">
+      <li><a href="/about" class="hover:text-blue-600">About</a></li>
+      <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
+      <li><a href="/newsroom" class="hover:text-blue-600">Newsroom</a></li>
       {user ? (
         <>
-          <li><a href="/dashboard" class="hover:text-blue-600 transition">Dashboard</a></li>
-          <li>
-            <form action="/api/auth/signout" method="post">
-              <button
-                type="submit"
-                class="text-sm px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition"
-              >
-                Sign out
-              </button>
-            </form>
-          </li>
+          <li><a href="/dashboard" class="hover:text-blue-600">Dashboard</a></li>
+          <li><a href="/api/auth/signout" class="text-red-500 hover:underline">Logout</a></li>
         </>
       ) : (
         <li>
-          <a href="/signin" class="text-blue-600 font-medium hover:underline">Sign In</a>
-          <span class="mx-1 text-gray-400">/</span>
-          <a href="/register" class="text-blue-600 font-medium hover:underline">Register</a>
+          <a href="/signin" class="hover:text-blue-600">Sign in</a> /
+          <a href="/register" class="hover:text-blue-600">Register</a>
         </li>
       )}
     </ul>
-
-    <!-- Mobile menu button -->
-    <button
-      id="menu-toggle"
-      class="md:hidden flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-      aria-label="Toggle menu"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
-  </nav>
+  </div>
 </header>
 
+<!-- Inline Script -->
 <script>
-  const menuToggle = document.getElementById('menu-toggle');
-  const nav = document.querySelector('nav ul');
-  if (nav) {
-    menuToggle?.addEventListener('click', () => {
-      nav.classList.toggle('hidden');
-      nav.classList.toggle('flex');
-      nav.classList.toggle('flex-col');
-      nav.classList.toggle('absolute');
-      nav.classList.toggle('top-16');
-      nav.classList.toggle('left-0');
-      nav.classList.toggle('w-full');
-      nav.classList.toggle('bg-white');
-      nav.classList.toggle('border-t');
-      nav.classList.toggle('border-gray-200');
-      nav.classList.toggle('p-4');
-    });
-  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const menuBtn = document.getElementById('menu-btn') as HTMLButtonElement;
+    const mobileMenu = document.getElementById('mobile-menu') as HTMLDivElement;
+    const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement;
+    const profileMenu = document.getElementById('profile-menu') as HTMLUListElement;
+
+    if (menuBtn) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+
+    if (profileBtn && profileMenu) {
+      profileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileMenu.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!profileMenu.contains(e.target as Node) && e.target !== profileBtn) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+    }
+  });
 </script>

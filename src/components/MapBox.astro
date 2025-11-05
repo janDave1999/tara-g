@@ -1,0 +1,89 @@
+<div id="map" class="w-full h-[500px] rounded-xl shadow"></div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.js"></script>
+<link
+  href="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.css"
+  rel="stylesheet"
+/>
+
+
+<script>
+  import mapboxgl from "mapbox-gl";
+  mapboxgl.accessToken = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+
+  let map: mapboxgl.Map;
+  let markers: mapboxgl.Marker[] = [];
+  let pendingFeeds: any = []; // store feeds until map is ready
+  let mapReady = false;
+
+  function renderMarkers(feedData: any) {
+    if (!mapReady) {
+      // store temporarily until map loads
+      pendingFeeds = feedData;
+      return;
+    }
+
+    // Clear existing markers
+    markers.forEach((m) => m.remove());
+    markers = [];
+
+    // Add new markers
+    feedData.forEach((feed: any) => {
+      const marker = new mapboxgl.Marker({
+        color: feed.needsMembers ? "#ff5733" : "#3bb2d0",
+      })
+        .setLngLat([feed.lng, feed.lat])
+        .setPopup(
+          new mapboxgl.Popup().setHTML(`
+            <div class="p-2">
+              <h3 class="font-bold">${feed.title}</h3>
+              <p>${feed.location}</p>
+              <p><strong>₱${feed.estimatedCost}</strong></p>
+              <p>${feed.needsMembers ? "Looking for members!" : "Full"}</p>
+            </div>
+          `)
+        )
+        .addTo(map);
+      markers.push(marker);
+    });
+  }
+
+  async function initMap() {
+    let userLocation = [120.9842, 14.5995]; // Default Manila
+    if (navigator.geolocation) {
+      await new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLocation = [pos.coords.longitude, pos.coords.latitude];
+            resolve();
+          },
+          () => resolve()
+        );
+      });
+    }
+
+    map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: userLocation,
+      zoom: 15,
+    });
+
+    map.on("load", () => {
+      mapReady = true;
+      // if we already received feeds before load, render them now
+      if (pendingFeeds.length > 0) {
+        renderMarkers(pendingFeeds);
+        pendingFeeds = [];
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initMap);
+
+  // Listen for feeds from Feeds.astro
+  window.addEventListener("feedsLoaded", (event: any) => {
+    console.log(event.detail);
+    renderMarkers(event.detail);
+  });
+</script>

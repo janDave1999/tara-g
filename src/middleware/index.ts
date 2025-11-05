@@ -49,7 +49,7 @@ import micromatch from "micromatch";
 import type { Locals } from "astro/actions/runtime/utils.js";
 
 const protectedRoutes = ["/dashboard(|/)", "/feeds(|/)"];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
 const proptectedAPIRoutes = ["/api/guestbook(|/)"];
 type ExtendedLocals = Locals & { email: string };
 

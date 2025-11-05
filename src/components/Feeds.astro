@@ -1,0 +1,92 @@
+---
+const feeds = [
+  {
+    id: 1,
+    user: "Jane D.",
+    title: "Sunrise Hike at Mt. Pulag",
+    location: "Benguet, Philippines",
+    lat: 14.56054304633859,
+    lng: 121.01634104758884,
+    date: "Nov 10, 2025",
+    cost: "₱2,500 / head",
+    members: 3,
+    maxMembers: 6,
+  },
+  {
+    id: 2,
+    user: "Mark L.",
+    title: "Weekend Dive in Moalboal",
+    location: "Cebu, Philippines",
+    lat: 9.9432,
+    lng: 123.3982,
+    date: "Nov 16, 2025",
+    cost: "₱3,000 / head",
+    members: 2,
+    maxMembers: 5,
+  },
+  {
+    id: 3,
+    user: "Ella P.",
+    title: "Surfing Trip in Siargao",
+    location: "Siargao, Philippines",
+    lat: 9.8489,
+    lng: 126.0458,
+    date: "Nov 20, 2025",
+    cost: "₱4,200 / head",
+    members: 4,
+    maxMembers: 4,
+  },
+];
+---
+
+<section class="w-full py-10 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Nearby Trips</h2>
+
+    <div id="feeds" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {feeds.map(feed => (
+        <article
+          class="bg-white p-5 rounded-2xl shadow hover:shadow-md transition cursor-pointer"
+          data-lat={feed.lat}
+          data-lng={feed.lng}
+        >
+          <h3 class="text-xl font-semibold text-gray-900">{feed.title}</h3>
+          <p class="text-gray-600 text-sm mb-1">{feed.location}</p>
+          <p class="text-gray-500 text-sm mb-2">📅 {feed.date}</p>
+
+          <div class="flex justify-between items-center">
+            <p class="font-semibold text-blue-600">{feed.cost}</p>
+            <span class={`text-sm px-2 py-1 rounded-lg ${
+              feed.members < feed.maxMembers
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-200 text-gray-600"
+            }`}>
+              {feed.members < feed.maxMembers
+                ? `Open (${feed.members}/${feed.maxMembers})`
+                : "Full"}
+            </span>
+          </div>
+
+          <div class="mt-3 text-xs text-gray-400">Posted by {feed.user}</div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  // This will notify the map when feed cards are rendered
+  // and allow syncing markers dynamically.
+  document.addEventListener("DOMContentLoaded", () => {
+  const feedCards = document.querySelectorAll("#feeds article") as NodeListOf<HTMLElement>;
+  const event = new CustomEvent("feedsLoaded", {
+
+    detail: Array.from(feedCards).map(card => ({
+      title: card.querySelector("h3")?.textContent ?? "",
+      lat: parseFloat(card.dataset.lat as string) ?? 0,
+      lng: parseFloat(card.dataset.lng as string) ?? 0,
+    })),
+  });
+  window.dispatchEvent(event);
+});
+</script>

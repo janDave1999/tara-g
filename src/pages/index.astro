@@ -1,7 +1,159 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
 
+const trips = [
+  {
+    title: "Beach Adventure",
+    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg",
+    price: 12500,
+    organizer: "John Doe",
+    date: "2023-07-15",
+    likes: 98,
+    comments: 12,
+    reused: 8,
+    description: "Sun, sand, and waves—your perfect getaway."
+  },
+  {
+    title: "Mountain Trek",
+    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp",
+    price: 18300,
+    organizer: "Jane Smith",
+    date: "2023-08-22",
+    likes: 200,
+    comments: 36,
+    reused: 25,
+    description: "Challenge yourself and enjoy breathtaking views."
+  },
+  {
+    title: "Road Trips",
+    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg",
+    price: 9800,
+    organizer: "Bob Johnson",
+    date: "2023-09-15",
+    likes: 98,
+    comments: 12,
+    reused: 8,
+    description: "Hit the road and discover hidden gems along the way."
+  },
+];
+
 ---
-<PagePlate title="Hello World Website">
-  Hello Earth!
+
+<PagePlate title="Tara G! - Adventure Awaits">
+<section id="banner" class="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden">
+  <picture>
+    <img 
+      src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/MicrosoftTeams-image%20(82).jpg" 
+      alt="Tara G Adventure" 
+      class="absolute inset-0 w-full h-full object-cover"
+    />
+  </picture>
+
+  <!-- Overlay for readability -->
+  <div class="absolute inset-0 bg-black bg-opacity-40"></div>
+
+  <!-- Banner content -->
+  <div class="relative z-10 px-6">
+    <h1 class="text-5xl md:text-6xl font-bold mb-4 text-white animate-fadeInDown">
+      Tara G! Adventure Starts Here
+    </h1>
+    <p class="text-xl md:text-2xl mb-8 text-white animate-fadeInUp">
+      Explore the sea, mountains, and roads less traveled with us!
+    </p>
+    <a href="/feeds" class="bg-white text-blue-500 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition transform hover:scale-105 animate-fadeInUp">
+      See Trips
+    </a>
+  </div>
+</section>
+<section class="py-24 px-8 text-center">
+  <h2 class="text-4xl font-bold mb-12">Recent Trips</h2>
+  <div class="grid md:grid-cols-3 gap-8">
+  {trips.map(trip => (
+    <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
+      <div class="relative group overflow-hidden">
+        <img src={trip.img} alt={trip.title} class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105"/>
+        <span class="absolute top-4 right-4 bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md">
+          ₱{trip.price.toLocaleString()}
+        </span>
+      </div>
+      <div class="p-6 flex-1 flex flex-col justify-between">
+        <div>
+          <h3 class="text-2xl font-bold mb-2">{trip.title}</h3>
+          <p class="text-gray-600 mb-4">{trip.description}</p>
+        </div>
+        <div class="flex justify-between items-center text-gray-500 text-sm font-medium mb-4">
+          <p>Organizer: {trip.organizer}</p>
+          <p>Date: {trip.date}</p>
+        </div>
+        <div class="flex justify-between items-center text-gray-500 text-sm">
+          <div class="flex items-center gap-2 hover:text-red-600 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 18l-6.828-6.828a4 4 0 010-5.656z"/></svg>
+            <span>{trip.likes} Likes</span>
+          </div>
+          <div class="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10c0 3.866-3.582 7-8 7s-8-3.134-8-7 3.582-7 8-7 8 3.134 8 7zM7 9h6v2H7V9z"/></svg>
+            <span>{trip.comments} Comments</span>
+          </div>
+          <div class="flex items-center gap-2 hover:text-green-600 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 10a6 6 0 1112 0 6 6 0 01-12 0zm6-3a1 1 0 100 2 1 1 0 000-2zm0 4a1 1 0 00-.707.293l-1 1a1 1 0 101.414 1.414l.293-.293.293.293a1 1 0 001.414-1.414l-1-1A1 1 0 0010 11z"/></svg>
+            <span>{trip.reused} Reused</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+</section>
+
+  <!-- Newsroom Section -->
+  <section id="newsroom" class="py-24 px-8 text-center">
+    <h2 class="text-4xl font-bold mb-12">Newsroom</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-gray-100 rounded-lg p-6">
+        <h3 class="text-2xl font-semibold mb-2">Tara G! Expands Trips</h3>
+        <p class="text-gray-600">New destinations added to our adventure list.</p>
+      </div>
+      <div class="bg-gray-100 rounded-lg p-6">
+        <h3 class="text-2xl font-semibold mb-2">Safety Tips for Travelers</h3>
+        <p class="text-gray-600">Stay safe while exploring with our expert guide tips.</p>
+      </div>
+      <div class="bg-gray-100 rounded-lg p-6">
+        <h3 class="text-2xl font-semibold mb-2">Eco-Friendly Adventures</h3>
+        <p class="text-gray-600">Discover how we keep our trips sustainable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQs Section -->
+  <section id="faqs" class="py-24 px-8 bg-gray-50 text-center">
+    <h2 class="text-4xl font-bold mb-12">FAQs</h2>
+    <div class="max-w-3xl mx-auto text-left space-y-6">
+      <div>
+        <h3 class="font-semibold text-2xl mb-2">How do I book a trip?</h3>
+        <p class="text-gray-600">Simply click on "See Trips" and select your adventure. Follow the booking instructions.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-2xl mb-2">Are the trips guided?</h3>
+        <p class="text-gray-600">Yes! All trips are guided by experienced local adventurers.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-2xl mb-2">What should I bring?</h3>
+        <p class="text-gray-600">Check our trip-specific packing list provided on each trip page.</p>
+      </div>
+    </div>
+  </section>
 </PagePlate>
+
+<style>
+  /* Simple fade-in animations */
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeInDown { animation: fadeInDown 1s ease forwards; }
+  .animate-fadeInUp { animation: fadeInUp 1s ease forwards; }
+</style>

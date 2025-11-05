@@ -1,0 +1,86 @@
+---
+import type { PAGE_PLATE_PROPS } from "@/types/pageplates/types";
+import Layout from "./Layout.astro";
+import FooterMain from "@/features/footer/FooterMain.astro";
+import HeaderMain from "@/features/navbar/HeaderMain.astro";
+import PageSchema from "@/seo/component/PageSchema.astro";
+import HeadTagFb from "@/seo/component/HeadTagFb.astro";
+import HeadTagTwitter from "@/seo/component/HeadTagTwitter.astro";
+import HeadTagOG from "@/seo/component/HeadTagOG.astro";
+import HeadTagPrefetch from "@/seo/component/HeadTagPrefetch.astro";
+import HeadTagAltLanguages from "@/seo/component/HeadTagAltLanguages.astro";
+
+interface Props extends PAGE_PLATE_PROPS {}
+
+let {
+  title = "__PROJECT_NAME__",
+  noHeader = false,
+  noFooter = false,
+  noContainer = false,
+  clean = false,
+  expectedHeight = "calc(100vh - 10rem)", // 5rem is header + footer height
+  prefetch,
+  description,
+  html = {},
+} = Astro.props;
+
+//---> Preflight
+if(description == undefined){
+  description = {
+    title,
+    type: "WebPage",
+    description: "__PROJECT_DESCRIPTION__",
+    author: "__PROJECT_AUTHOR__",
+    authorIs: "Organization",
+  };
+}
+if(description && !description.title){
+  description.title = title;
+}
+if(description && !description.fbAppId){
+  // description.fbAppId = "__PROJECT_FB_APP_ID__";
+}
+---
+
+<Layout title={title} html={html}>
+  <Fragment slot={`head-first`}>
+    {/* Language */}
+    <HeadTagAltLanguages />
+
+  </Fragment>
+  <Fragment slot={`head-last`}>
+    {/* Schema.org JSON-LD */}
+    <PageSchema description={description} />
+    {/* FB */}
+    <HeadTagFb appId={description?.fbAppId} />
+    {/* Twitter */}
+    <HeadTagTwitter description={description} />
+    {/* OG */}
+    <HeadTagOG description={description} />
+
+    {/* Prefetches */}
+    <HeadTagPrefetch links={prefetch} />
+  </Fragment>
+  <div class="relative min-h-screen flex flex-col">
+    {clean?"":<>
+      {noHeader ? "":<>
+        <HeaderMain />
+      </>}
+    </>}
+    <slot name="header" />
+
+    {noContainer ?<>
+      <slot />
+    </>:<>
+      <div class={`container-crs relative`} style={`min-height: ${expectedHeight}`}>
+        <slot />
+      </div>
+    </>}
+
+    {clean?"": <>
+      {noFooter ? "":<>
+        <FooterMain />
+      </>}
+    </>}
+  </div>
+</Layout>

@@ -1,0 +1,16 @@
+---
+import { SEO } from "astro-seo";
+
+interface Props {
+  description: {
+    title?: string,
+    description?: string,
+  },
+}
+const { description } = Astro.props as Props;
+---
+
+<SEO 
+  title={description?.title}
+  description={description?.description}
+/>

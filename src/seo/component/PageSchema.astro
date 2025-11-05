@@ -1,0 +1,63 @@
+---
+import type { PAGE_PLATE_PROPS } from "@/types/pageplates/types";
+import { basicWebPageSchemaTags } from "../tagging/schemaTagging";
+import type { SCHEMA_WEB_PAGE_TAGGING_PROPS } from "@/types/seo/pages";
+import { getLangFromUrl } from "@/i18/utils";
+import nth from "lodash/nth";
+
+interface Props{
+  description: PAGE_PLATE_PROPS["description"]
+}
+const { description:rawData } = Astro.props;
+
+const data: SCHEMA_WEB_PAGE_TAGGING_PROPS = {
+  type: rawData?.type || "WebPage",
+  title: rawData?.title,
+  webUrl: `${Astro.url.origin}${Astro.url.pathname}`,
+  description: rawData?.description,
+  headline: rawData?.headline,
+  keywords: rawData?.keywords,
+  inLanguage: getLangFromUrl(Astro.url),
+  datePublished: rawData?.datePublished,
+  dateModified: rawData?.dateModified,
+  previewImage: rawData?.previewImage,
+  breadcrumb: rawData?.breadCrumb,
+  mentionedKeywords: rawData?.mentionedKeywords,
+  topics: rawData?.topics,
+  dateReviewed: rawData?.dateReviewed,
+};
+
+if(rawData?.author){
+  data.author = {
+    type: rawData.authorIs || "Organization",
+    name: rawData.author ? (Array.isArray(rawData.author) ? rawData.author.join(", ") : rawData.author) : "",
+    url: rawData.authorUrl,
+  };
+}
+
+if(rawData?.breadCrumb){
+  const getSecondToLast = nth(rawData.breadCrumb, -1);
+  if(getSecondToLast)
+  data.isPartOf = {
+    name: getSecondToLast.name,
+    url: getSecondToLast.url,  
+  }
+}
+
+// Modify if allowed
+// data.publisher = {
+//   name: "__PROJECT_PUBLISHER__",
+//   logo: {
+//     url: `${Astro.url.origin}/logo.png`,
+//   }
+// }
+
+if(rawData?.reviewer){
+  data.reviewedBy = {
+    type: rawData.reviewerIs || "Person",
+    name: rawData.reviewer,
+  };
+}
+---
+
+<script is:inline type="application/ld+json" set:html={JSON.stringify( basicWebPageSchemaTags(data) )}></script>

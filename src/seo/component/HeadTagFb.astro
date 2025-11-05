@@ -1,0 +1,11 @@
+---
+interface Props {
+  appId?:string
+}
+const { appId } = Astro.props as Props;
+---
+{ appId && 
+  <meta property="fb:app_id" content={appId} />
+}
+
+

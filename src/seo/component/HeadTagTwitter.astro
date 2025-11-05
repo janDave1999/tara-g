@@ -1,0 +1,21 @@
+---
+import { SEO } from "astro-seo";
+
+interface Props {
+  description: {
+    title? : string,
+    author?: string|string[],
+  },
+}
+const { description } = Astro.props as Props;
+---
+<SEO 
+  twitter={{
+    card: "summary_large_image",
+    site: Astro.url.hostname,
+    creator: description?.author ? (Array.isArray(description.author) ? description.author.join(", ") : description.author) : undefined,
+    title: description?.title,
+    image: `${Astro.url.origin}/images/generic-preview-page.png`,
+    imageAlt: description?.title,
+  }}
+/>

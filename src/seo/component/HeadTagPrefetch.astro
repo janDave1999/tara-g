@@ -1,0 +1,14 @@
+---
+interface Props {
+  links?: string[],
+  dnsLinks?: string[],
+}
+const {links, dnsLinks} = Astro.props;
+---
+
+{links ? links.map(link=>{
+  return <link rel="prefetch" href={link} />
+}) : ""}
+{dnsLinks ? dnsLinks.map(link=>{
+  return <link rel="dns-prefetch" href={link} />
+}) : ""}

@@ -1,0 +1,43 @@
+---
+import { SEO } from "astro-seo";
+
+interface Props {
+  description: {
+    title?: string,
+    containsArticle?: boolean,
+    description?: string,
+    previewImage?: string,
+    datePublished?: string,
+    dateModified?: string,
+    author?: string[]|string,
+    topics?: string[],
+    mentionedKeywords?: string[],
+  },
+}
+const { description } = Astro.props as Props;
+---
+<SEO 
+  openGraph={{
+    basic:{
+      url: Astro.url.origin,
+      type: description.containsArticle ? "article" : "website",
+      title: description.title || "No Title",
+      image: description.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
+    },
+    optional:{
+      description: description?.description,
+    },
+    image: description.previewImage ? {
+      url: description.previewImage,
+      alt: description.title,
+    } : undefined,
+    article: description.containsArticle ? {
+      publishedTime: description.datePublished,
+      modifiedTime: description.dateModified,
+      expirationTime: undefined,
+      authors: description.author ? (Array.isArray(description.author) ? description.author : [description.author]) : undefined,
+      section: description.topics?.[0] || undefined,
+      tags: description.mentionedKeywords,
+    } : undefined,
+  }}
+/>

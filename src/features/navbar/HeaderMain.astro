@@ -1,0 +1,75 @@
+---
+import { supabase } from '@/lib/supabase' // example helper
+// const { supabase } = await supabase()
+const { data: { user } } = await supabase.auth.getUser()
+console.log(user)
+---
+
+<header class="w-full bg-white shadow-md shadow-gray-200">
+  <nav class="max-w-6xl mx-auto flex items-center justify-between h-16 px-6">
+    <!-- Logo -->
+    <a href="/" class="text-2xl font-bold text-blue-700 tracking-tight hover:text-blue-800 transition">
+      Tara G!
+    </a>
+
+    <!-- Navigation links -->
+    <ul class="hidden md:flex items-center gap-6 text-gray-700">
+      <li><a href="/about" class="hover:text-blue-600 transition">About</a></li>
+      <li><a href="/discover" class="hover:text-blue-600 transition">Discover</a></li>
+      <li><a href="/newsroom" class="hover:text-blue-600 transition">Newsroom</a></li>
+
+      {user ? (
+        <>
+          <li><a href="/dashboard" class="hover:text-blue-600 transition">Dashboard</a></li>
+          <li>
+            <form action="/api/auth/signout" method="post">
+              <button
+                type="submit"
+                class="text-sm px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition"
+              >
+                Sign out
+              </button>
+            </form>
+          </li>
+        </>
+      ) : (
+        <li>
+          <a href="/signin" class="text-blue-600 font-medium hover:underline">Sign In</a>
+          <span class="mx-1 text-gray-400">/</span>
+          <a href="/register" class="text-blue-600 font-medium hover:underline">Register</a>
+        </li>
+      )}
+    </ul>
+
+    <!-- Mobile menu button -->
+    <button
+      id="menu-toggle"
+      class="md:hidden flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+      aria-label="Toggle menu"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </nav>
+</header>
+
+<script>
+  const menuToggle = document.getElementById('menu-toggle');
+  const nav = document.querySelector('nav ul');
+  if (nav) {
+    menuToggle?.addEventListener('click', () => {
+      nav.classList.toggle('hidden');
+      nav.classList.toggle('flex');
+      nav.classList.toggle('flex-col');
+      nav.classList.toggle('absolute');
+      nav.classList.toggle('top-16');
+      nav.classList.toggle('left-0');
+      nav.classList.toggle('w-full');
+      nav.classList.toggle('bg-white');
+      nav.classList.toggle('border-t');
+      nav.classList.toggle('border-gray-200');
+      nav.classList.toggle('p-4');
+    });
+  }
+</script>

@@ -1,0 +1,12 @@
+---
+import { languages } from "@/i18/lang";
+import { getLangFromUrl, pathTranslatorQ } from "@/i18/utils";
+
+const t = pathTranslatorQ(Astro.url);
+const currentLang = getLangFromUrl(Astro.url);
+---
+
+{ (Object.keys(languages)).map((lang) => {
+  if(lang === currentLang) return "";
+  return <link rel="alternate" hreflang={lang} href={Astro.url.origin + t(Astro.url.pathname, lang)} />
+}) }

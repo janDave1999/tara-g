@@ -1,0 +1,50 @@
+---
+//TailwindCSS and other CSS
+import "@/styles/globals.css";
+//i18n
+import { getLangFromUrl } from "@/i18/utils";
+import type { HTMLAttributes } from "astro/types";
+
+interface Props {
+	title: string,
+	html: HTMLAttributes<'html'>
+}
+const {
+	title,
+	html
+} = Astro.props;
+
+const currentLang = getLangFromUrl(Astro.url);
+// const newUrl = new URL(Astro.url);
+// const reconstructPathName  = newUrl.toString().replace(newUrl.origin,"")
+---
+
+<!doctype html>
+<html lang={currentLang} {...html}>
+	<head>
+		<slot name="head-first" />
+
+		{/* HTML Format */}
+		<meta name="application-name" content="__PROJECT_NAME__" />
+		<title>{title}</title>
+		<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0">
+
+		<link rel="icon" type="image/ico" href="/favicon.ico" />
+		<link rel="sitemap" href="/sitemap-index.xml" />
+		<meta name="robots" content="index, follow" />
+		<meta name="theme-color" content="#ffffff" />
+		{/* HTML Format */}
+
+		<slot name="head-last" />
+	</head>
+
+	<body>
+		<slot />
+		<script>
+			// Import other scripts here
+		</script>
+	</body>
+
+</html>

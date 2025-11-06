@@ -156,14 +156,16 @@ import PagePlate from "@/layouts/PagePlate.astro";
       const wrapper = document.createElement("div");
       autofill.appendChild(input.cloneNode(true));
       input.replaceWith(wrapper);
-      wrapper.appendChild(autofill);
+
+      // convert autofill to string not node
+      wrapper.innerHTML = "";
+      wrapper.appendChild(autofill as any);
 
       // Listen for selection event
       autofill.addEventListener("retrieve", (event) => {
-        const feature = event.detail?.feature;
+        const feature = event.detail?.features;
         if (feature) {
-          console.log("Selected address:", feature.properties.name);
-          console.log("Coordinates:", feature.geometry.coordinates);
+          console.log("Selected address:", feature);
         }
       });
     }

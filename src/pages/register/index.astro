@@ -2,8 +2,6 @@
 import Pageplate from "@/layouts/PagePlate.astro";
 import { supabase } from "@/lib/supabase";
 
-const data = await supabase.from("users").select("*");
-console.log(data);
 ---
 
 <Pageplate title="Register">

@@ -1,0 +1,77 @@
+---
+import PagePlate from '@/layouts/PagePlate.astro';
+
+const { slug } = Astro.params;
+
+// Example trip data (normally fetched from DB)
+const trips = [
+  { slug: "beach-adventure", title: "Beach Adventure", description: "Sun, sand, and waves!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg" },
+  { slug: "mountain-trek", title: "Mountain Trek", description: "Breathtaking mountain views!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp" },
+  { slug: "road-trips", title: "Road Trips", description: "Hit the open road!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg" }
+];
+
+// Find the trip by slug
+const trip = trips.find(t => t.slug === slug);
+
+// Simulated auth check
+const isAuthenticated = false; // replace with real auth check
+---
+<PagePlate title={trip ? trip.title : 'Trip'}>
+{trip ? (
+  <section class="relative min-h-screen">
+    <!-- Trip Content -->
+    <div id="tripContent" class={`transition duration-500 ${!isAuthenticated ? 'filter blur-sm brightness-75' : ''}`}>
+      <img src={trip.img} alt={trip.title} class="w-full h-96 object-cover" />
+      <div class="p-8 text-center">
+        <h1 class="text-4xl font-bold mb-4">{trip.title}</h1>
+        <p class="text-gray-700">{trip.description}</p>
+      </div>
+    </div>
+
+    <!-- Auth Modal -->
+    {!isAuthenticated && (
+      <div id="authModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md text-center relative animate-fadeIn">
+          <button id="closeModal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">&times;</button>
+          <h2 class="text-2xl font-bold mb-4">Please Log In or Sign Up</h2>
+          <p class="mb-6">You need an account to view this trip in full.</p>
+          <div class="flex justify-center gap-4">
+            <a href="/login" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Log In</a>
+            <a href="/signup" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Sign Up</a>
+          </div>
+        </div>
+      </div>
+    )}
+  </section>
+) : (
+  <p class="text-center mt-24 text-gray-500 text-xl">Trip not found.</p>
+)}
+</PagePlate>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn { animation: fadeIn 0.5s ease forwards; }
+</style>
+
+<script>
+  const modal = document.getElementById('authModal') as HTMLDivElement;
+  const closeModal = document.getElementById('closeModal') as HTMLButtonElement;
+  const content = document.getElementById('tripContent') as HTMLDivElement;
+
+  if (modal) {
+    closeModal.addEventListener('click', () => {
+      window.location.href = "/";
+    });
+
+    // Close modal by clicking outside modal content
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        // redirect back
+        window.location.href = "/";
+      }
+    });
+  }
+</script>

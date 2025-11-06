@@ -1,0 +1,106 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+const userId = "123e4567-e89b-12d3-a456-426614174000";
+---
+<PagePlate title="Create a Trip" noContainer>
+  <section class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <h1 class="text-3xl sm:text-4xl font-bold mb-12 pt-8 text-center">Plan Your Adventure</h1>
+
+    <form id="tripForm" class="space-y-12">
+
+      <!-- Trip Basics -->
+      <div class="bg-white p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start mb-4">
+        <div class="sm:text-right sm:w-40">
+          <h2 class="text-2xl font-semibold mb-2">Trip Basics</h2>
+          <p class="text-gray-600 text-sm sm:text-base">Describe your trip in a few sentences. This will help people find and join your trip.</p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block font-medium mb-1 text-base">Trip Title</label>
+            <input type="text" name="title" placeholder="Beach Adventure"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+          </div>
+
+          <div>
+            <label class="block font-medium mb-1 text-base">Region</label>
+            <input type="text" name="region" placeholder="Cebu, Philippines"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+          </div>
+
+          <div>
+            <label class="block font-medium mb-1 text-base">Trip Description</label>
+            <textarea name="description" rows="4" placeholder="Describe your trip..."
+                      class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required></textarea>
+          </div>
+
+          <!-- start and end date -->
+          <div>
+            <label class="block font-medium mb-1 text-base">Trip Dates</label>
+            <div class="flex space-x-4 gap-2">
+              <div class="flex-1">
+                <label class="block font-medium mb-1 text-base">Start Date</label>
+                <input type="date" name="start_date"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+              </div>
+              <div class="flex-1">
+                <label class="block font-medium mb-1 text-base">End Date</label>
+                <input type="date" name="end_date"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+              </div>
+            </div>
+          </div> 
+
+          <div>
+            <label class="block font-medium mb-1 text-base">Total Trip Budget (₱)</label>
+            <input type="number" name="total_budget" min="0" placeholder="Enter total trip budget"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+          </div>
+        </div>
+      </div>
+
+      <!-- hr -->
+      <hr class="border-gray-300">
+
+      <!-- Pickup & Dropoff Locations -->
+      <div class="bg-white p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start mb-4">
+        <div class="sm:text-right sm:w-40">
+          <h2 class="text-2xl font-semibold mb-2">Dropoff and Pickup Locations</h2>
+          <p class="text-gray-600 text-sm sm:text-base mb-1">Select the pickup and dropoff locations for your trip.</p>
+          <p class="text-gray-600 text-sm sm:text-base mb-1">This could also be the meetup location.</p>
+          <p class="text-gray-500 italic text-sm sm:text-sm">Note: Itinerary can be added later on.</p>
+        </div>
+        <div class="space-y-6">
+          <div class="space-y-4">
+            <div>
+              <label class="block font-medium mb-2 text-base">Pickup Location</label>
+              <input type="text" name="pickup_locations" placeholder="Pickup location"
+                     class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+            </div>
+            <div>
+              <label class="block font-medium mb-2 text-base">Date & Time</label>
+              <input type="datetime-local" name="pickup_dates" class="w-full sm:w-36 border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+            </div>
+            <div>
+              <label class="block font-medium mb-2 text-base">Waiting Time (minutes)</label>
+              <input type="number" name="waiting_time" min="0" placeholder="Enter waiting time"
+                     class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+            </div>
+          </div>
+          <hr class="border-gray-300">
+          <div>
+            <label class="block font-medium mb-2 text-base">Dropoff Location</label>
+            <input type="text" name="dropoff_locations" placeholder="Dropoff location"
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="text-center mb-2">
+        <button type="submit" class="bg-blue-500 text-white px-10 py-3 rounded-lg font-medium hover:bg-blue-600 shadow transition text-base p-2">
+          Create Trip
+        </button>
+      </div>
+    </form>
+  </section>
+</PagePlate>

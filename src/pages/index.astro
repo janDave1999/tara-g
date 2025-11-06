@@ -4,6 +4,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
 const trips = [
   {
     title: "Beach Adventure",
+    slug: "beach-adventure",
     img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg",
     price: 12500,
     organizer: "John Doe",
@@ -15,6 +16,7 @@ const trips = [
   },
   {
     title: "Mountain Trek",
+    slug: "mountain-trek",
     img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp",
     price: 18300,
     organizer: "Jane Smith",
@@ -26,6 +28,7 @@ const trips = [
   },
   {
     title: "Road Trips",
+    slug: "road-trips",
     img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg",
     price: 9800,
     organizer: "Bob Johnson",
@@ -69,7 +72,7 @@ const trips = [
   <h2 class="text-4xl font-bold mb-12">Recent Trips</h2>
   <div class="grid md:grid-cols-3 gap-8">
   {trips.map(trip => (
-    <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
+    <div class="bg-white rounded-xl trip-card shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col" data-slug={trip.slug}>
       <div class="relative group overflow-hidden">
         <img src={trip.img} alt={trip.title} class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105"/>
         <span class="absolute top-4 right-4 bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md">
@@ -157,3 +160,15 @@ const trips = [
   .animate-fadeInDown { animation: fadeInDown 1s ease forwards; }
   .animate-fadeInUp { animation: fadeInUp 1s ease forwards; }
 </style>
+
+<script>
+  const trips = document.querySelectorAll('.trip-card') as NodeListOf<HTMLElement>;
+
+  trips.forEach(trip => {
+    trip.addEventListener('click', () => {
+      const slug = trip.dataset.slug;
+      // Redirect to the trip page
+      window.location.href = `/trips/${slug}`;
+    });
+  });
+</script>

@@ -51,13 +51,13 @@
   async function initMap() {
     let userLocation = [120.9842, 14.5995]; // Default Manila
     if (navigator.geolocation) {
-      await new Promise((resolve) => {
+     await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             userLocation = [pos.coords.longitude, pos.coords.latitude];
-            resolve();
+            resolve(userLocation); // Pass the resolved value as an argument
           },
-          () => resolve()
+          reject
         );
       });
     }
@@ -65,7 +65,7 @@
     map = new mapboxgl.Map({
       container: "map",
       style: "mapbox://styles/mapbox/streets-v12",
-      center: userLocation,
+      center: [userLocation[0], userLocation[1]],
       zoom: 15,
     });
 

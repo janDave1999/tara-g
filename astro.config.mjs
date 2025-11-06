@@ -39,7 +39,7 @@ export default defineConfig({
       SUPABASE_URL: envField.string({ context: "server", access: "public" }),
       SUPABASE_ANON_KEY: envField.string({ context: "server", access: "public" }),
       SITE_URL: envField.string({ context: "server", access: "public" }),
-      // MAP_BOX_KEY: envField.string({ context: "server", access: "public" }),
+      PUBLIC_MAPBOX_TOKEN: envField.string({ context: "client", access: "public" }),
     },
   },
   vite: {

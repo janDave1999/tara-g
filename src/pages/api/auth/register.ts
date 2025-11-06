@@ -13,7 +13,6 @@ async function emailExists(email: string) {
     console.error("Error checking email:", error);
     throw new Error(error.message);
   }
-  console.log(data);
   return !!data; // true if exists
 }
 

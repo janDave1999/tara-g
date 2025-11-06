@@ -4,7 +4,7 @@ interface ImportMetaEnv {
   readonly SUPABASE_URL: string
   readonly SUPABASE_ANON_KEY: string
   readonly SITE_URL: string
-  // readonly MAP_BOX_KEY: string
+  readonly PUBLIC_MAPBOX_TOKEN: string
 }
 
 interface ImportMeta {

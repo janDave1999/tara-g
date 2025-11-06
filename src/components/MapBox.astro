@@ -9,7 +9,8 @@
 
 <script>
   import mapboxgl from "mapbox-gl";
-  mapboxgl.accessToken = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+  import { PUBLIC_MAPBOX_TOKEN } from "astro:env/client";
+  mapboxgl.accessToken =PUBLIC_MAPBOX_TOKEN;
 
   let map: mapboxgl.Map;
   let markers: mapboxgl.Marker[] = [];
@@ -83,7 +84,6 @@
 
   // Listen for feeds from Feeds.astro
   window.addEventListener("feedsLoaded", (event: any) => {
-    console.log(event.detail);
     renderMarkers(event.detail);
   });
 </script>

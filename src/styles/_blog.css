@@ -19,7 +19,7 @@
 }
 
 #blog-article h2 {
-  @apply text-3xl sm:text-4xl mt-12 mb-6 border-b text-black border-gray-200 pb-2;
+  @apply text-3xl sm:text-4xl mt-12 mb-6 text-black border-gray-200 pb-2;
 }
 
 #blog-article h3 {

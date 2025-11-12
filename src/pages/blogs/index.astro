@@ -1,7 +1,7 @@
 ---
 import { getAllPosts } from '../../lib/cosmic_client'
 import PagePlate from '../../layouts/PagePlate.astro'
-import BlogItemBig from '@/components/Blog/BlogItemBig.astro'
+import BlogItemBig from '@/components/Blog/BlogItemBig.astro';
 import type { NEWSROOM_CONTENT } from 'src/structure/newsroom/content'
 import Pagination from '@/components/Form/Pagination.astro';
 
@@ -65,21 +65,21 @@ let totalPage = data.total ? Math.ceil(data.total / limit) : 1;
   <header class="relative w-full">
     <picture>
       <source
-        srcset="https://toyota.com.ph/img/articles/TMPWebsite_News_Mobile.png"
+        srcset="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png"
         media="(max-width: 768px)"
       />
       <img
-        src="https://toyota.com.ph/img/articles/TMPWebsite_News_Mobile.png"
+        src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png"
         alt="Newsroom banner"
         class="w-full h-auto object-cover"
       />
     </picture>
 
     <div class="absolute left-1/2 bottom-0 -translate-x-1/2 z-10">
-      <div class="bg-gray-600/80 px-6 py-8 -skew-x-10">
+      <div class="bg-gray-300/80 px-6 py-2 -skew-x-10">
         <h1 class="h7 skew-x-10 whitespace-nowrap">
-          <span class="text-orange-500">Rent&#x3B1;Car</span>
-          <span class="text-gray-300">NEWSROOM</span>
+          <span class="text-shadow-cyan-300">Tara G!</span>
+          <span class="text-black-300">Blog Posts</span>
         </h1>
       </div>
     </div>

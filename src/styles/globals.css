@@ -1,1 +1,4 @@
 @import "tailwindcss";
+@import "./_blog.css";
+@import "./_layout.css";
+@import "./_cards.css";

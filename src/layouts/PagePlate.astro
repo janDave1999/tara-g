@@ -9,6 +9,7 @@ import HeadTagTwitter from "@/seo/component/HeadTagTwitter.astro";
 import HeadTagOG from "@/seo/component/HeadTagOG.astro";
 import HeadTagPrefetch from "@/seo/component/HeadTagPrefetch.astro";
 import HeadTagAltLanguages from "@/seo/component/HeadTagAltLanguages.astro";
+import CookiesConsent from "@/components/CookiesConsent.astro";
 
 interface Props extends PAGE_PLATE_PROPS {}
 
@@ -76,6 +77,7 @@ if(description && !description.fbAppId){
         <slot />
       </div>
     </>}
+    <CookiesConsent />
 
     {clean?"": <>
       {noFooter ? "":<>

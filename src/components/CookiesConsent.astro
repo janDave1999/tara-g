@@ -1,0 +1,72 @@
+---
+let accepted = false;
+---
+
+<div
+  id="cookieModal"
+  class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white shadow-xl rounded-xl p-6 max-w-md w-[90%] border border-gray-200 hidden"
+>
+  <h2 class="text-lg font-semibold mb-2">🍪 We use cookies</h2>
+  <p class="text-sm text-gray-600 mb-4">
+    Tara G! uses cookies to improve your experience, analyze site traffic, and personalize content.
+    By clicking “Accept”, you agree to our
+    <a href="/legals/cookies" class="text-blue-600 hover:underline">Cookies Policy</a>.
+  </p>
+  <div class="flex justify-end gap-3">
+    <button
+      id="cookie-decline"
+      class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-sm"
+    >
+      Decline
+    </button>
+    <button
+      id="cookie-accept"
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+    >
+      Accept
+    </button>
+  </div>
+</div>
+
+<script>
+  const cookieModal = document.getElementById("cookieModal") as HTMLDivElement;
+  const acceptBtn = document.getElementById("cookie-accept") as HTMLButtonElement;
+  const declineBtn = document.getElementById("cookie-decline") as HTMLButtonElement;
+  const cookiePreferencesBtn = document.getElementById("cookiePreferencesBtn") as HTMLButtonElement;
+
+  // Show modal only if user has not made a choice
+  window.addEventListener("DOMContentLoaded", () => {
+    const consent = localStorage.getItem("cookieConsent");
+    if (!consent) cookieModal.classList.remove("hidden");
+  });
+
+  // Accept cookies
+  acceptBtn?.addEventListener("click", () => {
+    localStorage.setItem("cookieConsent", "accepted");
+    cookieModal.classList.add("hidden");
+    location.reload(); // reload to apply analytics or tracking
+  });
+
+  // Decline cookies
+  declineBtn?.addEventListener("click", () => {
+    localStorage.setItem("cookieConsent", "declined");
+    clearNonEssentialCookies();
+    cookieModal.classList.add("hidden");
+  });
+
+  // Open modal again
+  cookiePreferencesBtn?.addEventListener("click", () => {
+    cookieModal.classList.remove("hidden");
+  });
+
+  // Function to clear cookies if declined
+  function clearNonEssentialCookies() {
+    const cookies = document.cookie.split(";");
+    for (const cookie of cookies) {
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    }
+    console.log("All non-essential cookies cleared.");
+  }
+</script>

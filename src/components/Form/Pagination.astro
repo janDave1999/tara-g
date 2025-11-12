@@ -1,0 +1,249 @@
+---
+import {ceil} from "@jsarmyknife/native--math";
+interface Props {
+  id?:string,
+  class?:string,
+
+  page?:number,
+  totalPages?:number,
+  pagesShown?:number,
+}
+const {id="pagination", class:className="", page=1, totalPages=1, pagesShown=5 } = Astro.props;
+
+const overflowThreshold = 2;
+
+let leftSideLength = ceil((pagesShown-1)/2);
+let rightSideLength = (pagesShown-1) - leftSideLength;
+leftSideLength = (page-leftSideLength) < 1 ? page-1 : leftSideLength;
+rightSideLength = (page+rightSideLength) > totalPages ? totalPages-page : rightSideLength;
+const leftSideOverflow = leftSideLength < page - overflowThreshold;
+const rightSideOverflow = rightSideLength < totalPages - page - overflowThreshold;
+const thereIsPrevious = page > 1;
+const thereIsNext = page < totalPages;
+---
+
+<!-- Pagination -->
+<astro-pagination>
+  <nav 
+  id={id}
+  class={`flex items-center gap-x-1 ${className}`}
+  aria-label="Pagination"
+>
+  <input type="hidden" id="page-information" value={JSON.stringify({
+    page: page,
+    totalPages: totalPages,
+    pagesShown: pagesShown,
+    leftSideLength: leftSideLength,
+    rightSideLength: rightSideLength,
+    leftSideOverflow: leftSideOverflow,
+    rightSideOverflow: rightSideOverflow,
+    thereIsPrevious: thereIsPrevious,
+    thereIsNext: thereIsNext,
+  })} />
+  <button 
+    id="previous-page"
+    type="button" 
+    class="min-h-9.5 min-w-9.5 py-2 px-2.5 inline-flex justify-center items-center gap-x-1.5 text-sm rounded-lg text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10" 
+    aria-label="Previous" 
+    disabled={!thereIsPrevious}
+  >
+    <svg 
+      class="shrink-0 size-3.5" 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    >
+      <path d="m15 18-6-6 6-6"></path>
+    </svg>
+    <span>Previous</span>
+  </button>
+  <div 
+    class="flex items-center gap-x-1"
+  >
+    {leftSideOverflow && <>
+      <button 
+        id="first-page"
+        type="button" 
+        class="min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10"
+      >
+        {1}
+      </button>
+      <div class="hs-tooltip inline-block">
+        <button type="button" class="hs-tooltip-toggle group min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-400 hover:text-blue-600 p-2 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-neutral-500 dark:hover:text-blue-500 dark:focus:bg-white/10">
+          <span class="group-hover:hidden text-xs">•••</span>
+          <svg class="group-hover:block hidden shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 17 5-5-5-5"></path>
+            <path d="m13 17 5-5-5-5"></path>
+          </svg>
+        </button>
+      </div>
+    </>}
+
+    {[...Array(leftSideLength)].map((_, i)=>{
+      return <>
+      <button 
+        id={`to-left-button-${i}`}
+        type="button" 
+        class="min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10"
+      >
+        {page-(i+1)}
+      </button>
+      </>
+    })}
+
+    <button 
+      type="button" 
+      class="min-h-9.5 min-w-9.5 flex justify-center items-center bg-gray-200 text-gray-800 py-2 px-3 text-sm rounded-lg focus:outline-hidden focus:bg-gray-300 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-600 dark:text-white dark:focus:bg-neutral-500" 
+      aria-current="page"
+    >
+      {page}
+    </button>
+    {
+      [...Array(rightSideLength)].map((_, i)=>{
+        return <>
+        <button 
+          id={`to-right-button-${i}`}
+          type="button" 
+          class="min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10"
+        >
+          {page+(i+1)}
+        </button>
+        </>
+      })
+    }
+    
+    {rightSideOverflow &&<>
+      <div class="hs-tooltip inline-block">
+        <button type="button" class="hs-tooltip-toggle group min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-400 hover:text-blue-600 p-2 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-neutral-500 dark:hover:text-blue-500 dark:focus:bg-white/10">
+          <span class="group-hover:hidden text-xs">•••</span>
+          <svg class="group-hover:block hidden shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 17 5-5-5-5"></path>
+            <path d="m13 17 5-5-5-5"></path>
+          </svg>
+        </button>
+      </div>
+      <button 
+        id="last-page"
+        type="button" 
+        class="min-h-9.5 min-w-9.5 flex justify-center items-center text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm rounded-lg focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10"
+      >
+        {totalPages}
+      </button>
+    </>}
+
+  </div>
+  <button 
+    id="next-page"
+    type="button" 
+    class="min-h-9.5 min-w-9.5 py-2 px-2.5 inline-flex justify-center items-center gap-x-1.5 text-sm rounded-lg text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10" 
+    aria-label="Next"
+    disabled={!thereIsNext}
+  >
+    <span>Next</span>
+    <svg 
+      class="shrink-0 size-3.5" 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    >
+      <path d="m9 18 6-6-6-6"></path>
+    </svg>
+  </button>
+</nav>
+</astro-pagination>
+
+<script>
+//---> Import
+import { ElementMaker } from "@jsarmyknife/native--dom";
+import { navigate } from "astro:transitions/client";
+
+ElementMaker("astro-pagination", (element)=>{
+if(!element) return;
+//---> Const
+//Element
+const previousButton = element.querySelector("#previous-page") as HTMLButtonElement;
+const nextButton = element.querySelector("#next-page") as HTMLButtonElement;
+const firstButton = element.querySelector("#first-page") as HTMLButtonElement;
+const lastButton = element.querySelector("#last-page") as HTMLButtonElement;
+const leftButtons = [...Array.from(element.querySelectorAll<HTMLButtonElement>("button[id^='to-left-button-']"))];
+const rightButtons = [...Array.from(element.querySelectorAll<HTMLButtonElement>("button[id^='to-right-button-']"))];
+//Data
+const pageInformation = JSON.parse((element.querySelector("#page-information") as HTMLInputElement).value) as {
+  page: number,
+  totalPages: number,
+  pagesShown: number,
+  leftSideLength: number,
+  rightSideLength: number,
+  leftSideOverflow: boolean,
+  rightSideOverflow: boolean,
+  thereIsPrevious: boolean,
+  thereIsNext: boolean,
+  url: string,
+};
+
+// dito sa ano
+const url = new URL(location.href);
+
+
+
+//---> Functions
+function gotoPage(page:number){
+  url.searchParams.set("page", page.toString());
+  navigate(url.href);
+};
+function gotoFirstPage(){
+  gotoPage(1);
+};
+function gotoLastPage(){
+  gotoPage(pageInformation.totalPages);
+};
+
+
+//---> Event Listeners
+previousButton?.addEventListener("click", ()=>{
+  if(pageInformation.thereIsPrevious){
+    gotoPage(pageInformation.page-1);
+  }
+});
+nextButton?.addEventListener("click", ()=>{
+  if(pageInformation.thereIsNext){
+    gotoPage(pageInformation.page+1);
+  }
+});
+firstButton?.addEventListener("click", ()=>{
+  if(pageInformation.thereIsPrevious){
+    gotoFirstPage();
+  }
+});
+lastButton?.addEventListener("click", ()=>{
+  if(pageInformation.thereIsNext){
+    gotoLastPage();
+  }
+});
+leftButtons?.forEach((button, index)=>{
+  button?.addEventListener("click", ()=>{
+    gotoPage(pageInformation.page-(index+1));
+  });
+});
+rightButtons?.forEach((button, index)=>{
+  button?.addEventListener("click", ()=>{
+    gotoPage(pageInformation.page+(index+1));
+  });
+});
+
+
+}, true);
+</script>
+<!-- End Pagination -->

@@ -1,0 +1,118 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+---
+
+<PagePlate title="Discover Adventures">
+  <section class="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-24">
+
+    <!-- Hero / Intro -->
+    <div class="text-center space-y-6 px-2 sm:px-6">
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">Discover Your Next Adventure</h1>
+      <p class="text-gray-600 text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto">
+        Explore curated adventures, from serene beaches to thrilling mountain hikes. Get inspired and find the perfect journey for your spirit.
+      </p>
+    </div>
+
+   <!-- Modern Featured Adventures Carousel -->
+    <div class="relative p-6">
+    <h2 class="text-3xl font-semibold text-blue-900 mb-4 px-2 sm:px-0">Featured Adventures</h2>
+
+    <div class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory space-x-6 px-2 sm:px-0 scrollbar-hide p-6">
+        
+        <!-- Card Example -->
+        <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
+        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg" alt="Beach Adventure" class="w-full h-44 object-cover"/>
+        <div class="p-5 space-y-3">
+            <h3 class="text-lg sm:text-xl font-semibold">Beach Adventure</h3>
+            <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
+            Relax on white sandy beaches and enjoy serene ocean vibes.
+            </p>
+            <div class="flex justify-between items-center mt-2">
+            <span class="text-blue-500 font-semibold">₱5,000</span>
+            <a href="/trips/beach-adventure" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition">View</a>
+            </div>
+        </div>
+        </div>
+
+        <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
+        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp" alt="Mountain Adventure" class="w-full h-44 object-cover"/>
+        <div class="p-5 space-y-3">
+            <h3 class="text-lg sm:text-xl font-semibold">Mountain Hike</h3>
+            <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
+            Challenge yourself on a trek to breathtaking peaks.
+            </p>
+            <div class="flex justify-between items-center mt-2">
+            <span class="text-blue-500 font-semibold">₱7,500</span>
+            <a href="/trips/mountain-hike" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition">View</a>
+            </div>
+        </div>
+        </div>
+
+        <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
+        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg" alt="Camping Adventure" class="w-full h-44 object-cover"/>
+        <div class="p-5 space-y-3">
+            <h3 class="text-lg sm:text-xl font-semibold">Camping Escape</h3>
+            <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
+            Cozy campfires, starlit skies, and outdoor fun.
+            </p>
+            <div class="flex justify-between items-center mt-2">
+            <span class="text-blue-500 font-semibold">₱4,500</span>
+            <a href="/trips/camping-escape" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition">View</a>
+            </div>
+        </div>
+        </div>
+
+    </div>
+    </div>
+
+    <!-- Adventure Categories -->
+    <div class="text-center space-y-8 px-2 sm:px-6">
+      <h2 class="text-3xl sm:text-4xl font-semibold text-blue-900">Browse by Category</h2>
+      <p class="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+        Find adventures that match your style. Whether you seek tranquility or thrill, there’s something for everyone.
+      </p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-8 mt-8">
+        <div class="space-y-3">
+          <div class="bg-blue-100 p-6 rounded-full flex items-center justify-center text-3xl">🌊</div>
+          <p class="font-medium text-gray-700">Beaches</p>
+        </div>
+        <div class="space-y-3">
+          <div class="bg-green-100 p-6 rounded-full flex items-center justify-center text-3xl">⛰️</div>
+          <p class="font-medium text-gray-700">Mountains</p>
+        </div>
+        <div class="space-y-3">
+          <div class="bg-orange-100 p-6 rounded-full flex items-center justify-center text-3xl">🔥</div>
+          <p class="font-medium text-gray-700">Camping</p>
+        </div>
+        <div class="space-y-3">
+          <div class="bg-gray-100 p-6 rounded-full flex items-center justify-center text-3xl">✨</div>
+          <p class="font-medium text-gray-700">And More</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Call to Action -->
+    <div class="text-center space-y-6 px-2 sm:px-6">
+      <h2 class="text-3xl sm:text-4xl font-semibold text-blue-900">Ready to Start?</h2>
+      <p class="text-gray-600 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto">
+        Explore more trips or plan your own adventure with Tara G today!
+      </p>
+      <a href="/trips" class="inline-block bg-blue-500 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-600 transition">
+        Explore Trips
+      </a>
+    </div>
+
+  </section>
+</PagePlate>
+
+
+<style>
+  /* Hide default scrollbar for a cleaner look */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>

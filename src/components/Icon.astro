@@ -1,0 +1,38 @@
+---
+import type { ICON, VECTORS } from "@jsarmyknife/native--icon"
+import { iconList } from "../utility/Icons";
+
+interface Props {
+    name: keyof typeof iconList,
+    outClass?:string,
+    inClass?:string,
+    [key:string]:any,
+}
+const { name, outClass, inClass, ...attributes } = Astro.props;
+
+const iconData:ICON|undefined = iconList[name];
+if(iconData == undefined)
+    return "ICON DOES NOT EXIST"
+---
+{/**
+ * Icon.astro accepts the following props.
+ * name - name of the icons found in IconifyIcons helper
+ * outClass - class attribute for the outside level of icons (You may set height or width here)
+ * inClass - class attribute inside the main icon (You may set the color of icons here)
+*/}
+
+{name ===undefined?"":<>
+<div class={outClass} {...attributes} >
+    <svg xmlns={iconData.svg.xmlns} width="100%" height="100%" viewBox={iconData.svg.viewBox} >
+        <g class={inClass}>
+            {iconData.vectors.map((x:any|VECTORS, i)=>{
+                const {element, ...elementAttributes} = x;
+                switch(element){
+                    case "path":
+                        return <path key={i} {...elementAttributes} />
+                }
+            })}
+        </g>
+    </svg>
+</div>
+</>}

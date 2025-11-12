@@ -1,0 +1,109 @@
+---
+import { getAllPosts } from '../../lib/cosmic_client'
+import PagePlate from '../../layouts/PagePlate.astro'
+import BlogItemBig from '@/components/Blog/BlogItemBig.astro'
+import type { NEWSROOM_CONTENT } from 'src/structure/newsroom/content'
+import Pagination from '@/components/Form/Pagination.astro';
+
+interface BlogPost {
+  slug: string;
+  title: string;
+  created_at: string;
+  metadata: {
+    title: string;
+    content: string;
+    excerpt: string;
+    featured_image: {
+      url: string
+      imgix_url: string
+    };
+    author: string;
+    categories: Array<string>;
+  };
+}
+let page: number = Number(Astro.url.searchParams.get("page")) || 1;
+let limit = 10
+let skip = (page * limit) - limit
+let data: any;
+
+data = await new Promise(async (resolve) => {
+  try {
+    const posts = await getAllPosts(skip, limit);
+    resolve(posts);
+
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    resolve({ objects: [] });
+  }
+});
+
+
+let information: Array<NEWSROOM_CONTENT>
+if (data.objects.length > 1) {
+ information = data.objects.map((post: BlogPost): NEWSROOM_CONTENT => ({
+  id: post.slug,
+  excerpt: post.metadata.excerpt,
+  title: post.title,
+  published: post.created_at,
+  description: post.metadata.content,
+  thumbnail: post.metadata.featured_image.url,
+  slug: post.slug,
+  status: "PUBLISHED",
+  markdown_link: "",
+  created_at: post.created_at,
+  updated_at: post.created_at,
+  thumbnailSource: post.metadata.featured_image.url,
+  contentSource: ""
+}))
+} else {
+  information = []
+}
+let totalPage = data.total ? Math.ceil(data.total / limit) : 1;
+---
+
+<PagePlate>
+  <header class="relative w-full">
+    <picture>
+      <source
+        srcset="https://toyota.com.ph/img/articles/TMPWebsite_News_Mobile.png"
+        media="(max-width: 768px)"
+      />
+      <img
+        src="https://toyota.com.ph/img/articles/TMPWebsite_News_Mobile.png"
+        alt="Newsroom banner"
+        class="w-full h-auto object-cover"
+      />
+    </picture>
+
+    <div class="absolute left-1/2 bottom-0 -translate-x-1/2 z-10">
+      <div class="bg-gray-600/80 px-6 py-8 -skew-x-10">
+        <h1 class="h7 skew-x-10 whitespace-nowrap">
+          <span class="text-orange-500">Rent&#x3B1;Car</span>
+          <span class="text-gray-300">NEWSROOM</span>
+        </h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="my-5 grid md:grid-cols-2 grid-cols-1 md:gap-10 gap-5">
+    {information.length === 0 ? (
+      <div class="text-cente">
+        <h2 class="h5">No news yet</h2>
+      </div>
+    ) : (
+      information.map((item: NEWSROOM_CONTENT) => {
+        return (
+          <BlogItemBig
+            information={item}
+            class="my-5"
+          />
+        );
+      })
+    )}
+
+  </main>
+  <aside class="flex justify-end">
+    <Pagination page={page} totalPages={totalPage} />
+  </aside>
+  <div class="my-20"></div>
+</PagePlate>

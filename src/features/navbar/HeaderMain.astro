@@ -44,7 +44,15 @@ try {
       {user ? (
         <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
           {/* Profile picture */}
-          <img src={user.user_metadata.avatar_url} alt="Profile" class="w-8 h-8 rounded-full" />
+
+          {user.user_metadata.avatar_url ? (
+            <img src={user.user_metadata.avatar_url} alt="Profile" class="w-8 h-8 rounded-full" />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c0-4 3-7 8-7s8 3 8 7" />
+            </svg>
+          )}
           <span class="hidden md:inline">{user.user_metadata.full_name}</span>
         </button>
       ) : (

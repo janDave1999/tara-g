@@ -1,0 +1,88 @@
+---
+import type { NEWSROOM_CONTENT } from "src/structure/newsroom/content";
+import Icon from "../Icon.astro";
+import { monthName } from "@jsarmyknife/native--math";
+
+interface Props{
+  information: NEWSROOM_CONTENT,
+  class?:string,
+}
+
+const {information, class:className} = Astro.props as Props;
+
+const publishedData = new Date(information.published);
+
+---
+
+
+<astro-blog-item-big class={` flex flex-col ${className} border border-gray-200 rounded shadow-xl p-4`}>
+<input type="hidden" id="information" value={JSON.stringify(information)} />
+<article class="">
+  {/*Image and Date*/}
+  <a href={`/newsroom/${information.slug}`} class="block relative w-full sm:aspect-video aspect-square over group">
+    <div class="absolute rounded w-full h-full overflow-hidden">
+      <img alt="News Image" class="image !object-cover group-hover:scale-125 transition duration-200" src={`${information.thumbnailSource}?${Date.now()}`} />
+    </div>
+    <div class=" absolute w-full h-full bg-gradient-to-t from-white/10 to-black/20"></div>
+    <div class=" absolute bottom-0 lg:left-16 md:left-10 sm:left-8 left-5">
+      <div class="absolute translate-y-[-50%] lg:w-32 md:w-28 sm:w-24 w-20 aspect-square rounded bg-primary -skew-x-6 flex justify-end items-end">
+        <div class=" rounded border-transparent border-b-white m-1" style={{
+          borderStyle: "solid",
+          borderWidth: "0 0 13px 13px",
+          transform: "rotate(0deg)",
+        }}></div>
+      </div>
+      <div class="absolute translate-y-[-50%] lg:w-32 md:w-28 sm:w-24 w-20 aspect-square flex justify-center items-center">
+        <div class="text-center text-white">
+          <h3 class=" font-semibold tracking-tighter text-5xl md:ml-1">
+            {publishedData.getDate()}
+          </h3>
+          <p class=" tracking-wider text-lg">
+            { monthName(publishedData.getMonth()+1)?.toUpperCase() }
+          </p>
+        </div>
+      </div>
+    </div>
+  </a>
+
+  {/*Navigation*/}
+  <div class=" mt-[3rem] flex flex-wrap justify-end gap-2 ">
+    <button id="share-link" type="button" class="btn btn-ghost px-2 py-1 flex items-center"> 
+        <Icon name="share" inClass=" fill-gray-700" outClass="size-5" />
+        <span class="mb-1">Share</span> 
+    </button>
+  </div>
+
+   {/*Description*/}
+   <div class="">
+      <h1 class=" text-2xl font-bold">{information.title}</h1>
+      <p class="my-6">{(information.excerpt)}</p>
+      <div>
+        <a aria-label="link to article" href={`/newsroom/${information.slug}`} class=" underline text-primary uppercase font-bold underline-offset-4 cursor-pointer hover:text-orange-600">
+          Read Article
+        </a>
+      </div>
+   </div>
+   <div class=" py-5"></div>
+</article>
+</astro-blog-item-big>
+
+<script>
+//---> Import
+import { ElementMaker } from "@jsarmyknife/native--dom";
+import type { NEWSROOM_CONTENT } from "src/structure/newsroom/content";
+
+ElementMaker("astro-blog-item-big", (element)=>{
+  if(element == null) return;
+
+  //---> Const
+  const shareLink = element.querySelector("#share-link") as HTMLButtonElement;
+  const information = JSON.parse((element.querySelector("#information") as HTMLInputElement).value) as NEWSROOM_CONTENT;
+
+  //---> Listener
+  shareLink.addEventListener("click", ()=>{
+    navigator.share({url: `${location.origin}/newsroom/${information.slug}`, title: information.title});
+  });
+}, true);
+
+</script>

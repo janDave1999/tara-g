@@ -1,5 +1,17 @@
 ---
 import PagePlate from "../layouts/PagePlate.astro";
+import { getAllPosts } from '../lib/cosmic_client'
+import BlogItemSmall from '@/components/Blog/BlogItemSmall.astro';
+import type { BlogPost } from 'src/structure/Blog';
+
+let newsContentData: any;
+ newsContentData = await new Promise(async(resolve)=>{
+  try{
+    resolve(await getAllPosts(0,3));
+  }catch{
+    resolve([]);
+  }
+});
 
 const trips = [
   {
@@ -109,7 +121,7 @@ const trips = [
 </section>
 
   <!-- Newsroom Section -->
-  <section id="newsroom" class="py-24 px-8 text-center">
+  <!-- <section id="newsroom" class="py-24 px-8 text-center">
     <h2 class="text-4xl font-bold mb-12">Newsroom</h2>
     <div class="grid md:grid-cols-3 gap-8">
       <div class="bg-gray-100 rounded-lg p-6">
@@ -125,7 +137,35 @@ const trips = [
         <p class="text-gray-600">Discover how we keep our trips sustainable.</p>
       </div>
     </div>
-  </section>
+  </section> -->
+
+  <!-- News -->
+    {newsContentData.total > 0 &&
+    <div class="py-24 px-8 text-center">
+      <header class="mb-8">
+        <h2 class="text-4xl font-bold mb-12">News</h2>
+      </header>
+      <div class="grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 auto-cols-max gap-5">
+        {newsContentData.objects.map((item: BlogPost) => {
+          return (
+            <BlogItemSmall
+              slug={item.slug}
+              title={item.metadata.title}
+              thumbnail={item.metadata.featured_image.imgix_url}
+              publishedDate={item.created_at}
+              description={item.metadata.content}
+              excerpt={item.metadata.excerpt}
+            />
+          );
+        })}
+      </div>
+      <div class="px-6 mt-7 flex justify-center">
+          <a href="/newsroom" title="See More" class="w-full btn-outline hover:bg-gray-100">
+            See More
+          </a>
+        </div>
+    </div>
+    }
 
   <!-- FAQs Section -->
   <section id="faqs" class="py-24 px-8 bg-gray-50 text-center">

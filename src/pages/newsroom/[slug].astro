@@ -1,0 +1,23 @@
+---
+import { getAllPosts } from '../../lib/cosmic_client'
+import PagePlate from "../../layouts/PagePlate.astro";
+import { markdownToHtml } from '../../lib/markDownToHtml'
+
+
+
+const { slug } = Astro.params
+
+let post = await getAllPosts(0, 0, slug)
+post = post.object
+
+const content = await markdownToHtml(post.metadata.content)
+---
+<PagePlate title={post.metadata.title} >
+<article id="blog-article" class="prose max-w-none">
+  <picture class="mb-3 p-4 flex justify-center">
+    <img src={post.metadata.featured_image.imgix_url} alt={post.metadata.title} class="rounded-xl" />
+  </picture>
+  <div set:html={content}></div>
+</article>
+</PagePlate>
+

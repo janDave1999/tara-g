@@ -31,7 +31,8 @@
     "marked": "^17.0.0",
     "preline": "^3.2.3",
     "schema-dts": "^1.1.5",
-    "tailwindcss": "^4.1.14"
+    "tailwindcss": "^4.1.14",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.20",

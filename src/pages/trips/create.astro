@@ -132,56 +132,52 @@ import PagePlate from "@/layouts/PagePlate.astro";
   </section>
 
 <script>
-  import { MapboxAddressAutofill } from "@mapbox/search-js-web";
-  import { PUBLIC_MAPBOX_TOKEN } from "astro:env/client";
+    import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
+    // get session ID from cookie
+    let sessionId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("sb-session-id="))
+      ?.split("=")[1] as string;
 
-  const autofillInputs = [
-    document.getElementById("regionInput"),
-    document.getElementById("pickupInput"),
-    document.getElementById("dropoffInput")
-  ];
+    let regionInput = document.getElementById("regionInput") as HTMLInputElement;
+    let pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
+    let dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
 
-  autofillInputs.forEach((input) => {
-    if (input) {
-      // Create autofill instance
-      const autofill = new MapboxAddressAutofill();
-      autofill.accessToken = PUBLIC_MAPBOX_TOKEN;
 
-      autofill.options = {
-        language: "en",
-        country: "PH",
-      };
-
-      // Wrap the input inside the autofill element
-      const wrapper = document.createElement("div");
-      autofill.appendChild(input.cloneNode(true));
-      input.replaceWith(wrapper);
-
-      // convert autofill to string not node
-      wrapper.innerHTML = "";
-      wrapper.appendChild(autofill as any);
-
-      // Listen for selection event
-      autofill.addEventListener("retrieve", (event) => {
-        const feature = event.detail?.features;
-        if (feature) {
-          console.log("Selected address:", feature);
-        }
+    // event listeners
+    regionInput.addEventListener("input", () => {
+      console.log(regionInput.value);
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#regionInput",
+        onSelect: (result: any) => {
+          regionInput.value = result.place_name;
+        },
       });
-    }
-  });
+    });
+
+    pickupInput.addEventListener("input", () => {
+      console.log(pickupInput.value);
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#pickupInput",
+        onSelect: (result: any) => {
+          pickupInput.value = result.place_name;
+        },
+      });
+    });
+
+    dropoffInput.addEventListener("input", () => {
+      console.log(dropoffInput.value);
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#dropoffInput",
+        onSelect: (result: any) => {
+          dropoffInput.value = result.place_name;
+        },
+      });
+    });
+
+
 </script>
-
-<link
-  rel="stylesheet"
-  href="https://api.mapbox.com/search-js/v1.0.0-beta.17/mapbox-search.min.css"
-/>
-
-
-
-  <!-- ✅ Include Mapbox Search JS styles -->
-  <link
-    rel="stylesheet"
-    href="https://api.mapbox.com/search-js/v1.0.0-beta.17/mapbox-search.min.css"
-  />
 </PagePlate>

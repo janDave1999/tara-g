@@ -19,7 +19,7 @@ const publishedData = new Date(information.published);
 <input type="hidden" id="information" value={JSON.stringify(information)} />
 <article class="">
   {/*Image and Date*/}
-  <a href={`/newsroom/${information.slug}`} class="block relative w-full sm:aspect-video aspect-square over group">
+  <a href={`/blogs/${information.slug}`} class="block relative w-full sm:aspect-video aspect-square over group">
     <div class="absolute rounded w-full h-full overflow-hidden">
       <img alt="News Image" class="image !object-cover group-hover:scale-125 transition duration-200" src={`${information.thumbnailSource}?${Date.now()}`} />
     </div>
@@ -58,7 +58,7 @@ const publishedData = new Date(information.published);
       <h1 class=" text-2xl font-bold">{information.title}</h1>
       <p class="my-6">{(information.excerpt)}</p>
       <div>
-        <a aria-label="link to article" href={`/newsroom/${information.slug}`} class=" underline text-primary uppercase font-bold underline-offset-4 cursor-pointer hover:text-orange-600">
+        <a aria-label="link to article" href={`/blogs/${information.slug}`} class=" underline text-primary uppercase font-bold underline-offset-4 cursor-pointer hover:text-orange-600">
           Read Article
         </a>
       </div>
@@ -81,7 +81,7 @@ ElementMaker("astro-blog-item-big", (element)=>{
 
   //---> Listener
   shareLink.addEventListener("click", ()=>{
-    navigator.share({url: `${location.origin}/newsroom/${information.slug}`, title: information.title});
+    navigator.share({url: `${location.origin}/blogs/${information.slug}`, title: information.title});
   });
 }, true);
 

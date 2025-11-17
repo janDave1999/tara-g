@@ -49,7 +49,7 @@ import micromatch from "micromatch";
 
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
-const proptectedAPIRoutes = ["/api/**"];
+const proptectedAPIRoutes = ["/api/guestbook(|/)"]; 
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
@@ -83,7 +83,7 @@ export const onRequest = defineMiddleware(
         path: "/",
         secure: true,
       });
-      
+
       const { data: userData } = await supabase.auth.getUser(
         data?.session?.access_token
       );

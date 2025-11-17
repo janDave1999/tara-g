@@ -2,14 +2,11 @@
 import Pageplate from "@/layouts/PagePlate.astro";
 import { supabase } from "@/lib/supabase";
 
-const { data: { user } } = await supabase.auth.getUser();
-
-if (!user) return Astro.redirect("/signin");
-
+let user_id = Astro.locals.user_id;
 const { data: trips } = await supabase
   .from("trips")
   .select("trip_id, title, status, created_at")
-  .eq("owner_id", user.id)
+  .eq("owner_id", user_id)
   .order("created_at", { ascending: false });
 ---
 

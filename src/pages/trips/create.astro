@@ -1,14 +1,12 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
-
-// get user id from locals
 ---
 
 <PagePlate title="Create a Trip" noContainer>
   <section class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
     <h1 class="text-3xl sm:text-4xl font-bold mb-12 pt-8 text-center">Plan Your Adventure</h1>
 
-    <form id="tripForm" class="space-y-12" method="POST" action="/api/trips/create">
+    <form id="tripForm" class="space-y-12" method="post">
 
       <!-- Trip Basics -->
       <div class="bg-white p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start mb-4">
@@ -102,6 +100,18 @@ import PagePlate from "@/layouts/PagePlate.astro";
             </div>
           </div>
 
+          <!-- Number of pax -->
+           <div>
+            <label class="block font-medium mb-1 text-base">Number of Pax</label>
+            <input
+            type="number"
+            name="max_pax"
+            min="0"
+            placeholder="Enter maximum number of pax"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+            required
+            />
+           </div>
         </div>
       </div>
 
@@ -196,6 +206,7 @@ import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
 
     // event listeners
     regionInput.addEventListener("input", () => {
+      console.log("region input");
       createMapboxSearchBox({
         sessionTokenID: sessionId,
         targetSelector: "#regionInput",
@@ -228,6 +239,42 @@ import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
       });
     });
 
+      import { actions } from "astro:actions";
+      import type { TripFormData } from "@/types/trip";
+      let form = document.getElementById("tripForm") as HTMLFormElement;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const tripData: TripFormData = {
+          title: formData.get("title") as string,
+          region_address: formData.get("region_address") as string,
+          region_coordinates: formData.get("region_coordinates") as string,
+          pickup_address: formData.get("pickup_address") as string,
+          pickup_coordinates: formData.get("pickup_coordinates") as string,
+          dropoff_address: formData.get("dropoff_address") as string,
+          dropoff_coordinates: formData.get("dropoff_coordinates") as string,
+          description: formData.get("description") as string,
+          waiting_time: formData.get("waiting_time") as string,
+          budget_type: formData.get("budget_type") as string,
+          max_pax: parseInt(formData.get("max_pax") as string) || 0,
+          start_date: formData.get("start_date") as string,
+          end_date: formData.get("end_date") as string,
+          total_budget: formData.get("total_budget") as string,
+          pickup_dates: formData.get("pickup_dates") as string
+        } ;
+
+        let {data, error} = await actions.trip.createTrip(tripData);
+
+        if (error) {
+          alert(error);
+        }
+
+        if (data) {
+          console.log(data);
+          window.location.href = `/trips/${data?.trip_id}`;
+        }
+      });
 
 </script>
 </PagePlate>

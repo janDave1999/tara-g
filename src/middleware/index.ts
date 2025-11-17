@@ -53,12 +53,14 @@ const proptectedAPIRoutes = ["/api/trips/**", "/api/feeds/**"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
+    console.log(`Request: ${url.pathname}`);
 
     if (micromatch.isMatch(url.pathname, protectedRoutes)) {
       const accessToken = cookies.get("sb-access-token");
       const refreshToken = cookies.get("sb-refresh-token");
 
       if (!accessToken || !refreshToken) {
+        console.log(`Redirecting to /signin due to lack of access and refresh tokens`);
         return redirect("/signin");
       }
 
@@ -68,6 +70,7 @@ export const onRequest = defineMiddleware(
       });
 
       if (error) {
+        console.log(`Error setting session: ${error.message}`);
         cookies.delete("sb-access-token", { path: "/" });
         cookies.delete("sb-refresh-token", { path: "/" });
         return redirect("/signin");
@@ -87,7 +90,7 @@ export const onRequest = defineMiddleware(
       const { data: userData } = await supabase.auth.getUser(
         data?.session?.access_token
       );
-      console.log(userData);
+      console.log(`User data: ${JSON.stringify(userData)}`);
       locals.user_id = userData?.user?.id ?? null;
       locals.avatar_url = userData?.user?.user_metadata?.avatar_url ?? null;
     }
@@ -97,6 +100,7 @@ export const onRequest = defineMiddleware(
       const refreshToken = cookies.get("sb-refresh-token");
 
       if (accessToken && refreshToken) {
+        console.log(`Redirecting to /feeds due to presence of access and refresh tokens`);
         return redirect("/feeds");
       }
     }
@@ -106,6 +110,7 @@ export const onRequest = defineMiddleware(
       const refreshToken = cookies.get("sb-refresh-token");
 
       if (!accessToken || !refreshToken) {
+        console.log(`Returning 401 Unauthorized due to lack of access and refresh tokens`);
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
         });
@@ -117,6 +122,7 @@ export const onRequest = defineMiddleware(
       });
 
       if (error) {
+        console.log(`Error setting session: ${error.message}`);
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
         });
@@ -124,7 +130,7 @@ export const onRequest = defineMiddleware(
 
       /* Optional for API requests: attach user_id */
       const { data: userData } = await supabase.auth.getUser(accessToken.value);
-      console.log(userData);
+      console.log(`User data: ${JSON.stringify(userData)}`);
       locals.user_id = userData?.user?.id ?? null;
     }
 

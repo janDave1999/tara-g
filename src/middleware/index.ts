@@ -83,7 +83,7 @@ export const onRequest = defineMiddleware(
         path: "/",
         secure: true,
       });
-      /* 🔥 GET USER & SET LOCALS */
+      
       const { data: userData } = await supabase.auth.getUser(
         data?.session?.access_token
       );

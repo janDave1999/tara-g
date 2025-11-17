@@ -87,8 +87,9 @@ export const onRequest = defineMiddleware(
       const { data: userData } = await supabase.auth.getUser(
         data?.session?.access_token
       );
+      console.log(userData);
       locals.user_id = userData?.user?.id ?? null;
-      console.log(locals.user_id);
+      locals.avatar_url = userData?.user?.user_metadata?.avatar_url ?? null;
     }
 
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
@@ -123,6 +124,7 @@ export const onRequest = defineMiddleware(
 
       /* Optional for API requests: attach user_id */
       const { data: userData } = await supabase.auth.getUser(accessToken.value);
+      console.log(userData);
       locals.user_id = userData?.user?.id ?? null;
     }
 

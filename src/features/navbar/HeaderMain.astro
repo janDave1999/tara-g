@@ -1,13 +1,15 @@
 ---
 import { supabase } from "@/lib/supabase";
 
-let user = null;
-try {
-  const { data } = await supabase.auth.getUser();
-  user = data?.user ?? null;
-} catch (err) {
-  console.error("Error fetching user:", err);
-}
+let avatarUrl = Astro.locals.avatar_url || "";
+let userID = Astro.locals.user_id || "";
+// let user = null;
+// try {
+//   const { data } = await supabase.auth.getUser();
+//   user = data?.user ?? null;
+// } catch (err) {
+//   console.error("Error fetching user:", err);
+// }
 ---
 
 <header class="w-full bg-white shadow-md">
@@ -41,26 +43,26 @@ try {
 
     <!-- Right section: profile or sign in -->
     <div class="relative">
-      {user ? (
+      {userID ? (
         <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
           {/* Profile picture */}
 
-          {user.user_metadata.avatar_url ? (
-            <img src={user.user_metadata.avatar_url} alt="Profile" class="w-8 h-8 rounded-full" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Profile" class="w-8 h-8 rounded-full" />
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
               <circle cx="12" cy="8" r="4"/>
               <path d="M4 20c0-4 3-7 8-7s8 3 8 7" />
             </svg>
           )}
-          <span class="hidden md:inline">{user.user_metadata.full_name}</span>
+          <span class="hidden md:inline">{avatarUrl}</span>
         </button>
       ) : (
         <a href="/signin" class="font-medium text-gray-700 hover:text-blue-600">Sign in</a>
       )}
 
       <!-- Profile dropdown -->
-      {user && (
+      {userID  && (
         <ul id="profile-menu"
           class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
           <li><a href="/trips" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Trips</a></li>
@@ -77,7 +79,7 @@ try {
       <li><a href="/about" class="hover:text-blue-600">About</a></li>
       <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
       <li><a href="/blogs" class="hover:text-blue-600">Blogs</a></li>
-      {user ? (
+      {userID ? (
         <>
           <li><a href="/dashboard" class="hover:text-blue-600">Dashboard</a></li>
           <li><a href="/api/auth/signout" class="text-red-500 hover:underline">Logout</a></li>

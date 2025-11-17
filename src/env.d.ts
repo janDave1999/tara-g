@@ -19,5 +19,7 @@ interface ImportMeta {
 declare namespace App {
   interface Locals {
     user_id: string | null;
+    username: string | null;
+    avatar_url: string | null;
   }
 }

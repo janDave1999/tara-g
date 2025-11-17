@@ -21,6 +21,14 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  // R2
+  "r2_buckets": [
+    {
+      "binding": "PUBLIC_R2_BUCKET",
+      "bucket_name": "tara-g"
+    }
+  ],
+  // KV
   "env": {
     "production":{
       // "routes": [ // This is for creating custom domains

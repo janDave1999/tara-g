@@ -46,15 +46,14 @@
 import { defineMiddleware } from "astro:middleware";
 import { supabase } from "../lib/supabase";
 import micromatch from "micromatch";
-import type { Locals } from "astro/actions/runtime/utils.js";
 
-const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**"];
+const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
-const proptectedAPIRoutes = ["/api/guestbook(|/)"]; 
-type ExtendedLocals = Locals & { email: string };
+const proptectedAPIRoutes = ["/api/trips/**"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
+
     if (micromatch.isMatch(url.pathname, protectedRoutes)) {
       const accessToken = cookies.get("sb-access-token");
       const refreshToken = cookies.get("sb-refresh-token");
@@ -69,18 +68,11 @@ export const onRequest = defineMiddleware(
       });
 
       if (error) {
-        cookies.delete("sb-access-token", {
-          path: "/",
-        });
-        cookies.delete("sb-refresh-token", {
-          path: "/",
-        });
+        cookies.delete("sb-access-token", { path: "/" });
+        cookies.delete("sb-refresh-token", { path: "/" });
         return redirect("/signin");
       }
 
-
-
-      // locals.email = data.user?.email!;
       cookies.set("sb-access-token", data?.session?.access_token!, {
         sameSite: "strict",
         path: "/",
@@ -91,6 +83,12 @@ export const onRequest = defineMiddleware(
         path: "/",
         secure: true,
       });
+      /* 🔥 GET USER & SET LOCALS */
+      const { data: userData } = await supabase.auth.getUser(
+        data?.session?.access_token
+      );
+      locals.user_id = userData?.user?.id ?? null;
+      console.log(locals.user_id);
     }
 
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
@@ -106,32 +104,28 @@ export const onRequest = defineMiddleware(
       const accessToken = cookies.get("sb-access-token");
       const refreshToken = cookies.get("sb-refresh-token");
 
-      // Check for tokens
       if (!accessToken || !refreshToken) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+        });
       }
 
-      // Verify the tokens
       const { error } = await supabase.auth.setSession({
         access_token: accessToken.value,
         refresh_token: refreshToken.value,
       });
 
       if (error) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+        });
       }
+
+      /* Optional for API requests: attach user_id */
+      const { data: userData } = await supabase.auth.getUser(accessToken.value);
+      locals.user_id = userData?.user?.id ?? null;
     }
 
     return next();
-  },
+  }
 );

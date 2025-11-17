@@ -2,7 +2,6 @@
 import Pageplate from "@/layouts/PagePlate.astro";
 const params = Astro.url.searchParams;
 const email = params.get("email") || "your email";
-console.log(email);
 ---
 
 <Pageplate title="Confirm your email">

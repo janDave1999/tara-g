@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "astro:env/server";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "astro:env/server";
 
 export const supabase = createClient(
     SUPABASE_URL,
@@ -9,4 +9,9 @@ export const supabase = createClient(
             flowType: "pkce",
         },
     },
+);
+
+export const supabaseAdmin = createClient(
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY,
 );

@@ -1,5 +1,7 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
+
+// get user id from locals
 ---
 
 <PagePlate title="Create a Trip" noContainer>
@@ -23,16 +25,18 @@ import PagePlate from "@/layouts/PagePlate.astro";
 
           <!-- Region with Address Autofill -->
           <div>
-            <label class="block font-medium mb-1 text-base">Region</label>
+            <label class="block font-medium mb-1 text-base">Trip Location</label>
             <input
               id="regionInput"
               type="text"
               name="region"
               placeholder="Cebu, Philippines"
-              autocomplete="address-level1"
               class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               required
             />
+            <input type="hidden" name="region_coordinates" id="regionCoordinates" />
+            
+            <input type="hidden" name="region_address" id="regionAddress" />
           </div>
 
           <div>
@@ -58,10 +62,46 @@ import PagePlate from "@/layouts/PagePlate.astro";
           </div>
 
           <div>
-            <label class="block font-medium mb-1 text-base">Total Trip Budget (₱)</label>
-            <input type="number" name="total_budget" min="0" placeholder="Enter total trip budget"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
+            <div>
+              <label class="block font-medium mb-1 text-base">Trip Budget (₱)</label>
+              <input
+              type="number"
+              name="total_budget"
+              min="0"
+              placeholder="Enter total trip budget"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+              required
+              />
+            </div>
+            
+            <!-- Budget type -->
+            <div class="mt-3">
+              <p class="text-sm font-medium mb-1">Budget applies to:</p>
+              <div class="flex items-center gap-6 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                  type="radio"
+                  name="budget_type"
+                  value="total"
+                  class="form-radio text-blue-600 focus:ring-blue-500"
+                  checked
+                  />
+                  Total Budget
+                </label>
+                
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                  type="radio"
+                  name="budget_type"
+                  value="per_person"
+                  class="form-radio text-blue-600 focus:ring-blue-500"
+                  />
+                  Per Person
+                </label>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -89,6 +129,8 @@ import PagePlate from "@/layouts/PagePlate.astro";
                 class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
                 required
               />
+              <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
+            <input type="hidden" name="pickup_address" id="pickupAddress" />
             </div>
 
             <div>
@@ -107,17 +149,20 @@ import PagePlate from "@/layouts/PagePlate.astro";
           <hr class="border-gray-300">
 
           <div>
-            <label class="block font-medium mb-2 text-base">Dropoff Location</label>
-            <input
-              id="dropoffInput"
-              type="text"
-              name="dropoff_locations"
-              placeholder="Dropoff location"
-              autocomplete="street-address"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-              required
-            />
+              <label class="block font-medium mb-2 text-base">Dropoff Location</label>
+              <input
+                id="dropoffInput"
+                type="text"
+                name="dropoff_locations"
+                placeholder="Dropoff location"
+                autocomplete="street-address"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                required
+              />
+            <input type="hidden" name="dropoff_coordinates" id="dropoffCoordinates" />
+            <input type="hidden" name="dropoff_address" id="dropoffAddress" />
           </div>
+
         </div>
       </div>
 
@@ -132,7 +177,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
   </section>
 
 <script>
-    import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
+import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
     // get session ID from cookie
     let sessionId = document.cookie
       .split("; ")
@@ -142,38 +187,43 @@ import PagePlate from "@/layouts/PagePlate.astro";
     let regionInput = document.getElementById("regionInput") as HTMLInputElement;
     let pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
     let dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
-
+    let dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
+    let pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
+    let regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
+    let regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
+    let pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
+    let dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
 
     // event listeners
     regionInput.addEventListener("input", () => {
-      console.log(regionInput.value);
       createMapboxSearchBox({
         sessionTokenID: sessionId,
         targetSelector: "#regionInput",
         onSelect: (result: any) => {
-          regionInput.value = result.place_name;
+          regionAddress.value = result.name;
+          regionCoordinates.value = JSON.stringify(result.coordinates);
         },
       });
     });
 
     pickupInput.addEventListener("input", () => {
-      console.log(pickupInput.value);
       createMapboxSearchBox({
         sessionTokenID: sessionId,
         targetSelector: "#pickupInput",
         onSelect: (result: any) => {
-          pickupInput.value = result.place_name;
+          pickupAddress.value = result.name;
+          pickupCoordinates.value = JSON.stringify(result.coordinates);
         },
       });
     });
 
     dropoffInput.addEventListener("input", () => {
-      console.log(dropoffInput.value);
       createMapboxSearchBox({
         sessionTokenID: sessionId,
         targetSelector: "#dropoffInput",
         onSelect: (result: any) => {
-          dropoffInput.value = result.place_name;
+          dropoffAddress.value = result.name;
+          dropoffCoordinates.value = JSON.stringify(result.coordinates);
         },
       });
     });

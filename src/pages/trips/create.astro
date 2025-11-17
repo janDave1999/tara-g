@@ -272,7 +272,7 @@ import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
 
         if (data) {
           console.log(data);
-          window.location.href = `/trips/${data?.trip_id}`;
+          window.location.href = `/trips/${data.data}`;
         }
       });
 

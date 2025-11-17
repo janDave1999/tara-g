@@ -70,7 +70,7 @@ export const trip = {
           .single();
 
         if (tripError) {
-            return new Response(tripError.message, { status: 500 });
+            return ({ error: tripError.message, data: null });
         }
 
         return ({ error: null, data: trip_id });

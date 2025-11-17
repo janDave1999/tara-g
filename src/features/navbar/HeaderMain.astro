@@ -1,15 +1,6 @@
 ---
-import { supabase } from "@/lib/supabase";
-
 let avatarUrl = Astro.locals.avatar_url || "";
 let userID = Astro.locals.user_id || "";
-// let user = null;
-// try {
-//   const { data } = await supabase.auth.getUser();
-//   user = data?.user ?? null;
-// } catch (err) {
-//   console.error("Error fetching user:", err);
-// }
 ---
 
 <header class="w-full bg-white shadow-md">

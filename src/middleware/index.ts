@@ -49,7 +49,7 @@ import micromatch from "micromatch";
 
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
-const proptectedAPIRoutes = ["/api/guestbook(|/)"]; 
+const proptectedAPIRoutes = ["/api/trips/**", "/api/feeds/**"]; 
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {

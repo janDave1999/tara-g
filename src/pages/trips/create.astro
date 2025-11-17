@@ -188,56 +188,54 @@ import PagePlate from "@/layouts/PagePlate.astro";
 
 <script>
 import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
-    // get session ID from cookie
-    let sessionId = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("sb-session-id="))
-      ?.split("=")[1] as string;
 
-    let regionInput = document.getElementById("regionInput") as HTMLInputElement;
-    let pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
-    let dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
-    let dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
-    let pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
-    let regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
-    let regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
-    let pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
-    let dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
+// Get session ID from cookie
+const sessionId = document.cookie
+  .split("; ")
+  .find((row) => row.startsWith("sb-session-id="))
+  ?.split("=")[1] as string;
 
-    // event listeners
-    regionInput.addEventListener("input", () => {
-      console.log("region input");
-      createMapboxSearchBox({
-        sessionTokenID: sessionId,
-        targetSelector: "#regionInput",
-        onSelect: (result: any) => {
-          regionAddress.value = result.name;
-          regionCoordinates.value = JSON.stringify(result.coordinates);
-        },
-      });
-    });
+// Get input elements
+const regionInput = document.getElementById("regionInput") as HTMLInputElement;
+const pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
+const dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
 
-    pickupInput.addEventListener("input", () => {
-      createMapboxSearchBox({
-        sessionTokenID: sessionId,
-        targetSelector: "#pickupInput",
-        onSelect: (result: any) => {
-          pickupAddress.value = result.name;
-          pickupCoordinates.value = JSON.stringify(result.coordinates);
-        },
-      });
-    });
+const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
+const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
+const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
 
-    dropoffInput.addEventListener("input", () => {
-      createMapboxSearchBox({
-        sessionTokenID: sessionId,
-        targetSelector: "#dropoffInput",
-        onSelect: (result: any) => {
-          dropoffAddress.value = result.name;
-          dropoffCoordinates.value = JSON.stringify(result.coordinates);
-        },
-      });
-    });
+const regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
+const pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
+const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
+
+// Initialize Mapbox search boxes once
+createMapboxSearchBox({
+  sessionTokenID: sessionId,
+  targetSelector: "#regionInput",
+  onSelect: (result) => {
+    regionAddress.value = result.name;
+    regionCoordinates.value = JSON.stringify(result.coordinates);
+  },
+});
+
+createMapboxSearchBox({
+  sessionTokenID: sessionId,
+  targetSelector: "#pickupInput",
+  onSelect: (result) => {
+    pickupAddress.value = result.name;
+    pickupCoordinates.value = JSON.stringify(result.coordinates);
+  },
+});
+
+createMapboxSearchBox({
+  sessionTokenID: sessionId,
+  targetSelector: "#dropoffInput",
+  onSelect: (result) => {
+    dropoffAddress.value = result.name;
+    dropoffCoordinates.value = JSON.stringify(result.coordinates);
+  },
+});
+
 
       import { actions } from "astro:actions";
       import type { TripFormData } from "@/types/trip";

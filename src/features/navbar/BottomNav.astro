@@ -103,8 +103,7 @@ const navItems: NavItem[] = [
   let offsetX = 0, offsetY = 0;
 
   dockBtn.addEventListener("click", () => {
-    bottomNav.style.transform = "translateY(0)";
-    dockBtn.style.display = "none";
+    showNav();
   });
 
   dockBtn.addEventListener("pointerdown", (e) => {
@@ -143,9 +142,19 @@ const hideNav = () => {
   }, 300); // wait for fade before removing from layout
 };
 
+const showNav = () => {
+  bottomNav.style.display = "block";
+  requestAnimationFrame(() => {
+    bottomNav.style.opacity = "1";
+    bottomNav.style.pointerEvents = "auto";
+  });
+  dockBtn.style.display = "none";
+};
+
+
   const resetIdle = () => {
     if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(hideNav, 3500);
+    idleTimer = setTimeout(hideNav, 2500);
   };
 
   window.addEventListener("scroll", resetIdle);

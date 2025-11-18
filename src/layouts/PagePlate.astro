@@ -10,7 +10,10 @@ import HeadTagOG from "@/seo/component/HeadTagOG.astro";
 import HeadTagPrefetch from "@/seo/component/HeadTagPrefetch.astro";
 import HeadTagAltLanguages from "@/seo/component/HeadTagAltLanguages.astro";
 import CookiesConsent from "@/components/CookiesConsent.astro";
+import LoadModal from "@/components/LoadModal.astro";
+import BottomNav from "@/features/navbar/BottomNav.astro";
 
+let user_id = Astro.locals.user_id;
 interface Props extends PAGE_PLATE_PROPS {}
 
 let {
@@ -78,7 +81,10 @@ if(description && !description.fbAppId){
       </div>
     </>}
     <CookiesConsent />
-
+    <LoadModal />
+    {
+     user_id ? <BottomNav currentPath={Astro.url.pathname} /> : ""
+    }
     {clean?"": <>
       {noFooter ? "":<>
         <FooterMain />

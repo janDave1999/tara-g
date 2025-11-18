@@ -1,0 +1,154 @@
+---
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string; // SVG path data
+}
+
+const { currentPath = "/" } = Astro.props;
+
+const navItems: NavItem[] = [
+  {
+    href: "/feeds",
+    label: "Feed",
+    icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z",
+  },
+  {
+    href: "/discover",
+    label: "Discover",
+    icon: "M12 2l7 19-7-4-7 4z",
+  },
+  {
+    href: "/trips",
+    label: "Trips",
+    icon: "M3 3h18l-2 13H5z M8 16a4 4 0 1 0 8 0",
+  },
+//   {
+//     href: "/messages",
+//     label: "Messages",
+//     icon: "M21 11.5a8.38 8.38 0 0 1-1.9 5.4A8.5 8.5 0 1 1 12 3v2a6.5 6.5 0 1 0 6.5 6.5z",
+//   },
+  {
+    href: "/profile",
+    label: "Profile",
+    icon: "M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm7 9v-2a5 5 0 0 0-5-5H10a5 5 0 0 0-5 5v2z",
+  },
+];
+---
+<style>
+  .dock-btn {
+    touch-action: none;
+    transition: opacity .25s, transform .25s;
+  }
+</style>
+
+<nav
+  id="bottomNav"
+  class="fixed bottom-0 left-0 right-0 z-[40] bg-white border-t border-neutral-200 md:hidden
+         transition-transform duration-300 translate-y-0"
+  style="padding-bottom: env(safe-area-inset-bottom)"
+>
+  <ul class="flex justify-around items-center px-2">
+    {
+      navItems.map(({ href, label, icon }) => (
+        <li class="flex-1 text-center">
+          <a
+            href={href}
+            class={`flex flex-col items-center gap-0.5 py-3 transition
+              ${currentPath.startsWith(href) ? "text-black font-semibold" : "text-neutral-500"}`}
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d={icon} stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[0.70rem] leading-none">{label}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <!-- Floating center create button -->
+  <a
+    href="/trips/create"
+    aria-label="Create trip"
+    class="absolute -top-7 left-1/2 -translate-x-1/2 w-14 h-14 flex items-center justify-center
+           rounded-full bg-black text-white shadow-md hover:bg-neutral-800 active:scale-95 transition"
+  >
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </a>
+</nav>
+
+
+<!-- Floating Dock Button (when nav hides) -->
+<button
+  id="dockBtn"
+  class="dock-btn hidden md:hidden fixed z-[41] w-14 h-14 rounded-full shadow-md bg-black text-white
+         flex items-center justify-center active:scale-95"
+  style="bottom: 22px; right: 18px;"
+>
+  <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+</button>
+
+<script>
+  /** @type {HTMLElement} */
+  const bottomNav = document.getElementById("bottomNav") as HTMLElement;
+  /** @type {HTMLButtonElement} */
+  const dockBtn = document.getElementById("dockBtn") as HTMLButtonElement;
+
+  let dragging = false;
+  let offsetX = 0, offsetY = 0;
+
+  dockBtn.addEventListener("click", () => {
+    bottomNav.style.transform = "translateY(0)";
+    dockBtn.style.display = "none";
+  });
+
+  dockBtn.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    offsetX = e.clientX - dockBtn.offsetLeft;
+    offsetY = e.clientY - dockBtn.offsetTop;
+    dockBtn.setPointerCapture(e.pointerId);
+    dockBtn.style.opacity = "1";
+  });
+
+  dockBtn.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    dockBtn.style.left = `${e.clientX - offsetX}px`;
+    dockBtn.style.top = `${e.clientY - offsetY}px`;
+  });
+
+  dockBtn.addEventListener("pointerup", () => {
+    dragging = false;
+    const screenW = window.innerWidth;
+    const dockW = dockBtn.offsetWidth;
+    dockBtn.style.left = dockBtn.offsetLeft < screenW / 2
+      ? "8px"
+      : `${screenW - dockW - 8}px`;
+    dockBtn.style.opacity = ".35";
+  });
+
+  let idleTimer: NodeJS.Timeout
+  
+const hideNav = () => {
+  bottomNav.style.opacity = "0";
+  bottomNav.style.pointerEvents = "none";
+
+  setTimeout(() => {
+    bottomNav.style.display = "none";
+    dockBtn.style.display = "flex";
+  }, 300); // wait for fade before removing from layout
+};
+
+  const resetIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(hideNav, 3500);
+  };
+
+  window.addEventListener("scroll", resetIdle);
+  window.addEventListener("touchstart", resetIdle);
+  window.addEventListener("pointerdown", resetIdle);
+</script>

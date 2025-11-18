@@ -11,6 +11,42 @@ const { data: trips } = await supabase
 ---
 
 <Pageplate title="My Trips">
+
+    <section class="px-6 py-10">
+      <div class="max-w-5xl mx-auto text-center space-y-3">
+        <h1 class="text-4xl font-extrabold">
+          Welcome back, Explorer
+        </h1>
+
+        <p class="text-md text-gray-600">
+          Your adventures begin here — past, present, and those waiting to happen.
+        </p>
+
+        <a
+          href="/trips/create"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium"
+        >
+          + Create New Trip
+        </a>
+      </div>
+    </section>
+
+       <section class="px-6 py-4">
+      <div class="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          { label: "Upcoming", count: 1 },
+          { label: "Created", count: 10 },
+          { label: "Invited", count: 2 },
+          { label: "Requests", count: 0 },
+          { label: "Past", count: 2 }
+        ].map(({ label, count }) => (
+          <div class="border rounded-xl p-4 text-center shadow-sm hover:shadow bg-white transition">
+            <p class="text-3xl font-extrabold">{count}</p>
+            <p class="text-gray-500 text-sm">{label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   <section class="space-y-4">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold">My Trips</h1>

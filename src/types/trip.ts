@@ -11,7 +11,8 @@ export type TripFormData = {
   dropoff_address: string;
   dropoff_coordinates: string;
   pickup_dates: string;
-  waiting_time: string;
+  waiting_time: number;
   budget_type: string;
+  slug: string;
   max_pax: number;
 }

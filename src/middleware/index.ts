@@ -50,103 +50,73 @@ import micromatch from "micromatch";
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
 const proptectedAPIRoutes = ["/api/trips/**", "/api/feeds/**"];
+const publicRoutes = ["/", "/about", "/legals/**", "/discover", "/blogs/**"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
+    const accessToken = cookies.get("sb-access-token");
+    const refreshToken = cookies.get("sb-refresh-token");
 
-    if (micromatch.isMatch(url.pathname, protectedRoutes )) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      if (!accessToken || !refreshToken) {
-        return redirect("/signin");
-      }
-
+    // ✨ Always try to resolve logged-in user (even on public routes)
+    if (accessToken && refreshToken) {
       const { data, error } = await supabase.auth.setSession({
-        refresh_token: refreshToken.value,
         access_token: accessToken.value,
+        refresh_token: refreshToken.value,
       });
 
-      if (error) {
-        cookies.delete("sb-access-token", { path: "/" });
-        cookies.delete("sb-refresh-token", { path: "/" });
-        return redirect("/signin");
+      if (!error) {
+        const { data: userData } = await supabase.auth.getUser(
+          data?.session?.access_token
+        );
+
+        locals.user_id = userData?.user?.id ?? null;
+        locals.avatar_url = userData?.user?.user_metadata?.avatar_url ?? null;
+
+        // update cookies silently in the background
+        cookies.set("sb-access-token", data.session?.access_token!, {
+          sameSite: "strict",
+          path: "/",
+          secure: true,
+        });
+        cookies.set("sb-refresh-token", data.session?.refresh_token!, {
+          sameSite: "strict",
+          path: "/",
+          secure: true,
+        });
       }
-
-      cookies.set("sb-access-token", data?.session?.access_token!, {
-        sameSite: "strict",
-        path: "/",
-        secure: true,
-      });
-      cookies.set("sb-refresh-token", data?.session?.refresh_token!, {
-        sameSite: "strict",
-        path: "/",
-        secure: true,
-      });
-
-      const { data: userData } = await supabase.auth.getUser(
-        data?.session?.access_token
-      );
-      locals.user_id = userData?.user?.id ?? null;
-      locals.avatar_url = userData?.user?.user_metadata?.avatar_url ?? null;
     }
 
+    // 🔒 Protected UI pages
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+      if (!locals.user_id) {
+        return redirect("/signin");
+      }
+    }
+
+    // 🔒 Protected actions
     if (url.pathname.startsWith("/_actions/")) {
-  const access = cookies.get("sb-access-token");
-  const refresh = cookies.get("sb-refresh-token");
+      if (!locals.user_id) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+    }
 
-  if (!access || !refresh) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+    // 🔒 Protected API
+    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
+      if (!locals.user_id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+        });
+      }
+    }
 
-  const { data, error } = await supabase.auth.setSession({
-    access_token: access.value,
-    refresh_token: refresh.value,
-  });
-
-  if (error) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  locals.user_id = data.user?.id ?? null;
-}
-
-
+    // 🚫 Redirect if a logged-in user visits /signin or /register
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      if (accessToken && refreshToken) {
+      if (locals.user_id) {
         return redirect("/feeds");
       }
-    }
-
-    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      if (!accessToken || !refreshToken) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-        });
-      }
-
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
-
-      if (error) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-        });
-      }
-
-      /* Optional for API requests: attach user_id */
-      const { data: userData } = await supabase.auth.getUser(accessToken.value);
-      locals.user_id = userData?.user?.id ?? null;
     }
 
     return next();
   }
 );
+

@@ -1,0 +1,40 @@
+---
+---
+<style>
+  /* fade animation */
+  #loadingModal {
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+  }
+  /* inner card scaling animation */
+  #loadingModal .modal-card {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+  /* hidden state */
+  #loadingModal.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+  /* visible state */
+  #loadingModal:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+  }
+  /* card animation states */
+  #loadingModal.hidden .modal-card {
+    transform: scale(0.90);
+    opacity: 0;
+  }
+  #loadingModal:not(.hidden) .modal-card {
+    transform: scale(1);
+    opacity: 1;
+  }
+</style>
+
+<div id="loadingModal"
+  class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] hidden">
+
+  <div class="modal-card flex flex-col items-center space-y-4 bg-white px-8 py-6 rounded-2xl shadow-xl">
+    <div class="w-12 h-12 border-4 border-gray-300 border-t-indigo-600 rounded-full animate-spin"></div>
+    <p class="text-gray-700 font-medium">Processing... Please wait</p>
+  </div>
+</div>

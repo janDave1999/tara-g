@@ -185,6 +185,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
       </div>
     </form>
   </section>
+</PagePlate>
 
 <script>
 import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
@@ -194,11 +195,6 @@ const sessionId = document.cookie
   .split("; ")
   .find((row) => row.startsWith("sb-session-id="))
   ?.split("=")[1] as string;
-
-// Get input elements
-const regionInput = document.getElementById("regionInput") as HTMLInputElement;
-const pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
-const dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
 
 const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
 const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
@@ -239,38 +235,51 @@ createMapboxSearchBox({
 
       import { actions } from "astro:actions";
       import type { TripFormData } from "@/types/trip";
+      import { slugify } from "@/scripts/Slugify";
+      import { showToast } from "@/scripts/Toast";
+      import { showLoading, hideLoading } from "@/lib/loading";
+
       let form = document.getElementById("tripForm") as HTMLFormElement;
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        showLoading();
+        try {
+          const formData = new FormData(form);
 
-        const formData = new FormData(form);
-        const tripData: TripFormData = {
-          title: formData.get("title") as string,
-          region_address: formData.get("region_address") as string,
-          region_coordinates: formData.get("region_coordinates") as string,
-          pickup_address: formData.get("pickup_address") as string,
-          pickup_coordinates: formData.get("pickup_coordinates") as string,
-          dropoff_address: formData.get("dropoff_address") as string,
-          dropoff_coordinates: formData.get("dropoff_coordinates") as string,
-          description: formData.get("description") as string,
-          waiting_time: formData.get("waiting_time") as string,
-          budget_type: formData.get("budget_type") as string,
-          max_pax: parseInt(formData.get("max_pax") as string) || 0,
-          start_date: formData.get("start_date") as string,
-          end_date: formData.get("end_date") as string,
-          total_budget: formData.get("total_budget") as string,
-          pickup_dates: formData.get("pickup_dates") as string
-        } ;
+          let slug = await slugify(formData.get("title") as string);
+          formData.set("slug", slug);
 
-        let {data, error} = await actions.trip.createTrip(tripData);
+          const tripData: TripFormData = {
+            title: formData.get("title") as string,
+            region_address: formData.get("region_address") as string,
+            region_coordinates: formData.get("region_coordinates") as string,
+            pickup_address: formData.get("pickup_address") as string,
+            pickup_coordinates: formData.get("pickup_coordinates") as string,
+            dropoff_address: formData.get("dropoff_address") as string,
+            dropoff_coordinates: formData.get("dropoff_coordinates") as string,
+            description: formData.get("description") as string,
+            waiting_time: parseInt(formData.get("waiting_time") as string) || 0,
+            budget_type: formData.get("budget_type") as string,
+            max_pax: parseInt(formData.get("max_pax") as string) || 0,
+            start_date: formData.get("start_date") as string,
+            end_date: formData.get("end_date") as string,
+            slug: formData.get("slug") as string,
+            total_budget: formData.get("total_budget") as string,
+            pickup_dates: formData.get("pickup_dates") as string
+          } ;
 
-        if (error) {
-          alert(error);
-        }
-
-        if (data) {
+          let  data = await actions.trip.createTrip(tripData);
           console.log(data);
-          window.location.href = `/trips/${data.data}`;
+          if (data.error) {  
+            showToast({ message: data.error.message, type: "error" });
+          } else {
+            let slug = JSON.parse(data.data)
+            slug = slug.data.slug
+            console.log("slug", slug);
+            window.location.href = `/trips/${slug}`;
+          }
+        } finally {
+          hideLoading();  
         }
       });
 

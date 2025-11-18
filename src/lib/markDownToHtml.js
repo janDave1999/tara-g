@@ -5,7 +5,7 @@ import { marked } from "marked";
  * @param {string} markdown - The markdown string
  * @returns {string} HTML string
  */
-export function markdownToHtml(markdown) {
+export async function markdownToHtml(markdown) {
   if (!markdown) return "";
   
   // Optionally, configure marked for your needs

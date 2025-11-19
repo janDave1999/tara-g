@@ -1,0 +1,36 @@
+<!-- ---
+// EnableMFA.astro
+import { supabase } from '@/lib/supabaseClient';
+
+let qrCodeUrl = '';
+let mfaSecret = '';
+let errorMsg = '';
+
+async function enableMFA() {
+  errorMsg = '';
+  try {
+    const { data, error } = await supabase.auth.mfa.generateSecret();
+    if (error) {
+      errorMsg = error.message;
+      return;
+    }
+    mfaSecret = data.base32;
+    qrCodeUrl = data.otpauth_url;
+  } catch (e) {
+    errorMsg = e.message;
+  }
+}
+---
+
+<div>
+  {!qrCodeUrl ? 
+    <button onclick={enableMFA}>Enable MFA</button> 
+    : 
+    <div>
+      <p>Scan this QR code in your authenticator app:</p>
+      <img src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrCodeUrl)}&size=200x200`} />
+      <p>Or manually enter this secret: <strong>{mfaSecret}</strong></p>
+    </div>
+  }
+  {errorMsg && <p style="color:red">{errorMsg}</p>}
+</div> -->

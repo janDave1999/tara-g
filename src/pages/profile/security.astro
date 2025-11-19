@@ -1,0 +1,75 @@
+<!-- ---
+import PagePlate from '@/layouts/PagePlate.astro';
+import { supabase } from '@/lib/supabase';
+let qrCodeUrl = '';
+let mfaSecret = '';
+let verificationMessage = '';
+---
+<PagePlate>
+<h1>Setup TOTP MFA</h1>
+
+<div id="mfa-container">
+  <button id="enable-mfa-btn">Enable MFA</button>
+
+  <div id="qr-section" style="display:none;">
+    <p>Scan this QR code in your authenticator app:</p>
+    <img id="qr-img" src="" alt="QR Code" />
+    <p>Or manually enter this secret: <strong id="mfa-secret"></strong></p>
+
+    <input id="totp-code" type="text" placeholder="Enter code from app" />
+    <button id="verify-btn">Verify TOTP</button>
+
+    <p id="verification-msg" style="color:green"></p>
+  </div>
+
+  <p id="error-msg" style="color:red"></p>
+</div>
+</PagePlate>
+<script>
+  import { supabase } from '@/lib/supabase';
+
+  const enableBtn = document.getElementById('enable-mfa-btn') as HTMLButtonElement;
+  const qrSection = document.getElementById('qr-section') as HTMLDivElement;
+  const qrImg = document.getElementById('qr-img') as HTMLImageElement;
+  const secretElem = document.getElementById('mfa-secret') as HTMLParagraphElement;
+  const errorMsg = document.getElementById('error-msg') as HTMLParagraphElement;
+  const verifyBtn = document.getElementById('verify-btn') as HTMLButtonElement;
+  const totpInput = document.getElementById('totp-code') as HTMLInputElement;
+  const verificationMsg = document.getElementById('verification-msg') as HTMLParagraphElement;
+
+  enableBtn?.addEventListener('click', async () => {
+    errorMsg.textContent = '';
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+      });
+      if (error) throw error;
+
+      // Store secret and QR code URL
+      const secret = data.base32;
+      const qrCodeUrl = data.otpauth_url;
+
+      secretElem.textContent = secret;
+      qrImg.setAttribute('src', `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrCodeUrl)}&size=200x200`);
+      qrSection.style.display = 'block';
+    } catch (err) {
+      errorMsg.textContent = err.message || String(err);
+    }
+  });
+
+  verifyBtn?.addEventListener('click', async () => {
+    verificationMsg.textContent = '';
+    errorMsg.textContent = '';
+    try {
+      const totp = totpInput.value;
+      if (!totp) throw new Error('Please enter the TOTP code from your app');
+
+      const { data, error } = await supabase.auth.mfa.verifyTotp({ totp });
+      if (error) throw error;
+
+      verificationMsg.textContent = 'MFA setup completed successfully!';
+    } catch (err) {
+      errorMsg.textContent = err.message || String(err);
+    }
+  });
+</script> -->

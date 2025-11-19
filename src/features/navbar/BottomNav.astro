@@ -1,163 +1,212 @@
 ---
-interface NavItem {
-  href: string;
-  label: string;
-  icon: string; // SVG path data
-}
+import { Home, Navigation2, Map, Move, User, Plus } from "@lucide/astro";
 
 const { currentPath = "/" } = Astro.props;
 
-const navItems: NavItem[] = [
-  {
-    href: "/feeds",
-    label: "Feed",
-    icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z",
-  },
-  {
-    href: "/discover",
-    label: "Discover",
-    icon: "M12 2l7 19-7-4-7 4z",
-  },
-  {
-    href: "/trips",
-    label: "Trips",
-    icon: "M3 3h18l-2 13H5z M8 16a4 4 0 1 0 8 0",
-  },
-//   {
-//     href: "/messages",
-//     label: "Messages",
-//     icon: "M21 11.5a8.38 8.38 0 0 1-1.9 5.4A8.5 8.5 0 1 1 12 3v2a6.5 6.5 0 1 0 6.5 6.5z",
-//   },
-  {
-    href: "/profile",
-    label: "Profile",
-    icon: "M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm7 9v-2a5 5 0 0 0-5-5H10a5 5 0 0 0-5 5v2z",
-  },
+const navItems = [
+  { href: "/feeds", label: "Feed", icon: Home },
+  // { href: "/discover", label: "Discover", icon: Navigation2 },
+  { href: "/trips", label: "Trips", icon: Navigation2 },
+  { href: "/maps", label: "Maps", icon: Map },
+  { href: "/profile", label: "Profile", icon: User },
 ];
 ---
 <style>
-  .dock-btn {
-    touch-action: none;
+  #bottomNav {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #bottomNav.visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #assistBtn {
     transition: opacity .25s, transform .25s;
   }
 </style>
 
+<!-- Floating Assist Button (initial state) -->
+<button
+  id="assistBtn"
+  class="fixed z-[45] w-14 h-14 rounded-full bg-black text-white shadow-md flex items-center justify-center 
+         active:scale-95 opacity-80"
+  style="bottom: 22px; right: 18px;"
+  aria-label="Show navigation"
+>
+  <img
+          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
+          alt="Logo" class="w-8 h-8 bg-amber-50" />
+</button>
+
+<!-- Bottom Navigation (hidden initially) -->
 <nav
   id="bottomNav"
-  class="fixed bottom-0 left-0 right-0 z-[40] bg-white border-t border-neutral-200 md:hidden
-         transition-transform duration-300 translate-y-0"
+  class="fixed bottom-0 left-0 right-0 z-[40] bg-white border-t border-neutral-200 
+         transition-all duration-300 ease-[cubic-bezier(.26,.11,.1,.97)] lg:hidden md:hidden"
   style="padding-bottom: env(safe-area-inset-bottom)"
 >
   <ul class="flex justify-around items-center px-2">
-    {
-      navItems.map(({ href, label, icon }) => (
+    {navItems.map((i, idx) => (
+      <>
+        {idx === 2 && (
+          <li class="-mt-1">
+            <a
+              href="/trips/create"
+              class="flex flex-col items-center justify-center w-12 h-12 rounded-full 
+                     bg-black text-white shadow-md transition active:scale-95"
+              aria-label="Create trip"
+            >
+              <Plus class="w-6 h-6" />
+            </a>
+          </li>
+        )}
         <li class="flex-1 text-center">
           <a
-            href={href}
+            href={i.href}
             class={`flex flex-col items-center gap-0.5 py-3 transition
-              ${currentPath.startsWith(href) ? "text-black font-semibold" : "text-neutral-500"}`}
+              ${currentPath.startsWith(i.href) ? "text-black font-semibold" : "text-neutral-500"}`}
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d={icon} stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            <span class="text-[0.70rem] leading-none">{label}</span>
+            <i.icon class="w-5 h-5" />
+            <span class="text-[0.70rem] leading-none">{i.label}</span>
           </a>
         </li>
-      ))
-    }
+      </>
+    ))}
   </ul>
-
-  <!-- Floating center create button -->
-  <a
-    href="/trips/create"
-    aria-label="Create trip"
-    class="absolute -top-7 left-1/2 -translate-x-1/2 w-14 h-14 flex items-center justify-center
-           rounded-full bg-black text-white shadow-md hover:bg-neutral-800 active:scale-95 transition"
-  >
-    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"></path>
-    </svg>
-  </a>
 </nav>
 
+  <script>
+// Assist button + bottom nav UX controller
+const bottomNav = document.getElementById("bottomNav") as HTMLUListElement;
+const assistBtn = document.getElementById("assistBtn") as HTMLButtonElement;
 
-<!-- Floating Dock Button (when nav hides) -->
-<button
-  id="dockBtn"
-  class="dock-btn hidden md:hidden fixed z-[41] w-14 h-14 rounded-full shadow-md bg-black text-white
-         flex items-center justify-center active:scale-95"
-  style="bottom: 22px; right: 18px;"
->
-  <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
-  </svg>
-</button>
+// States
+let dragging = false;
+let moved = false;
+let offsetX = 0;
+let offsetY = 0;
+let idleTimer: NodeJS.Timeout;
 
-<script>
-  /** @type {HTMLElement} */
-  const bottomNav = document.getElementById("bottomNav") as HTMLElement;
-  /** @type {HTMLButtonElement} */
-  const dockBtn = document.getElementById("dockBtn") as HTMLButtonElement;
-
-  let dragging = false;
-  let offsetX = 0, offsetY = 0;
-
-  dockBtn.addEventListener("click", () => {
-    showNav();
-  });
-
-  dockBtn.addEventListener("pointerdown", (e) => {
-    dragging = true;
-    offsetX = e.clientX - dockBtn.offsetLeft;
-    offsetY = e.clientY - dockBtn.offsetTop;
-    dockBtn.setPointerCapture(e.pointerId);
-    dockBtn.style.opacity = "1";
-  });
-
-  dockBtn.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    dockBtn.style.left = `${e.clientX - offsetX}px`;
-    dockBtn.style.top = `${e.clientY - offsetY}px`;
-  });
-
-  dockBtn.addEventListener("pointerup", () => {
-    dragging = false;
-    const screenW = window.innerWidth;
-    const dockW = dockBtn.offsetWidth;
-    dockBtn.style.left = dockBtn.offsetLeft < screenW / 2
-      ? "8px"
-      : `${screenW - dockW - 8}px`;
-    dockBtn.style.opacity = ".35";
-  });
-
-  let idleTimer: NodeJS.Timeout
-  
-const hideNav = () => {
-  bottomNav.style.opacity = "0";
-  bottomNav.style.pointerEvents = "none";
-
-  setTimeout(() => {
-    bottomNav.style.display = "none";
-    dockBtn.style.display = "flex";
-  }, 300); // wait for fade before removing from layout
-};
-
+// =============== Helpers ===============
 const showNav = () => {
-  bottomNav.style.display = "block";
-  requestAnimationFrame(() => {
-    bottomNav.style.opacity = "1";
-    bottomNav.style.pointerEvents = "auto";
-  });
-  dockBtn.style.display = "none";
+  bottomNav.classList.add("visible");
+  assistBtn.style.display = "none";
 };
 
+const hideNav = () => {
+  bottomNav.classList.remove("visible");
+  setTimeout(() => {
+    assistBtn.style.display = "flex";
+  }, 200);
+};
 
-  const resetIdle = () => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(hideNav, 2500);
-  };
+const resetIdle = () => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(hideNav, 2600);
+};
 
-  window.addEventListener("scroll", resetIdle);
-  window.addEventListener("touchstart", resetIdle);
-  window.addEventListener("pointerdown", resetIdle);
-</script>
+// Make sure button is positioned with left/top instead of right/bottom
+function ensureAbsolute() {
+  const rect = assistBtn.getBoundingClientRect();
+  if (!assistBtn.style.left) {
+    assistBtn.style.left = `${rect.left}px`;
+    assistBtn.style.top = `${rect.top}px`;
+    assistBtn.style.right = "auto";
+    assistBtn.style.bottom = "auto";
+  }
+  assistBtn.style.position = "fixed";
+  assistBtn.style.touchAction = "none";
+}
+
+// =============== Pointer Events ===============
+
+// pointer down (start drag)
+assistBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  ensureAbsolute();
+
+  dragging = true;
+  moved = false; // detect tap vs drag
+
+  const rect = assistBtn.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+
+  assistBtn.setPointerCapture?.(e.pointerId);
+  assistBtn.style.opacity = "1";
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp, { once: true });
+});
+
+// pointer move (update dragging)
+function onMove(e: PointerEvent) {
+  if (!dragging) return;
+
+  // detect if moved (threshold 6px)
+  if (!moved) {
+    const dx = Math.abs(e.clientX - offsetX - assistBtn.offsetLeft);
+    const dy = Math.abs(e.clientY - offsetY - assistBtn.offsetTop);
+    if (dx > 6 || dy > 6) moved = true;
+  }
+
+  // compute new coords
+  let x = e.clientX - offsetX;
+  let y = e.clientY - offsetY;
+
+  // clamp inside viewport (8px margin)
+  const m = 8;
+  x = Math.max(m, Math.min(window.innerWidth - assistBtn.offsetWidth - m, x));
+  y = Math.max(m, Math.min(window.innerHeight - assistBtn.offsetHeight - m, y));
+
+  assistBtn.style.left = `${x}px`;
+  assistBtn.style.top = `${y}px`;
+}
+
+// pointer up (drag end)
+function onUp(e: PointerEvent) {
+  dragging = false;
+  assistBtn.releasePointerCapture?.(e.pointerId);
+
+  window.removeEventListener("pointermove", onMove);
+
+  // Snap to left or right
+  const rect = assistBtn.getBoundingClientRect();
+  const m = 8;
+  const snapLeft =
+    rect.left + rect.width / 2 < window.innerWidth / 2
+      ? m
+      : window.innerWidth - rect.width - m;
+  assistBtn.style.left = `${snapLeft}px`;
+
+  assistBtn.style.opacity = ".35"; // dim when idle
+
+  resetIdle(); // restart idle timer
+}
+
+// =============== Tap to toggle ===============
+assistBtn.addEventListener("click", () => {
+  // Only open nav if user actually tapped (not dragged)
+  if (!moved) {
+    showNav();
+    resetIdle();
+  }
+});
+
+// =============== Page interaction triggers idle hide only when nav shown ===============
+["scroll", "touchstart", "keydown", "mousemove"].forEach((evt) => {
+  window.addEventListener(evt, () => {
+    if (bottomNav.classList.contains("visible")) {
+      resetIdle();
+    }
+  });
+});
+
+// =============== Initial state ===============
+// Nav hidden on load. Assist visible and draggable.
+assistBtn.style.display = "flex";
+requestAnimationFrame(() => ensureAbsolute());
+
+  </script>

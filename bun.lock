@@ -12,6 +12,7 @@
         "@jsarmyknife/native--dom": "^0.1.18-beta.0",
         "@jsarmyknife/native--icon": "^0.1.7-beta.0",
         "@jsarmyknife/native--math": "^0.1.17-beta.0",
+        "@lucide/astro": "^0.554.0",
         "@mapbox/search-js-web": "^1.5.0",
         "@supabase/supabase-js": "^2.79.0",
         "@tailwindcss/vite": "^4.1.14",
@@ -25,6 +26,7 @@
         "schema-dts": "^1.1.5",
         "tailwindcss": "^4.1.14",
         "uuid": "^13.0.0",
+        "vanilla-calendar-pro": "^3.0.5",
       },
       "devDependencies": {
         "@types/lodash": "^4.17.20",
@@ -234,6 +236,8 @@
     "@jsarmyknife/native--math": ["@jsarmyknife/native--math@0.1.17-beta.0", "", {}, "sha512-vhBkPGlNH7Jpi+3Tpt5HB40In0KBVX/bCRS6N40ZxP4loJE9RrAcyNvTWcd/NUs4x+r48HjfTHObS39Eeqhv/g=="],
 
     "@jsarmyknife/native--pop": ["@jsarmyknife/native--pop@0.1.12-beta.0", "", { "dependencies": { "@jsarmyknife/native--animation": "latest", "@jsarmyknife/native--dom": "latest" } }, "sha512-9dlv35l0U/LTAEGJSv5t3hO/0Fnwx1GbhRS4AzRHr76vt22iTf4JenQl5gciqxvjogo/X9s9XH1IWdTHvizTMA=="],
+
+    "@lucide/astro": ["@lucide/astro@0.554.0", "", { "peerDependencies": { "astro": "^4 || ^5" } }, "sha512-OKDxbkluX4+keoX2mwORwhGEyqbSyLb1kwmaAx9KpknCFJihTzKWxw7qJ00wdlwRC3TDa+c4HbTG68Cb0R5IbQ=="],
 
     "@mapbox/jsonlint-lines-primitives": ["@mapbox/jsonlint-lines-primitives@2.0.2", "", {}, "sha512-rY0o9A5ECsTQRVhv7tL/OyDpGAoUB4tTvLiW1DSzQGq4bvTPhNw1VpSNjDJc5GFZ2XuyOtSWSVN05qOtcD71qQ=="],
 

@@ -1,5 +1,5 @@
 ---
-import { Home, Navigation2, Map, Move, User, Plus, MessageCircle, Settings } from "@lucide/astro";
+import { Home, Navigation2, Map, Move, User, Plus, Settings } from "@lucide/astro";
 const { currentPath = "/" } = Astro.props;
 
 /* Nav items (keep consistent components only) */
@@ -142,9 +142,6 @@ const navItems = [
   <!-- items injected by script -->
   <button class="item" data-action="create" aria-label="Create trip" title="Create trip" style="left:50%;top:10%;">
     <Plus class="w-5 h-5" />
-  </button>
-  <button class="item" data-action="messages" aria-label="Messages" title="Messages" style="left:85%;top:50%;">
-    <MessageCircle class="w-5 h-5" />
   </button>
   <button class="item" data-action="settings" aria-label="Settings" title="Settings" style="left:50%;top:90%;">
     <Settings class="w-5 h-5" />

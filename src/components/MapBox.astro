@@ -1,89 +1,276 @@
-<div id="map" class="w-full h-[500px] rounded-xl shadow"></div>
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { Mountain, Sailboat, TentTree, Kayak } from "@lucide/astro";
 
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.js"></script>
-<link
-  href="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.css"
-  rel="stylesheet"
-/>
+const quickActions = [
+  { label: "Hiking", query: "hiking trail", Icon: Mountain },
+  { label: "Beach", query: "beach", Icon: Sailboat },
+  { label: "Camping", query: "camping site", Icon: TentTree },
+  { label: "Island Hopping", query: "island hopping", Icon: Kayak },
+];
+---
 
+<style>
+/* Map takes entire content area between header + footer */
+#map {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 120px); /* adjust if header/footer height changes */
+  /* margin-top: 60px;  header height */
+  margin-bottom: 60px; /* bottom nav height */
+  z-index: 0;
+}
+
+/* Center floating search */
+.search-container {
+  position: absolute;
+  top: calc(5px + 1rem); /* header + 1rem spacing */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  z-index: 20;
+}
+
+/* Search input */
+#mapSearchInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255,255,255,0.55);
+  background: rgba(249, 248, 248, 0.35);
+  color: black  ;
+  box-shadow: 0 8px 20px rgba(10,10,10,0.08);
+  /* text color: #111827; */
+  
+}
+
+/* Toggle button */
+.quick-toggle {
+  position: absolute;
+  top: calc(60px + 25%); /* relative to visible content */
+  left: 1rem;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 30;
+}
+
+/* Floating action drawer */
+.quick-actions {
+  position: absolute;
+  top: calc(60px + 25% + 3.5rem);
+  left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 30;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.quick-actions.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px);
+}
+
+.quick-actions button {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  color: black;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+</style>
+<div id="map">
+  <!-- Search -->
+  <div class="search-container">
+    <input id="mapSearchInput" type="text" placeholder="Search places..." />
+  </div>
+
+  <!-- Floating quick actions -->
+  <div id="quickToggle" class="quick-toggle">☰</div>
+
+  <div id="quickActions" class="quick-actions">
+    {quickActions.map(action => (
+      <button onclick={`window.performSearch('${action.query}')`} title={action.label}>
+        <action.Icon class="w-5 h-5" />
+      </button>
+    ))}
+  </div>
+</div>
 
 <script>
-  import mapboxgl from "mapbox-gl";
-  import { PUBLIC_MAPBOX_TOKEN } from "astro:env/client";
-  mapboxgl.accessToken =PUBLIC_MAPBOX_TOKEN;
+import mapboxgl from "mapbox-gl";
 
-  let map: mapboxgl.Map;
-  let markers: mapboxgl.Marker[] = [];
-  let pendingFeeds: any = []; // store feeds until map is ready
-  let mapReady = false;
+interface Feed {
+  title: string;
+  location: string;
+  estimatedCost: number;
+  needsMembers: boolean;
+  lng: number;
+  lat: number;
+}
 
-  function renderMarkers(feedData: any) {
-    if (!mapReady) {
-      // store temporarily until map loads
-      pendingFeeds = feedData;
-      return;
-    }
+let map: mapboxgl.Map;
+let feedMarkers: mapboxgl.Marker[] = [];
+let searchMarker: mapboxgl.Marker | null = null;
+let mapReady = false;
+let pendingFeeds: Feed[] = [];
 
-    // Clear existing markers
-    markers.forEach((m) => m.remove());
-    markers = [];
+async function getMapboxToken(): Promise<string> {
+  const res = await fetch("/api/mapbox-token");
+  const data = await res.json();
+  if (!data.token) throw new Error("Mapbox token not available");
+  return data.token;
+}
 
-    // Add new markers
-    feedData.forEach((feed: any) => {
-      const marker = new mapboxgl.Marker({
-        color: feed.needsMembers ? "#ff5733" : "#3bb2d0",
-      })
-        .setLngLat([feed.lng, feed.lat])
-        .setPopup(
-          new mapboxgl.Popup().setHTML(`
-            <div class="p-2">
-              <h3 class="font-bold">${feed.title}</h3>
-              <p>${feed.location}</p>
-              <p><strong>₱${feed.estimatedCost}</strong></p>
-              <p>${feed.needsMembers ? "Looking for members!" : "Full"}</p>
-            </div>
-          `)
-        )
-        .addTo(map);
-      markers.push(marker);
+async function initMap(): Promise<void> {
+  const token = await getMapboxToken();
+  mapboxgl.accessToken = token;
+
+  let userLocation: [number, number] = [120.9842, 14.5995];
+  if (navigator.geolocation) {
+    await new Promise<void>(resolve => {
+      navigator.geolocation.getCurrentPosition(
+        pos => { userLocation = [pos.coords.longitude, pos.coords.latitude]; resolve(); },
+        () => resolve()
+      );
     });
   }
 
-  async function initMap() {
-    let userLocation = [120.9842, 14.5995]; // Default Manila
-    if (navigator.geolocation) {
-     await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            userLocation = [pos.coords.longitude, pos.coords.latitude];
-            resolve(userLocation); // Pass the resolved value as an argument
-          },
-          reject
-        );
-      });
-    }
-
-    map = new mapboxgl.Map({
-      container: "map",
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [userLocation[0], userLocation[1]],
-      zoom: 15,
-    });
-
-    map.on("load", () => {
-      mapReady = true;
-      // if we already received feeds before load, render them now
-      if (pendingFeeds.length > 0) {
-        renderMarkers(pendingFeeds);
-        pendingFeeds = [];
-      }
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", initMap);
-
-  // Listen for feeds from Feeds.astro
-  window.addEventListener("feedsLoaded", (event: any) => {
-    renderMarkers(event.detail);
+  map = new mapboxgl.Map({
+    container: "map",
+    style: "mapbox://styles/mapbox/streets-v12",
+    center: userLocation,
+    zoom: 12
   });
+
+  map.on("load", () => {
+    mapReady = true;
+    if (pendingFeeds.length) {
+      renderMarkers(pendingFeeds);
+      pendingFeeds = [];
+    }
+  });
+}
+
+function renderMarkers(feeds: Feed[]): void {
+  if (!mapReady) {
+    pendingFeeds = feeds;
+    return;
+  }
+  feedMarkers.forEach(m => m.remove());
+  feedMarkers = [];
+
+  feeds.forEach(feed => {
+    const marker = new mapboxgl.Marker({ color: feed.needsMembers ? "#ff5733" : "#3bb2d0" })
+      .setLngLat([feed.lng, feed.lat])
+      .setPopup(new mapboxgl.Popup().setHTML(`
+        <div class="p-2 text-sm text-gray-900">
+          <h3 class="font-bold">${feed.title}</h3>
+          <p>${feed.location}</p>
+          <p class="font-semibold">₱${feed.estimatedCost}</p>
+          <p class="text-${feed.needsMembers ? "red-500" : "green-500"}">
+            ${feed.needsMembers ? "Looking for members!" : "Full"}
+          </p>
+        </div>
+      `))
+      .addTo(map);
+    feedMarkers.push(marker);
+  });
+}
+
+declare global {
+  interface Window {
+    performSearch: (query: string) => Promise<void>;
+  }
+}
+
+// Search function
+window.performSearch = async function(query: string): Promise<void> {
+  if (!map) return;
+  const token = mapboxgl.accessToken;
+
+  const res = await fetch(
+    `https://api.mapbox.com/geocoding/v6/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&limit=5&country=PH`
+  );
+  const data = await res.json();
+  if (!data.features?.length) return;
+
+  const feature = data.features[0];
+  const [lng, lat] = feature.center;
+
+  map.flyTo({ center: [lng, lat], zoom: 10 });
+
+  if (searchMarker) searchMarker.remove();
+  searchMarker = new mapboxgl.Marker({ color: "#ff0000" })
+    .setLngLat([lng, lat])
+    .setPopup(new mapboxgl.Popup().setHTML(`<strong>${feature.place_name}</strong>`))
+    .addTo(map);
+
+  // Filter nearby feed markers
+  const maxDistanceKm = 5;
+  feedMarkers.forEach(marker => {
+    const { lat: mLat, lng: mLng } = marker.getLngLat();
+    const distance = getDistanceKm(lat, lng, mLat, mLng);
+    marker.getElement().style.display = distance <= maxDistanceKm ? "block" : "none";
+  });
+}
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await initMap();
+
+  const searchInput = document.getElementById("mapSearchInput") as HTMLInputElement;
+  const searchBtn = document.getElementById("mapSearchBtn") as HTMLButtonElement;
+
+  searchBtn.addEventListener("click", () => {
+    const query = searchInput.value.trim();
+    if (query) window.performSearch(query);
+  });
+
+  searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      const query = searchInput.value.trim();
+      if (query) window.performSearch(query);
+    }
+  });
+});
+window.addEventListener("feedsLoaded", (e) => {
+  const event = e as CustomEvent<Feed[]>;
+  renderMarkers(event.detail);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.getElementById("quickToggle") as HTMLElement;
+  const actions = document.getElementById("quickActions") as HTMLElement;
+
+  toggle.addEventListener("click", () => {
+    actions.classList.toggle("hidden");
+  });
+});
+
+
 </script>

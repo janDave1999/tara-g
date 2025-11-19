@@ -1,212 +1,366 @@
 ---
-import { Home, Navigation2, Map, Move, User, Plus } from "@lucide/astro";
-
+import { Home, Navigation2, Map, Move, User, Plus, MessageCircle, Settings } from "@lucide/astro";
 const { currentPath = "/" } = Astro.props;
 
+/* Nav items (keep consistent components only) */
 const navItems = [
-  { href: "/feeds", label: "Feed", icon: Home },
-  // { href: "/discover", label: "Discover", icon: Navigation2 },
-  { href: "/trips", label: "Trips", icon: Navigation2 },
-  { href: "/maps", label: "Maps", icon: Map },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/feeds", label: "Feed", Icon: Home },
+  { href: "/discover", label: "Discover", Icon: Navigation2 },
+  { href: "/trips", label: "Trips", Icon: Move },
+  { href: "/maps", label: "Maps", Icon: Map },
+  { href: "/profile", label: "Profile", Icon: User },
 ];
 ---
 <style>
+  /* Container + glass style */
   #bottomNav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    padding-bottom: env(safe-area-inset-bottom);
+    backdrop-filter: blur(8px);
+    background: rgba(255,255,255,0.6); /* glass */
+    border-top: 1px solid rgba(16,24,40,0.06);
+    transition: transform .28s cubic-bezier(.22,1,.32,1), opacity .22s ease;
     transform: translateY(100%);
     opacity: 0;
     pointer-events: none;
+    -webkit-backdrop-filter: blur(8px);
   }
   #bottomNav.visible {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
   }
+  #bottomNav ul { display:flex; gap:0; align-items:center; justify-content:space-around; padding:0.25rem 0.5rem; margin:0; }
+  #bottomNav a { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:.6rem .2rem; color: #6b7280; text-decoration:none; font-size:.68rem; }
+  #bottomNav a.active { color:#111827; font-weight:600; transform:scale(1.04); }
+
+  /* Assist button (glass orb) */
   #assistBtn {
-    transition: opacity .25s, transform .25s;
+    position: fixed;
+    z-index: 1250;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.86);
+    box-shadow: 0 8px 20px rgba(10,10,10,0.12), 0 1px 0 rgba(255,255,255,0.4) inset;
+    border: 1px solid rgba(16,24,40,0.06);
+    transition: left .25s cubic-bezier(.22,1,.32,1), top .12s ease, opacity .2s ease, transform .12s ease;
+    touch-action: none;
+    cursor: grab;
+    backdrop-filter: blur(6px);
+  }
+  #assistBtn:active { cursor: grabbing; transform: scale(.98); }
+
+  /* dim when idle */
+  #assistBtn.idle { opacity: .36; }
+
+  /* bounce keyframes */
+  @keyframes snap-bounce {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* Tooltip */
+  .assist-tooltip {
+    position: fixed;
+    z-index: 1260;
+    padding: .28rem .5rem;
+    background: rgba(0,0,0,0.85);
+    color: white;
+    font-size: .72rem;
+    border-radius: .5rem;
+    pointer-events: none;
+    transform-origin: center;
+    opacity: 0;
+    transition: opacity .12s ease, transform .12s ease;
+    white-space: nowrap;
+  }
+  .assist-tooltip.show { opacity: 1; transform: translateY(-6px); }
+
+  /* radial menu (long press) */
+  .radial {
+    position: fixed;
+    z-index: 1270;
+    width: 220px;
+    height: 220px;
+    pointer-events: none;
+  }
+  .radial .item {
+    position: absolute;
+    transform: translate(-50%,-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 8px 20px rgba(10,10,10,0.08);
+    border: 1px solid rgba(16,24,40,0.05);
+    opacity: 0;
+    transition: transform .18s cubic-bezier(.2,.9,.3,1), opacity .18s ease;
+    pointer-events: auto;
+  }
+  .radial.show .item { opacity: 1; }
+
+  /* subtle label under radial icons */
+  .radial .label { font-size:.64rem; color:#374151; margin-top:6px; text-align:center; }
+
+  /* create "+" styling when assist near bottom-center */
+  #assistBtn.center-create {
+    background: linear-gradient(180deg, #111827, #0b1220);
+    color: white;
+    border: 0;
+    box-shadow: 0 10px 30px rgba(12,12,12,0.35);
+  }
+
+  /* responsive */
+  @media (min-width: 768px) {
+    #assistBtn { display:none; }
+    #bottomNav { display:none; }
   }
 </style>
 
-<!-- Floating Assist Button (initial state) -->
-<button
-  id="assistBtn"
-  class="fixed z-[45] w-14 h-14 rounded-full bg-black text-white shadow-md flex items-center justify-center 
-         active:scale-95 opacity-80"
-  style="bottom: 22px; right: 18px;"
-  aria-label="Show navigation"
->
-  <img
-          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
-          alt="Logo" class="w-8 h-8 bg-amber-50" />
+<!-- Assist button -->
+<button id="assistBtn" aria-label="Open navigation" title="Navigation">
+  <Plus class="w-5 h-5" />
 </button>
 
-<!-- Bottom Navigation (hidden initially) -->
-<nav
-  id="bottomNav"
-  class="fixed bottom-0 left-0 right-0 z-[40] bg-white border-t border-neutral-200 
-         transition-all duration-300 ease-[cubic-bezier(.26,.11,.1,.97)] lg:hidden md:hidden"
-  style="padding-bottom: env(safe-area-inset-bottom)"
->
-  <ul class="flex justify-around items-center px-2">
-    {navItems.map((i, idx) => (
-      <>
-        {idx === 2 && (
-          <li class="-mt-1">
-            <a
-              href="/trips/create"
-              class="flex flex-col items-center justify-center w-12 h-12 rounded-full 
-                     bg-black text-white shadow-md transition active:scale-95"
-              aria-label="Create trip"
-            >
-              <Plus class="w-6 h-6" />
-            </a>
-          </li>
-        )}
-        <li class="flex-1 text-center">
-          <a
-            href={i.href}
-            class={`flex flex-col items-center gap-0.5 py-3 transition
-              ${currentPath.startsWith(i.href) ? "text-black font-semibold" : "text-neutral-500"}`}
-          >
-            <i.icon class="w-5 h-5" />
-            <span class="text-[0.70rem] leading-none">{i.label}</span>
-          </a>
-        </li>
-      </>
+<!-- Tooltip -->
+<div id="assistTooltip" class="assist-tooltip" role="status" aria-hidden="true">Open navigation</div>
+
+<!-- Radial menu (hidden by default) -->
+<div id="radialMenu" class="radial" aria-hidden="true" role="menu">
+  <!-- items injected by script -->
+  <button class="item" data-action="create" aria-label="Create trip" title="Create trip" style="left:50%;top:10%;">
+    <Plus class="w-5 h-5" />
+  </button>
+  <button class="item" data-action="messages" aria-label="Messages" title="Messages" style="left:85%;top:50%;">
+    <MessageCircle class="w-5 h-5" />
+  </button>
+  <button class="item" data-action="settings" aria-label="Settings" title="Settings" style="left:50%;top:90%;">
+    <Settings class="w-5 h-5" />
+  </button>
+  <button class="item" data-action="profile" aria-label="Profile" title="Profile" style="left:15%;top:50%;">
+    <User class="w-5 h-5" />
+  </button>
+</div>
+
+<!-- Bottom nav -->
+<nav id="bottomNav" aria-hidden="true">
+  <ul>
+    {navItems.map(({ href, label, Icon }) => (
+      <li>
+        <a href={href} class={currentPath.startsWith(href) ? "active" : ""} aria-current={currentPath.startsWith(href) ? "page" : undefined}>
+          <Icon class="w-5 h-5" />
+          <span>{label}</span>
+        </a>
+      </li>
     ))}
   </ul>
 </nav>
 
-  <script>
-// Assist button + bottom nav UX controller
-const bottomNav = document.getElementById("bottomNav") as HTMLUListElement;
-const assistBtn = document.getElementById("assistBtn") as HTMLButtonElement;
+<script>
+/* =========================================================
+   ASSIST BUTTON + BOTTOM NAV (Final polished build)
+   Pure Vanilla JS / Astro compatible
+   ========================================================= */
+(function () {
+  const bottomNav = document.getElementById("bottomNav") as HTMLUListElement;
+  const assistBtn = document.getElementById("assistBtn") as HTMLButtonElement;
+  const tooltip = document.getElementById("assistTooltip") as HTMLDivElement;
+  const radial = document.getElementById("radialMenu") as HTMLDivElement;
 
-// States
-let dragging = false;
-let moved = false;
-let offsetX = 0;
-let offsetY = 0;
-let idleTimer: NodeJS.Timeout;
-
-// =============== Helpers ===============
-const showNav = () => {
-  bottomNav.classList.add("visible");
-  assistBtn.style.display = "none";
-};
-
-const hideNav = () => {
-  bottomNav.classList.remove("visible");
-  setTimeout(() => {
-    assistBtn.style.display = "flex";
-  }, 200);
-};
-
-const resetIdle = () => {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(hideNav, 2600);
-};
-
-// Make sure button is positioned with left/top instead of right/bottom
-function ensureAbsolute() {
-  const rect = assistBtn.getBoundingClientRect();
-  if (!assistBtn.style.left) {
-    assistBtn.style.left = `${rect.left}px`;
-    assistBtn.style.top = `${rect.top}px`;
-    assistBtn.style.right = "auto";
-    assistBtn.style.bottom = "auto";
-  }
-  assistBtn.style.position = "fixed";
-  assistBtn.style.touchAction = "none";
-}
-
-// =============== Pointer Events ===============
-
-// pointer down (start drag)
-assistBtn.addEventListener("pointerdown", (e) => {
-  e.preventDefault();
-  ensureAbsolute();
-
-  dragging = true;
-  moved = false; // detect tap vs drag
-
-  const rect = assistBtn.getBoundingClientRect();
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
-
-  assistBtn.setPointerCapture?.(e.pointerId);
-  assistBtn.style.opacity = "1";
-
-  window.addEventListener("pointermove", onMove);
-  window.addEventListener("pointerup", onUp, { once: true });
-});
-
-// pointer move (update dragging)
-function onMove(e: PointerEvent) {
-  if (!dragging) return;
-
-  // detect if moved (threshold 6px)
-  if (!moved) {
-    const dx = Math.abs(e.clientX - offsetX - assistBtn.offsetLeft);
-    const dy = Math.abs(e.clientY - offsetY - assistBtn.offsetTop);
-    if (dx > 6 || dy > 6) moved = true;
+  /* Hide everything on desktop */
+  if (window.matchMedia("(min-width: 1025px)").matches) {
+    bottomNav.style.display = "none";
+    assistBtn.style.display = "none";
+    return;
   }
 
-  // compute new coords
-  let x = e.clientX - offsetX;
-  let y = e.clientY - offsetY;
+  let dragging = false, moved = false, offsetX = 0, offsetY = 0;
+  let longPressTimer: NodeJS.Timeout, idleTimer: NodeJS.Timeout;
+  let lastTap = 0;                         // ⚠ prevents auto-open on first tap
+  const SNAP = 8;
+  const EDGE = 24;
+  const LONG = 600;
+  const IDLE = 2600;
 
-  // clamp inside viewport (8px margin)
-  const m = 8;
-  x = Math.max(m, Math.min(window.innerWidth - assistBtn.offsetWidth - m, x));
-  y = Math.max(m, Math.min(window.innerHeight - assistBtn.offsetHeight - m, y));
-
-  assistBtn.style.left = `${x}px`;
-  assistBtn.style.top = `${y}px`;
-}
-
-// pointer up (drag end)
-function onUp(e: PointerEvent) {
-  dragging = false;
-  assistBtn.releasePointerCapture?.(e.pointerId);
-
-  window.removeEventListener("pointermove", onMove);
-
-  // Snap to left or right
-  const rect = assistBtn.getBoundingClientRect();
-  const m = 8;
-  const snapLeft =
-    rect.left + rect.width / 2 < window.innerWidth / 2
-      ? m
-      : window.innerWidth - rect.width - m;
-  assistBtn.style.left = `${snapLeft}px`;
-
-  assistBtn.style.opacity = ".35"; // dim when idle
-
-  resetIdle(); // restart idle timer
-}
-
-// =============== Tap to toggle ===============
-assistBtn.addEventListener("click", () => {
-  // Only open nav if user actually tapped (not dragged)
-  if (!moved) {
-    showNav();
-    resetIdle();
-  }
-});
-
-// =============== Page interaction triggers idle hide only when nav shown ===============
-["scroll", "touchstart", "keydown", "mousemove"].forEach((evt) => {
-  window.addEventListener(evt, () => {
-    if (bottomNav.classList.contains("visible")) {
-      resetIdle();
+  /* Save + Load position */
+  const savePos = () => {
+    const r = assistBtn.getBoundingClientRect();
+    localStorage.setItem("assist-pos", JSON.stringify({ x: r.left, y: r.top }));
+  };
+  const loadPos = () => {
+    try {
+      const pos = localStorage.getItem("assist-pos");
+      return pos ? JSON.parse(pos) : null;
+    } catch {
+      return null;
     }
+  };
+
+  const ensureFixed = () => {
+    assistBtn.style.position = "fixed";
+    const pos = loadPos();
+    if (pos) {
+      assistBtn.style.left = pos.x + "px";
+      assistBtn.style.top = pos.y + "px";
+      assistBtn.style.right = "auto";
+      assistBtn.style.bottom = "auto";
+    }
+  };
+
+  const magnet = (force = false) => {
+    const r = assistBtn.getBoundingClientRect();
+    const center = window.innerWidth / 2;
+    const targetLeft = (r.left + r.width / 2) < center ? SNAP : window.innerWidth - r.width - SNAP;
+    const alreadyAtEdge = (r.left < EDGE) || (window.innerWidth - (r.left + r.width) < EDGE);
+
+    if (!force && alreadyAtEdge) return;
+
+    assistBtn.style.transition = "left .28s cubic-bezier(.22,1,.32,1)";
+    assistBtn.style.left = targetLeft + "px";
+
+    assistBtn.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)' }, { transform: 'translateY(0)' }],
+      { duration: 320 }
+    );
+
+    if (navigator.vibrate) navigator.vibrate(8);
+
+    setTimeout(() => { assistBtn.style.transition = ""; savePos(); }, 320);
+  };
+
+ function showNav() {
+  bottomNav.classList.add("visible");
+  bottomNav.setAttribute("aria-hidden", "false");
+
+  assistBtn.style.opacity = "0";
+  assistBtn.style.pointerEvents = "none";
+  assistBtn.style.transform = "scale(0.75)";
+
+  resetIdle();
+}
+
+function hideNav() {
+  bottomNav.classList.remove("visible");
+  bottomNav.setAttribute("aria-hidden", "true");
+
+  setTimeout(() => {
+    assistBtn.style.opacity = "1";
+    assistBtn.style.pointerEvents = "auto";
+    assistBtn.style.transform = "scale(1)";
+  }, 220);
+}
+
+
+  const resetIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(hideNav, IDLE);
+  };
+
+  /* ====== Pointer handling ====== */
+  const onDown = (e: PointerEvent) => {
+    e.preventDefault();
+    ensureFixed();
+    dragging = true;
+    moved = false;
+    offsetX = e.clientX - assistBtn.getBoundingClientRect().left;
+    offsetY = e.clientY - assistBtn.getBoundingClientRect().top;
+    assistBtn.setPointerCapture?.(e.pointerId);
+
+    longPressTimer = setTimeout(() => {
+      if (!moved) showRadial();
+    }, LONG);
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp, { once: true });
+  };
+
+  const onMove = (e: PointerEvent) => {
+    if (!dragging) return;
+    const x = Math.max(SNAP, Math.min(window.innerWidth - assistBtn.offsetWidth - SNAP, e.clientX - offsetX));
+    const y = Math.max(SNAP, Math.min(window.innerHeight - assistBtn.offsetHeight - SNAP, e.clientY - offsetY));
+
+    if (!moved && (Math.abs(x - assistBtn.offsetLeft) > 6 || Math.abs(y - assistBtn.offsetTop) > 6))
+      moved = true;
+
+    assistBtn.style.left = x + "px";
+    assistBtn.style.top = y + "px";
+  };
+
+  const onUp = (e: PointerEvent) => {
+    dragging = false;
+    assistBtn.releasePointerCapture?.(e.pointerId);
+    window.removeEventListener("pointermove", onMove);
+    clearTimeout(longPressTimer);
+
+    const now = Date.now();
+    const isTap = !moved && now - lastTap > 200;
+    lastTap = now;
+
+    if (isTap && !radial.classList.contains("show")) {
+      /* 🌟 KEY FIX:
+         A tap only opens bottom nav if user *intended* to tap,
+         not the first interaction right after dragging */
+      showNav();
+      resetIdle();
+    } else {
+      magnet(true);
+    }
+
+    assistBtn.classList.add("idle");
+    savePos();
+  };
+
+  /* Radial */
+  const showRadial = () => {
+    const r = assistBtn.getBoundingClientRect();
+    radial.style.left = (r.left + r.width / 2 - 110) + "px";
+    radial.style.top = (r.top + r.height / 2 - 110) + "px";
+    radial.classList.add("show");
+    radial.setAttribute("aria-hidden", "false");
+  };
+  const hideRadial = () => {
+    radial.classList.remove("show");
+    radial.setAttribute("aria-hidden", "true");
+  };
+
+  /* Events */
+  assistBtn.addEventListener("pointerdown", onDown);
+
+  radial.addEventListener("click", (e:any) => {
+    const item = e.target.closest(".item");
+    if (!item) return;
+    hideRadial();
+    location.href = item.dataset.action || "/";
   });
-});
 
-// =============== Initial state ===============
-// Nav hidden on load. Assist visible and draggable.
-assistBtn.style.display = "flex";
-requestAnimationFrame(() => ensureAbsolute());
+  document.addEventListener("click", (e: any) => {
+    if (!radial.contains(e.target) && !assistBtn.contains(e.target)) hideRadial();
+  });
 
-  </script>
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { hideRadial(); hideNav(); }
+  });
+
+  /* Startup positioning */
+  requestAnimationFrame(() => {
+    ensureFixed();
+    setTimeout(() => {
+      magnet(false);          // auto-align on load
+      assistBtn.classList.add("idle");
+    }, 60);
+  });
+})();
+</script>
+

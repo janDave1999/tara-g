@@ -3,3 +3,10 @@
 @import "./_blog.css";
 @import "./_layout.css";
 @import "./_cards.css";
+
+@source "./../../node_modules/preline/dist/*.js";
+@import "./../../node_modules/preline/variants.css";
+@import "./../../node_modules/preline/src/plugins/datepicker/styles.css";
+
+/* Plugins */
+@plugin "@tailwindcss/forms";

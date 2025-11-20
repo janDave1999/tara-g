@@ -1,35 +1,72 @@
 ---
-const { id, nameStart, nameEnd, required } = Astro.props;
----
+interface Props {
+  label?: string;
+  nameFrom?: string;
+  nameTo?: string;
+  minDate?: string;
+  maxDate?: string;
+}
 
-<div class="relative">
-  <input type="text"
-    id={id}
-    placeholder="Select date range"
-    class="form-input cursor-pointer"
-    readonly
-    {required}
+const {
+  label = "Select Date Range",
+  nameFrom = "dateFrom",
+  nameTo = "dateTo",
+  minDate = "",
+  maxDate = ""
+} = Astro.props;
+---
+<div class="flex flex-col space-y-2 w-full">
+  {label && <label class="font-semibold text-sm">{label}</label>}
+
+  <input
+    id="flatpickr-range"
+    type="text"
+    class="border px-4 py-2 rounded-lg w-full"
+    placeholder="Pick a date range"
+    autocomplete="off"
+    data-min={minDate}
+    data-max={maxDate}
   />
-  <input type="hidden" name={nameStart} id={`${id}-start`} />
-  <input type="hidden" name={nameEnd} id={`${id}-end`} />
+
+  <input type="hidden" name={nameFrom} id="dateFrom" />
+  <input type="hidden" name={nameTo} id="dateTo" />
 </div>
 
-<script type="module">
-import flatpickr from "flatpickr";
-import "flatpickr/dist/flatpickr.min.css";
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-const input = document.getElementById("{id}");
-const startInput = document.getElementById("{id}-start");
-const endInput = document.getElementById("{id}-end");
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", () => {
+    const picker = document.getElementById("flatpickr-range");
+    const inputFrom = document.getElementById("dateFrom");
+    const inputTo = document.getElementById("dateTo");
 
-flatpickr(input, {
-  mode: "range",
-  dateFormat: "Y-m-d",
-  onClose: function(selectedDates) {
-    if (selectedDates.length === 2) {
-      startInput.value = selectedDates[0].toISOString().split("T")[0];
-      endInput.value = selectedDates[1].toISOString().split("T")[0];
-    }
-  }
-});
+    const min = picker.dataset.min || null;
+    const max = picker.dataset.max || null;
+
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+
+    // Use selector string for full TS compatibility
+    flatpickr("#flatpickr-range", {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      minDate: min,
+      maxDate: max,
+      onClose: (dates, _, instance) => {
+        if (!dates || dates.length === 0) return;
+
+        const start = dates[0];
+        const end = dates.length === 2 ? dates[1] : dates[0];
+
+        inputFrom.value = start.toISOString().split("T")[0];
+        inputTo.value = end.toISOString().split("T")[0];
+
+        instance.input.value = `${formatter.format(start)} - ${formatter.format(end)}`;
+      },
+    });
+  });
 </script>

@@ -1,195 +1,166 @@
 ---
+import Layout from "@/layouts/PagePlate.astro";
 import DatePicker from "@/components/DatePicker.astro";
-import PagePlate from "@/layouts/PagePlate.astro";
+import { Plane, CalendarDays, MapPin, Users, HandCoins } from "@lucide/astro";
 ---
 
-<PagePlate title="Create a Trip" noContainer>
-  <section class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-    <h1 class="text-3xl sm:text-4xl font-bold mb-12 pt-8 text-center">Plan Your Adventure</h1>
+<Layout title="Create Trip | Tara G">
+  <section class="max-w-3xl mx-auto py-10 px-4 sm:px-8">
+    <!-- HEADER -->
+    <h1 class="text-3xl font-bold mb-2">Plan Your Adventure</h1>
 
-    <form id="tripForm" class="space-y-12" method="post">
+          <!-- STEP PROGRESS BAR -->
+    <div class="relative mb-10 mt-4">
+      <div class="h-1 bg-slate-200 rounded-full"></div>
+      <div id="progressBar" class="absolute top-0 h-1 bg-blue-500 rounded-full transition-all duration-300 w-[25%]"></div>
+      <div class="flex justify-between text-xs mt-2 font-medium">
+        <span data-step="1" class="step-label text-blue-600">Schedule</span>
+        <span data-step="2" class="step-label text-slate-400">Details</span>
+        <span data-step="3" class="step-label text-slate-400">Preferences</span>
+        <span data-step="4" class="step-label text-slate-400">Meetup</span>
+      </div>
+    </div>
 
-      <!-- Trip Basics -->
-      <div class="bg-white p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start mb-4">
-        <div class="sm:text-right sm:w-40">
-          <h2 class="text-2xl font-semibold mb-2">Trip Basics</h2>
-          <p class="text-gray-600 text-sm sm:text-base">Describe your trip in a few sentences. This will help people find and join your trip.</p>
+    <!-- FORM CARD -->
+    <form id="tripStepperForm" class="backdrop-blur-md bg-white/70 border border-white/60 shadow-xl rounded-2xl p-6 space-y-6">
+
+      <!-- STEP 1 -->
+      <div class="step" data-step="1">
+        <div class="flex items-center gap-2 mb-4">
+          <CalendarDays class="w-5 h-5 text-blue-500" />
+          <h2 class="font-semibold text-lg">When & Where</h2>
         </div>
-        <div class="space-y-4">
-          <div>
-            <label class="block font-medium mb-1 text-base">Trip Title</label>
-            <input type="text" name="title" placeholder="Beach Adventure"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
-          </div>
 
-          <!-- Region with Address Autofill -->
-          <div>
-            <label class="block font-medium mb-1 text-base">Trip Location</label>
-            <input
-              id="regionInput"
-              type="text"
-              name="region"
-              placeholder="Cebu, Philippines"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-              required
-            />
-            <input type="hidden" name="region_coordinates" id="regionCoordinates" />
-            
-            <input type="hidden" name="region_address" id="regionAddress" />
-          </div>
+        <DatePicker nameFrom="start_date" nameTo="end_date" />
 
-          <div>
-            <label class="block font-medium mb-1 text-base">Trip Description</label>
-            <textarea name="description" rows="4" placeholder="Describe your trip..."
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required></textarea>
-          </div>
-
-          <div>
-            <DatePicker />
-            <label class="block font-medium mb-1 text-base">Trip Dates</label>
-            <div class="flex space-x-4 gap-2">
-              <div class="flex-1">
-                <label class="block font-medium mb-1 text-base">Start Date</label>
-                <input type="date" name="start_date"
-                  class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
-              </div>
-              <div class="flex-1">
-                <label class="block font-medium mb-1 text-base">End Date</label>
-                <input type="date" name="end_date"
-                  class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div>
-              <label class="block font-medium mb-1 text-base">Cost Sharing</label>
-              <div class="mt-3">
-                <p class="text-sm font-medium mb-1">Cost sharing method:</p>
-                <div class="flex items-center gap-6 text-sm">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                    type="radio"
-                    name="cost_sharing_method"
-                    value="split_cost"
-                    class="form-radio text-blue-600 focus:ring-blue-500"
-                    checked
-                    />
-                    Split cost
-                  </label>
-                  
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                    type="radio"
-                    name="cost_sharing_method"
-                    value="paid_by_organizer"
-                    class="form-radio text-blue-600 focus:ring-blue-500"
-                    />
-                    Paid by organizer
-                  </label>
-                  
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                    type="radio"
-                    name="cost_sharing_method"
-                    value="cost_pooling"
-                    class="form-radio text-blue-600 focus:ring-blue-500"
-                    />
-                    Cost Pooling
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Number of pax -->
-           <div>
-            <label class="block font-medium mb-1 text-base">Number of Pax</label>
-            <input
-            type="number"
-            name="max_pax"
-            min="0"
-            placeholder="Enter maximum number of pax"
-            class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-            required
-            />
-           </div>
+        <label class="font-medium mt-4 mb-1 block">Destination</label>
+        <div class="relative">
+          <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
+          <input type="text" name="destination" class="border border-gray-300 rounded-lg w-full " id="regionInput" />
+          <input type="hidden" name="region" id="regionAddress" />
+          <input type="hidden" name="region_coordinates" id="regionCoordinates" />
         </div>
       </div>
 
-      <hr class="border-gray-300" />
-
-      <!-- Pickup & Dropoff Locations -->
-      <div class="bg-white p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start mb-4">
-        <div class="sm:text-right sm:w-40">
-          <h2 class="text-2xl font-semibold mb-2">Dropoff and Pickup Locations</h2>
-          <p class="text-gray-600 text-sm sm:text-base mb-1">Select the pickup and dropoff locations for your trip.</p>
-          <p class="text-gray-600 text-sm sm:text-base mb-1">This could also be the meetup location.</p>
-          <p class="text-gray-500 italic text-sm sm:text-sm">Note: Itinerary can be added later on.</p>
+      <!-- STEP 2 -->
+      <div class="step hidden" data-step="2">
+        <div class="flex items-center gap-2 mb-4">
+          <Plane class="w-5 h-5 text-blue-500" />
+          <h2 class="font-semibold text-lg">Trip Identity</h2>
         </div>
 
-        <div class="space-y-6">
-          <div class="space-y-4">
-            <div>
-              <label class="block font-medium mb-2 text-base">Pickup Location</label>
-              <input
-                id="pickupInput"
-                type="text"
-                name="pickup_locations"
-                placeholder="Pickup location"
-                autocomplete="street-address"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-                required
-              />
-              <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
-            <input type="hidden" name="pickup_address" id="pickupAddress" />
-            </div>
+        <label class="font-medium mb-1 block" for="title">Trip Title</label>
+        <input type="text" name="title" class="border border-gray-300 rounded-lg w-full " placeholder="e.g. Siargao Surf Trip 2025" />
 
-            <div>
-              <label class="block font-medium mb-2 text-base">Date & Time</label>
-              <input type="datetime-local" name="pickup_dates"
-                class="w-full sm:w-36 border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
-            </div>
+        <label class="font-medium mt-4 mb-1 block" for="description">About the Trip</label>
+        <textarea name="description" class="border border-gray-300 rounded-lg w-full " rows="4" placeholder="What’s the vibe? What are you hoping to explore?"></textarea>
+      </div>
 
-            <div>
-              <label class="block font-medium mb-2 text-base">Waiting Time (minutes)</label>
-              <input type="number" name="waiting_time" min="0" placeholder="Enter waiting time"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition" required />
-            </div>
-          </div>
+      <!-- STEP 3 -->
+      <div class="step hidden" data-step="3">
+        <div class="flex items-center gap-2 mb-4">
+          <Users class="w-5 h-5 text-blue-500" />
+          <h2 class="font-semibold text-lg">Participants & Rules</h2>
+        </div>
 
-          <hr class="border-gray-300">
+        <label class="font-medium mb-1 block">Gender Preference</label>
+        <select name="gender" class="border border-gray-300 rounded-lg w-full ">
+          <option selected value="none">Select gender preference</option>
+          <option value="any">Any</option>
+          <option value="male">Male Only</option>
+          <option value="female">Female Only</option>
+        </select>
 
-          <div>
-              <label class="block font-medium mb-2 text-base">Dropoff Location</label>
-              <input
-                id="dropoffInput"
-                type="text"
-                name="dropoff_locations"
-                placeholder="Dropoff location"
-                autocomplete="street-address"
-                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-                required
-              />
-            <input type="hidden" name="dropoff_coordinates" id="dropoffCoordinates" />
-            <input type="hidden" name="dropoff_address" id="dropoffAddress" />
-          </div>
+        <label class="font-medium mt-4 mb-1 block">Total Participants</label>
+        <input type="number" name="participants" class="border border-gray-300 rounded-lg w-full " min="1" />
 
+        <label class="font-medium mt-4 mb-1 block">Cost Sharing</label>
+        <div class="relative">
+          <select name="costSharing" class="border border-gray-300 rounded-lg w-full ">
+            <option selected value="none">Select cost sharing method</option>
+            <option value="split">Split Evenly</option>
+            <option value="organizer">Organizer Shoulders Cost</option>
+            <option value="custom">Custom Split</option>
+          </select>
         </div>
       </div>
 
-      <!-- Submit -->
-      <div class="text-center mb-2">
-        <button type="submit"
-          class="bg-blue-500 text-white px-10 py-3 rounded-lg font-medium hover:bg-blue-600 shadow transition text-base">
-          Create Trip
-        </button>
+      <!-- STEP 4 -->
+      <div class="step hidden" data-step="4">
+        <div class="flex items-center gap-2 mb-4">
+          <MapPin class="w-5 h-5 text-blue-500" />
+          <h2 class="font-semibold text-lg">Meetup Point</h2>
+        </div>
+        <div>
+            <label class="font-medium mb-1 block">Meeting Place</label>
+            <input type="text" name="meetup" class="border border-gray-300 rounded-lg w-full" id="pickupInput" placeholder="e.g. MOA Globe, Ayala Cebu Terminal, etc." />
+        </div>
+        
+        <div>
+            <label class="font-medium mt-4 mb-1 block">Meeting Time</label>
+            <input type="datetime-local" name="pickup_dates" class="border border-gray-300 rounded-lg w-full" />
+        </div>
+
+        <div>
+            <label class="font-medium mt-4 mb-1 block">Waiting Time (minutes)</label>
+            <input type="number" name="waiting_time" min="0" placeholder="Enter waiting time" class="border border-gray-300 rounded-lg w-full" />
+        </div>
+    </div>
+
+      <!-- CONTROLS -->
+      <div class="flex justify-between pt-6">
+        <button type="button" id="stepPrev" class="btn btn-ghost">Back</button>
+        <button type="button" id="stepNext" class="btn btn-primary">Next</button>
+        <button type="submit" id="stepSubmit" class="btn btn-success">Create Trip</button>
       </div>
     </form>
-  </section>
-</PagePlate>
 
-<script>
+  </section>
+  <script type="module">
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    const steps = document.querySelectorAll(".step");
+    const progressBar = document.getElementById("progressBar");
+    const labels = document.querySelectorAll(".step-label");
+    const nextBtn = document.getElementById("stepNext");
+    const prevBtn = document.getElementById("stepPrev");
+    const submitBtn = document.getElementById("stepSubmit");
+
+    function ui() {
+      steps.forEach(s => s.classList.toggle("hidden", Number(s.dataset.step) !== currentStep));
+
+      labels.forEach(l => {
+        const active = Number(l.dataset.step) === currentStep;
+        l.classList.toggle("text-blue-600", active);
+        l.classList.toggle("text-slate-400", !active);
+        l.classList.toggle("font-semibold", active);
+      });
+
+      progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+
+      prevBtn.classList.toggle("hidden", currentStep === 1);
+      nextBtn.classList.toggle("hidden", currentStep === totalSteps);
+      submitBtn.classList.toggle("hidden", currentStep !== totalSteps);
+    }
+
+    nextBtn.onclick = () => { if (currentStep < totalSteps) currentStep++; ui(); };
+    prevBtn.onclick = () => { if (currentStep > 1) currentStep--; ui(); };
+    ui();
+
+    // OPTIONAL — autosave
+    const form = document.getElementById("tripStepperForm");
+    form.addEventListener("input", () => {
+      const data = Object.fromEntries(new FormData(form).entries());
+      localStorage.setItem("tripDraft", JSON.stringify(data));
+    });
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      console.log("Trip Created:", Object.fromEntries(new FormData(form).entries()));
+    });
+  </script>
+  <script>
 import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
 
 // Get session ID from cookie
@@ -200,11 +171,11 @@ const sessionId = document.cookie
 
 const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
 const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
-const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
+// const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
 
 const regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
 const pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
-const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
+// const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
 
 // Initialize Mapbox search boxes once
 createMapboxSearchBox({
@@ -225,14 +196,14 @@ createMapboxSearchBox({
   },
 });
 
-createMapboxSearchBox({
-  sessionTokenID: sessionId,
-  targetSelector: "#dropoffInput",
-  onSelect: (result) => {
-    dropoffAddress.value = result.name;
-    dropoffCoordinates.value = JSON.stringify(result.coordinates);
-  },
-});
+// createMapboxSearchBox({
+//   sessionTokenID: sessionId,
+//   targetSelector: "#dropoffInput",
+//   onSelect: (result) => {
+//     dropoffAddress.value = result.name;
+//     dropoffCoordinates.value = JSON.stringify(result.coordinates);
+//   },
+// });
 
 
       import { actions } from "astro:actions";
@@ -241,7 +212,7 @@ createMapboxSearchBox({
       import { showToast } from "@/scripts/Toast";
       import { showLoading, hideLoading } from "@/lib/loading";
 
-      let form = document.getElementById("tripForm") as HTMLFormElement;
+      let form = document.getElementById("tripStepperForm") as HTMLFormElement;
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         showLoading();
@@ -261,12 +232,11 @@ createMapboxSearchBox({
             dropoff_coordinates: formData.get("dropoff_coordinates") as string,
             description: formData.get("description") as string,
             waiting_time: parseInt(formData.get("waiting_time") as string) || 0,
-            budget_type: formData.get("budget_type") as string,
+            cost_sharing: formData.get("cost_sharing") as string,
             max_pax: parseInt(formData.get("max_pax") as string) || 0,
             start_date: formData.get("start_date") as string,
             end_date: formData.get("end_date") as string,
             slug: formData.get("slug") as string,
-            total_budget: formData.get("total_budget") as string,
             pickup_dates: formData.get("pickup_dates") as string
           } ;
 
@@ -286,4 +256,5 @@ createMapboxSearchBox({
       });
 
 </script>
-</PagePlate>
+</Layout>
+

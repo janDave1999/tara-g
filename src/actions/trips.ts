@@ -17,8 +17,7 @@ export const trip = {
         description: z.string(),
         start_date: z.string(),
         end_date: z.string(),
-        total_budget: z.string(),
-        budget_type: z.string(),
+        cost_sharing: z.string(),
         pickup_address: z.string(),
         pickup_coordinates: z.string(),
         dropoff_address: z.string(),
@@ -59,9 +58,6 @@ export const trip = {
         let slug = data?.slug || "";
         let isPerPax = false;
 
-        if (input.budget_type === "per_person") {
-          isPerPax = true;
-        }
 
         const { error: tripError } = await supabaseAdmin
           .from("trip_details")
@@ -69,7 +65,6 @@ export const trip = {
             trip_id: trip_id,
             start_date: input.start_date,
             end_date: input.end_date,
-            budget: input.total_budget,
             is_per_person: isPerPax,
             region: input.region_address,
             max_pax: input.max_pax,

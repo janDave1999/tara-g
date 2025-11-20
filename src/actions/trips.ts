@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ActionError, defineAction } from "astro:actions";
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
-import { Code } from "astro:components";
 // get user id in astro locals
 
 
@@ -20,14 +19,14 @@ export const trip = {
         cost_sharing: z.string(),
         pickup_address: z.string(),
         pickup_coordinates: z.string(),
-        dropoff_address: z.string(),
-        dropoff_coordinates: z.string(),
         max_pax: z.number(),
         pickup_dates: z.string(),
         waiting_time: z.number(),
+        gender_preference: z.string(),
       }),
 
       async handler(input, context) {
+        console.log("Trip Created:", input);
         const user_id = context.locals.user_id || "";
 
         // insert into trips table
@@ -56,7 +55,6 @@ export const trip = {
 
         let trip_id = data?.trip_id || "";
         let slug = data?.slug || "";
-        let isPerPax = false;
 
 
         const { error: tripError } = await supabaseAdmin
@@ -65,8 +63,9 @@ export const trip = {
             trip_id: trip_id,
             start_date: input.start_date,
             end_date: input.end_date,
-            is_per_person: isPerPax,
+            cost_sharing: input.cost_sharing,
             region: input.region_address,
+            gender_pref: input.gender_preference,
             max_pax: input.max_pax,
           })
           .single();
@@ -111,14 +110,14 @@ export const trip = {
                 code: "INTERNAL_SERVER_ERROR"
             })
         }
-        const { data: dropoff, error: dropoffError } = await saveLocation(input.dropoff_address, input.dropoff_coordinates);
-        if (dropoffError) {
-            await rollBack("trips", trip_id);
-            throw new ActionError({
-                message: dropoffError,
-                code: "INTERNAL_SERVER_ERROR"
-            })
-        }
+        // const { data: dropoff, error: dropoffError } = await saveLocation(input.dropoff_address, input.dropoff_coordinates);
+        // if (dropoffError) {
+        //     await rollBack("trips", trip_id);
+        //     throw new ActionError({
+        //         message: dropoffError,
+        //         code: "INTERNAL_SERVER_ERROR"
+        //     })
+        // }
         const { error: tripLocError } = await saveTripLoc(trip_id, region, "destination", input.start_date, input.end_date, 0);
         if (tripLocError) {
             await rollBack("trips", trip_id);
@@ -137,15 +136,15 @@ export const trip = {
                 code: "INTERNAL_SERVER_ERROR"
             })
         }
-        const { error: tripDropoffError } = await saveTripLoc(trip_id, dropoff, "dropoff", "", "", 0);
-        if (tripDropoffError) {
-            await rollBack("trips", trip_id);
-            console.log("[error]Checkpoint 4:", tripDropoffError);
-            throw new ActionError({
-                message: tripDropoffError,
-                code: "INTERNAL_SERVER_ERROR"
-            })
-        }
+        // const { error: tripDropoffError } = await saveTripLoc(trip_id, dropoff, "dropoff", "", "", 0);
+        // if (tripDropoffError) {
+        //     await rollBack("trips", trip_id);
+        //     console.log("[error]Checkpoint 4:", tripDropoffError);
+        //     throw new ActionError({
+        //         message: tripDropoffError,
+        //         code: "INTERNAL_SERVER_ERROR"
+        //     })
+        // }
 
         let reponse = JSON.stringify({
             success: true,

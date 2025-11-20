@@ -2,7 +2,6 @@
 import PagePlate from '@/layouts/PagePlate.astro';
 
 const { slug } = Astro.params;
-console.log("Slug:", slug);
 // Example trip data (normally fetched from DB)
 const trips = [
   { slug: "beach-adventure", title: "Beach Adventure", description: "Sun, sand, and waves!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg" },
@@ -47,31 +46,3 @@ const isAuthenticated = false; // replace with real auth check
   <p class="text-center mt-24 text-gray-500 text-xl">Trip not found.</p>
 )}
 </PagePlate>
-
-<style>
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fadeIn { animation: fadeIn 0.5s ease forwards; }
-</style>
-
-<script>
-  const modal = document.getElementById('authModal') as HTMLDivElement;
-  const closeModal = document.getElementById('closeModal') as HTMLButtonElement;
-  const content = document.getElementById('tripContent') as HTMLDivElement;
-
-  if (modal) {
-    closeModal.addEventListener('click', () => {
-      window.location.href = "/";
-    });
-
-    // Close modal by clicking outside modal content
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        // redirect back
-        window.location.href = "/";
-      }
-    });
-  }
-</script>

@@ -36,8 +36,8 @@ import { Plane, CalendarDays, MapPin, Users, HandCoins } from "@lucide/astro";
         <label class="font-medium mt-4 mb-1 block">Destination</label>
         <div class="relative">
           <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
-          <input type="text" name="destination" class="border border-gray-300 rounded-lg w-full " id="regionInput" />
-          <input type="hidden" name="region" id="regionAddress" />
+          <input type="text" class="border border-gray-300 rounded-lg w-full " id="regionInput" />
+          <input type="hidden" name="region_address" id="regionAddress" />
           <input type="hidden" name="region_coordinates" id="regionCoordinates" />
         </div>
       </div>
@@ -71,12 +71,12 @@ import { Plane, CalendarDays, MapPin, Users, HandCoins } from "@lucide/astro";
           <option value="female">Female Only</option>
         </select>
 
-        <label class="font-medium mt-4 mb-1 block">Total Participants</label>
-        <input type="number" name="participants" class="border border-gray-300 rounded-lg w-full " min="1" />
+        <label class="font-medium mt-4 mb-1 block">Maximum Participants</label>
+        <input type="number" name="max_pax" class="border border-gray-300 rounded-lg w-full " min="1" />
 
         <label class="font-medium mt-4 mb-1 block">Cost Sharing</label>
         <div class="relative">
-          <select name="costSharing" class="border border-gray-300 rounded-lg w-full ">
+          <select name="cost_sharing" class="border border-gray-300 rounded-lg w-full ">
             <option selected value="none">Select cost sharing method</option>
             <option value="split">Split Evenly</option>
             <option value="organizer">Organizer Shoulders Cost</option>
@@ -93,7 +93,9 @@ import { Plane, CalendarDays, MapPin, Users, HandCoins } from "@lucide/astro";
         </div>
         <div>
             <label class="font-medium mb-1 block">Meeting Place</label>
-            <input type="text" name="meetup" class="border border-gray-300 rounded-lg w-full" id="pickupInput" placeholder="e.g. MOA Globe, Ayala Cebu Terminal, etc." />
+            <input type="text" name="pickup_address" class="border border-gray-300 rounded-lg w-full" id="pickupInput" placeholder="e.g. MOA Globe, Ayala Cebu Terminal, etc." />
+            <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
+            <input type="hidden" name="pickup_region" id="pickupAddress" />
         </div>
         
         <div>
@@ -236,6 +238,7 @@ createMapboxSearchBox({
             max_pax: parseInt(formData.get("max_pax") as string) || 0,
             start_date: formData.get("start_date") as string,
             end_date: formData.get("end_date") as string,
+            gender_preference: formData.get("gender") as string,
             slug: formData.get("slug") as string,
             pickup_dates: formData.get("pickup_dates") as string
           } ;

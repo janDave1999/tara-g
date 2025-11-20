@@ -1,48 +1,148 @@
 ---
 import PagePlate from '@/layouts/PagePlate.astro';
+import { actions } from 'astro:actions';
+import type { Trip } from '@/types/trip';
 
-const { slug } = Astro.params;
-// Example trip data (normally fetched from DB)
-const trips = [
-  { slug: "beach-adventure", title: "Beach Adventure", description: "Sun, sand, and waves!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg" },
-  { slug: "mountain-trek", title: "Mountain Trek", description: "Breathtaking mountain views!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp" },
-  { slug: "road-trips", title: "Road Trips", description: "Hit the open road!", img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg" }
-];
+let slug = Astro.params.slug || "";
 
-// Find the trip by slug
-const trip = trips.find(t => t.slug === slug);
+// Fetch trip data
+let { data: tripDATA, error } = await Astro.callAction(actions.trip.getTripDetails, { slug });
+if (error) throw error;
 
-// Simulated auth check
-const isAuthenticated = false; // replace with real auth check
+// Define Trip type for fetched data
+type TripData = {
+  trip_id: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  status: string;
+  trip_details?: Array<{
+    start_date: string;
+    end_date: string;
+    gender_pref: string;
+    cost_sharing: string;
+    region: string;
+    cover_image: string;
+    tags: string[];
+    max_pax: number;
+  }>;
+  trip_location?: Array<{
+    start_time: string;
+    end_time: string;
+    waiting_time: number;
+    type: string;
+    locations?: Array<{
+      name: string;
+      lat: number;
+      lng: number;
+    }>;
+  }>;
+  trip_members?: Array<{ user_id: string }>;
+  trip_pools?: Array<{ total_pool: number; currency: string }>;
+  trip_pool_members?: Array<{ user_id: string; contribution: number; balance: number }>;
+  trip_expenses?: Array<{ user_id: string; description: string; category: string; amount: number }>;
+};
+
+if (!tripDATA) {
+  return Astro.redirect("/trips");
+}
+let trip = tripDATA as TripData;
+
+// Extract the first detail object
+let trip_details = trip.trip_details?.[0];
+let cover = trip_details?.cover_image || "";
+
+// Keep other nested arrays
+let trip_location = trip.trip_location;
+let trip_members = trip.trip_members;
+let trip_pools = trip.trip_pools;
+let trip_pool_members = trip.trip_pool_members;
+let trip_expenses = trip.trip_expenses;
 ---
-<PagePlate title={trip ? trip.title : 'Trip'}>
-{trip ? (
-  <section class="relative min-h-screen">
-    <!-- Trip Content -->
-    <div id="tripContent" class={`transition duration-500 ${!isAuthenticated ? 'filter blur-sm brightness-75' : ''}`}>
-      <img src={trip.img} alt={trip.title} class="w-full h-96 object-cover" />
-      <div class="p-8 text-center">
-        <h1 class="text-4xl font-bold mb-4">{trip.title}</h1>
-        <p class="text-gray-700">{trip.description}</p>
-      </div>
+
+<PagePlate title={trip.title}>
+  <!-- Hero Section -->
+  <section class="relative h-80 w-full overflow-hidden rounded-b-3xl shadow-lg">
+    <img src={cover} alt={trip.title} class="w-full h-full object-cover" />
+    <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white text-center px-4">{trip.title}</h1>
+    </div>
+  </section>
+
+  <!-- Trip Summary -->
+  <section class="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow p-6 space-y-2">
+      <h2 class="text-2xl font-semibold">Trip Info</h2>
+      <p><strong>Status:</strong> {trip.status}</p>
+      <p><strong>Region:</strong> {trip_details?.region}</p>
+      <p><strong>Dates:</strong> {trip_details?.start_date} - {trip_details?.end_date}</p>
+      <p><strong>Gender Preference:</strong> {trip_details?.gender_pref || 'Any'}</p>
+      <p><strong>Max Pax:</strong> {trip_details?.max_pax}</p>
+      <p><strong>Cost Sharing:</strong> {trip_details?.cost_sharing}</p>
     </div>
 
-    <!-- Auth Modal -->
-    {!isAuthenticated && (
-      <div id="authModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-8 max-w-md text-center relative animate-fadeIn">
-          <button id="closeModal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">&times;</button>
-          <h2 class="text-2xl font-bold mb-4">Please Log In or Sign Up</h2>
-          <p class="mb-6">You need an account to view this trip in full.</p>
-          <div class="flex justify-center gap-4">
-            <a href="/login" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Log In</a>
-            <a href="/signup" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Sign Up</a>
-          </div>
-        </div>
+    <div class="bg-white rounded-xl shadow p-6 space-y-2">
+      <h2 class="text-2xl font-semibold">Tags</h2>
+      <div class="flex flex-wrap gap-2 mt-2">
+        {trip_details?.tags?.map(tag => (
+          <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{tag}</span>
+        ))}
       </div>
-    )}
+    </div>
   </section>
-) : (
-  <p class="text-center mt-24 text-gray-500 text-xl">Trip not found.</p>
-)}
+
+  <!-- Map & Locations Timeline -->
+  <section class="max-w-5xl mx-auto px-4 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Itinerary & Locations</h2>
+    <div class="bg-white rounded-xl shadow p-6 space-y-4">
+      {trip_location?.map((loc, i) => (
+        <div class="border-l-2 border-blue-500 pl-4 relative">
+          <div class="absolute -left-2 top-2 w-4 h-4 bg-blue-500 rounded-full"></div>
+          <p class="font-semibold">{loc.locations?.[0]?.name}</p>
+          <p class="text-sm text-gray-600">
+            {loc.start_time} - {loc.end_time} | Waiting: {loc.waiting_time} mins | Type: {loc.type}
+          </p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Members & Pools -->
+  <section class="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-2xl font-semibold mb-2">Members ({trip_members?.length || 0})</h2>
+      <ul class="list-disc list-inside space-y-1">
+        {trip_members?.map(member => (
+          <li>{member.user_id}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-2xl font-semibold mb-2">Pools</h2>
+      {trip_pools?.map((pool, idx) => (
+        <div  class="border p-3 rounded mb-2">
+          <p><strong>Total Pool:</strong> {pool.total_pool} {pool.currency}</p>
+          <ul class="text-sm text-gray-700 mt-1">
+            {trip_pool_members?.map((m, i) => (
+              <li>{m.user_id}: Contribution {m.contribution}, Balance {m.balance}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Expenses -->
+  <section class="max-w-5xl mx-auto px-4 mt-8 mb-16">
+    <h2 class="text-2xl font-semibold mb-4">Expenses</h2>
+    <div class="bg-white rounded-xl shadow p-6 space-y-2">
+      {trip_expenses?.map((expense, i) => (
+        <div class="flex justify-between border-b pb-2">
+          <p><strong>{expense.user_id}</strong>: {expense.description} ({expense.category})</p>
+          <p>{expense.amount}</p>
+        </div>
+      ))}
+    </div>
+  </section>
 </PagePlate>

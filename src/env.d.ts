@@ -1,15 +1,16 @@
 interface ImportMetaEnv {
   readonly SECRET_ENVIRONMENT_STATUS: "live"|"maintenance";
  
-  readonly SUPABASE_URL: string
-  readonly SUPABASE_ANON_KEY: string
-  readonly SITE_URL: string
-  readonly PUBLIC_MAPBOX_TOKEN: string
-  readonly SUPABASE_ANON_KEY: string
-  readonly SUPABASE_SERVICE_ROLE_KEY: string,
-  readonly PUBLIC_R2_BUCKET: string,
-  readonly PUBLIC_S3_CLIENT_API: string,
-  readonly PUBLIC_R2_URL: string
+  readonly SUPABASE_URL: string;
+  readonly SUPABASE_ANON_KEY: string;
+  readonly SITE_URL: string;
+  readonly PUBLIC_MAPBOX_TOKEN: string;
+  readonly SUPABASE_ANON_KEY: string;
+  readonly SUPABASE_SERVICE_ROLE_KEY: string;
+  readonly PUBLIC_R2_BUCKET: string;
+  readonly PUBLIC_S3_CLIENT_API: string;
+  readonly PUBLIC_R2_URL: string;
+  readonly SUPABASE_GRAPHQL_URL: string;
   
 }
 

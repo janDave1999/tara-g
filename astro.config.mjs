@@ -41,6 +41,7 @@ export default defineConfig({
       SITE_URL: envField.string({ context: "server", access: "public" }),
       PUBLIC_MAPBOX_TOKEN: envField.string({ context: "client", access: "public" }),
       SUPABASE_SERVICE_ROLE_KEY: envField.string({ context: "server", access: "public" }),
+      SUPABASE_GRAPHQL_URL: envField.string({ context: "server", access: "public" }),
     },
   },
   vite: {

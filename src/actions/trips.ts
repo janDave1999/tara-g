@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ActionError, defineAction } from "astro:actions";
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
+import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_GRAPHQL_URL } from "astro:env/server";
 // get user id in astro locals
 
 
@@ -157,6 +158,75 @@ export const trip = {
 
         return reponse;
       }
+    }),
+
+    getTripDetails: defineAction({
+        input: z.object({
+            slug: z.string(),
+        }),
+
+        async handler(input) {
+            let slug = input.slug
+
+            const { data, error } = await supabaseAdmin
+              .from('trips')
+              .select(`
+                trip_id,
+                owner_id,
+                title,
+                description,
+                status,
+                trip_details (
+                  start_date,
+                  end_date,
+                  gender_pref,
+                  cost_sharing,
+                  region,
+                  cover_image,
+                  tags,
+                  max_pax
+                ),
+                trip_location (
+                  start_time,
+                  end_time,
+                  waiting_time,
+                  type,
+                  locations (
+                    name,
+                    lat,
+                    lng
+                  )
+                ),
+                trip_members (
+                  user_id
+                ),
+                trip_pools (
+                  total_pool,
+                  currency
+                ),
+                trip_pool_members (
+                  contribution,
+                  balance,
+                  user_id
+                ),
+                trip_expenses (
+                  user_id,
+                  description,
+                  category,
+                  amount
+                )
+              `)
+              .eq('trip_id', slug)
+              .single(); // fetch only one record
+
+            if (error) {
+              throw new ActionError({
+                message: error.message,
+                code: "INTERNAL_SERVER_ERROR"
+              })
+            }
+            return data
+        }
     }),
 
     getAllUserTrips: defineAction({

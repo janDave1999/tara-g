@@ -4,9 +4,44 @@
 @import "./_layout.css";
 @import "./_cards.css";
 
-@source "./../../node_modules/preline/dist/*.js";
-@import "./../../node_modules/preline/variants.css";
-@import "./../../node_modules/preline/src/plugins/datepicker/styles.css";
 
 /* Plugins */
 @plugin "@tailwindcss/forms";
+
+
+.section-label {
+  @apply text-xs md:text-sm font-semibold text-gray-500 tracking-widest uppercase;
+}
+
+.description {
+  @apply text-sm md:text-base text-gray-700 leading-relaxed;
+}
+
+.meta-item {
+  @apply flex flex-col gap-0.5;
+}
+
+.meta-label {
+  @apply text-xs text-gray-500;
+}
+
+.meta-value {
+  @apply font-semibold text-gray-800 text-sm md:text-base;
+}
+
+.detail-row {
+  @apply flex justify-between items-center px-4 md:px-6 py-4 bg-white;
+}
+
+.detail-label {
+  @apply text-sm text-gray-500;
+}
+
+.detail-value {
+  @apply text-sm font-medium text-gray-800;
+}
+
+.tag-chip {
+  @apply text-xs md:text-sm px-3 py-1 rounded-full bg-white 
+    border border-gray-200 text-gray-700 shadow-sm;
+}

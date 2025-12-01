@@ -1,7 +1,9 @@
 ---
 import PagePlate from '@/layouts/PagePlate.astro';
 import { actions } from 'astro:actions';
-import type { Trip } from '@/types/trip';
+import Summary from '@/components/Trip/Summary.astro';
+import Itinerary from '@/components/Trip/Itinerary.astro';
+// import type { Trip } from '@/types/trip';
 
 let slug = Astro.params.slug || "";
 
@@ -69,31 +71,26 @@ let trip_expenses = trip.trip_expenses;
     </div>
   </section>
 
-  <!-- Trip Summary -->
-  <section class="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-white rounded-xl shadow p-6 space-y-2">
-      <h2 class="text-2xl font-semibold">Trip Info</h2>
-      <p><strong>Status:</strong> {trip.status}</p>
-      <p><strong>Region:</strong> {trip_details?.region}</p>
-      <p><strong>Dates:</strong> {trip_details?.start_date} - {trip_details?.end_date}</p>
-      <p><strong>Gender Preference:</strong> {trip_details?.gender_pref || 'Any'}</p>
-      <p><strong>Max Pax:</strong> {trip_details?.max_pax}</p>
-      <p><strong>Cost Sharing:</strong> {trip_details?.cost_sharing}</p>
-    </div>
-
-    <div class="bg-white rounded-xl shadow p-6 space-y-2">
-      <h2 class="text-2xl font-semibold">Tags</h2>
-      <div class="flex flex-wrap gap-2 mt-2">
-        {trip_details?.tags?.map(tag => (
-          <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{tag}</span>
-        ))}
-      </div>
-    </div>
-  </section>
-
+  <Summary server:defer
+      owner={trip.owner_id}
+      status={trip.status}
+      title={trip.title}
+      description={trip.description}
+      destination={trip_details?.region}
+      tripStart={trip_details?.start_date}
+      tripEnd={trip_details?.end_date}
+      genderPref={trip_details?.gender_pref}
+      maxPax={trip_details?.max_pax}
+      costSharing={trip_details?.cost_sharing}
+      tags={trip_details?.tags}
+    />
+  
+  <Itinerary />
+  
   <!-- Map & Locations Timeline -->
   <section class="max-w-5xl mx-auto px-4 mt-8">
     <h2 class="text-2xl font-semibold mb-4">Itinerary & Locations</h2>
+    <!-- Create Itinerary -->
     <div class="bg-white rounded-xl shadow p-6 space-y-4">
       {trip_location?.map((loc, i) => (
         <div class="border-l-2 border-blue-500 pl-4 relative">
@@ -111,6 +108,7 @@ let trip_expenses = trip.trip_expenses;
   <section class="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl shadow p-6">
       <h2 class="text-2xl font-semibold mb-2">Members ({trip_members?.length || 0})</h2>
+      <!-- Invite members -->
       <ul class="list-disc list-inside space-y-1">
         {trip_members?.map(member => (
           <li>{member.user_id}</li>
@@ -120,6 +118,7 @@ let trip_expenses = trip.trip_expenses;
 
     <div class="bg-white rounded-xl shadow p-6">
       <h2 class="text-2xl font-semibold mb-2">Pools</h2>
+      <!-- Create trip budget pool -->
       {trip_pools?.map((pool, idx) => (
         <div  class="border p-3 rounded mb-2">
           <p><strong>Total Pool:</strong> {pool.total_pool} {pool.currency}</p>
@@ -136,6 +135,7 @@ let trip_expenses = trip.trip_expenses;
   <!-- Expenses -->
   <section class="max-w-5xl mx-auto px-4 mt-8 mb-16">
     <h2 class="text-2xl font-semibold mb-4">Expenses</h2>
+    <!-- Create expenses -->
     <div class="bg-white rounded-xl shadow p-6 space-y-2">
       {trip_expenses?.map((expense, i) => (
         <div class="flex justify-between border-b pb-2">
@@ -145,4 +145,6 @@ let trip_expenses = trip.trip_expenses;
       ))}
     </div>
   </section>
+
+  <!-- Blog Section When trip is complete -->
 </PagePlate>

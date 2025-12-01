@@ -1,0 +1,105 @@
+---
+/* No frontend framework. */
+---
+
+
+<div class="space-y-4" id="uploader">
+  <input
+    type="file"
+    id="fileInput"
+    multiple
+    class="file-input file-input-bordered w-full"
+  />
+
+  <div id="previewContainer" class="flex gap-3 flex-wrap"></div>
+
+  <button id="uploadBtn" class="btn btn-neutral w-full">
+    Upload
+  </button>
+
+  <div id="results" class="space-y-2 hidden">
+    <p class="font-medium">Uploaded URLs:</p>
+    <ul id="resultsList" class="list-disc ml-4"></ul>
+  </div>
+</div>
+
+
+<script>
+    import { actions } from "astro:actions";
+    import { slugify } from "@/scripts/Slugify";
+    import { showToast } from "@/scripts/Toast";
+  const fileInput = document.getElementById("fileInput") as HTMLInputElement;
+  const previewContainer = document.getElementById("previewContainer") as HTMLDivElement;
+  const uploadBtn = document.getElementById("uploadBtn") as HTMLButtonElement;
+  const results = document.getElementById("results") as HTMLDivElement;
+  const resultsList = document.getElementById("resultsList") as HTMLUListElement;
+
+  const url = new URL(window.location.href);
+  const tripId: string = url.pathname.split("/")[2];
+  let selectedFiles: File[] = [];
+
+  // Show previews
+  fileInput.addEventListener("change", () => {
+    const files = fileInput.files;
+    if (!files) return;
+
+    selectedFiles = Array.from(files);
+    previewContainer.innerHTML = "";
+
+    selectedFiles.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      const img = document.createElement("img");
+      img.src = url;
+      img.className = "w-24 h-24 object-cover rounded-lg border";
+      previewContainer.appendChild(img);
+    });
+  });
+
+  // Convert file → base64
+  function convertToBase64(file: File): Promise<{ file: string; name: string; type: string }> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      const slug = slugify(file.name);
+
+      reader.onload = async () => {
+        const result = reader.result;
+        if (typeof result === "string") {
+          const base64 = result.split(",")[1];
+          resolve({
+            file: base64,
+            name: await slug,
+            type: file.type,
+          });
+        }
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Upload handler
+  uploadBtn.addEventListener("click", async () => {
+    if (selectedFiles.length === 0) return;
+
+    uploadBtn.textContent = "Uploading...";
+    uploadBtn.disabled = true;
+
+    const encoded = await Promise.all(selectedFiles.map(convertToBase64));
+
+    const res = await actions.trip.uploadToR2({ files: encoded, trip_id: tripId });
+
+    if (res.error) {
+      showToast({
+        message: res.error.message,
+        type: "error",
+        duration: 5000,
+      });
+    } else {
+      showToast({
+        message: "Images uploaded successfully!",
+        type: "success",
+        duration: 5000,
+      })
+    }
+  });
+</script>

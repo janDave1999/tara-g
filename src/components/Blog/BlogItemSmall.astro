@@ -1,15 +1,17 @@
 ---
 import { transformDate } from '@jsarmyknife/native--math'
+import { Picture } from 'astro:assets'
 
 interface Props {
   slug: string,
   publishedDate: string,
-  title: string,
+  title: string ,
   thumbnail: string,
   description: string,
   excerpt: string
 }
 const {slug, publishedDate, thumbnail, title, description, excerpt } = Astro.props as Props;
+console.log(thumbnail, title)
 ---
 
 
@@ -20,6 +22,7 @@ const {slug, publishedDate, thumbnail, title, description, excerpt } = Astro.pro
     title: title,
     description: description,
   })} />
+  <!-- <Picture src={thumbnail} alt={title} class="mb-3 w-full h-full"/> -->
   <picture class="mb-3 w-full h-full">
     <img src={thumbnail} alt={title} class="rounded-xl" />
   </picture>

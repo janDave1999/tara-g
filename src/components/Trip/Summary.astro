@@ -1,0 +1,132 @@
+---
+import { Calendar, Users, MapPin, HandCoins, LucideVenusAndMars } from "@lucide/astro";
+let {
+  owner,
+  status,
+  title,
+  description,
+  destination,
+  tripStart,
+  tripEnd,
+  genderPref,
+  maxPax,
+  costSharing,
+  joined,
+  tags = [],
+} = Astro.props;
+console.log("Astro Props", Astro.props);
+---
+
+<section class="w-full space-y-10 m-4">
+
+  <!-- TITLE + STATUS -->
+   <div>
+    <div class="flex items-start gap-2">
+      <h1 class="text-xl md:text-3xl font-semibold leading-tight">{title}</h1>
+
+      <!-- Tight status badge -->
+      <span
+        class="inline-flex items-center text-[10px] md:text-xs font-semibold px-2 py-0.5 rounded-full text-white h-fit"
+        class:list={{
+          "bg-green-600": status === "complete",
+          "bg-gray-600": status === "draft",
+          "bg-blue-600": status === "ongoing",
+          "bg-yellow-600": status === "pending",
+        }}
+        style="margin-top:4px;"
+      >
+        {String(status).toUpperCase()}
+      </span>
+    </div>
+
+    <div class="leading-tight">
+      <p class="text-xs text-gray-500">Organized by</p>
+      <p class="font-medium text-gray-800 text-sm md:text-base">{owner}</p>
+    </div>
+</div>
+
+  <!-- DESCRIPTION -->
+  <div class="space-y-2 max-w-3xl rounded-b-md shadow p-2">
+    <label class="text-lg font-bold text-gray-500 tracking-wide uppercase">
+      About This Trip
+    </label>
+    <p class="text-xl md:text-base text-gray-700 leading-relaxed">
+      {description}
+    </p>
+  </div>
+
+  <hr class="border-gray-300" />
+
+  <!-- STACKED DETAILS (NO GRID) -->
+  <div class="space-y-4">
+
+    <!-- Each detail is clean + readable -->
+    <div class="flex justify-between">
+        <div class="flex items-center">
+            <MapPin size={20} />
+            <span class="text-lg font-bold  text-gray-500 block">Destination</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">{destination}</span>
+    </div>
+
+    <div class="flex justify-between">
+        
+        <div class="flex items-center">
+            <Calendar size={20} />
+            <span class="text-lg font-bold text-gray-500 block">Trip Start</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">{tripStart}</span>
+    </div>
+
+    <div class="flex justify-between">
+        <div class="flex items-center">
+            <Calendar size={20} />
+            <span class="ml-2 text-lg font-bold text-gray-500 block">Trip End</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">{tripEnd}</span>
+    </div>
+
+    <div class="flex justify-between">
+        <div class="flex items-center">
+            <Users size={20} />
+            <span class="text-lg font-bold text-gray-500 block">No. of Joiners</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">{joined} / {maxPax}</span>
+    </div>
+
+    <div class="flex justify-between">
+        
+        <div class="flex items-center">
+            <LucideVenusAndMars size={20} />
+            <span class="text-lg font-bold text-gray-500 block">Gender Preference</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">
+            {genderPref || "None"}
+        </span>
+    </div>
+
+    <div class="flex justify-between">
+        
+        <div class="flex items-center">
+            <HandCoins size={20} />
+            <span class="text-lg font-bold text-gray-500 block">Cost Sharing</span>
+        </div>
+        <span class="font-medium text-gray-800 text-xl md:text-base">
+           {String(costSharing).toUpperCase()}
+        </span>
+    </div>
+
+</div>
+
+  <!-- TAGS -->
+  {tags?.length > 0 && (
+    <div class="flex flex-wrap gap-2 pt-2">
+      {tags.map((tag: string) => (
+        <span class="text-lg md:text-xl px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+          #{tag}
+        </span>
+      ))}
+    </div>
+  )}
+
+</section>

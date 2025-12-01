@@ -1,0 +1,123 @@
+---
+
+interface Props {
+  itinerary?: {
+    id: number;
+    trip_id: number;
+    day_index: number;
+    date: string;
+    sequence: number;
+    type: "pickup" | "dropoff" | "stop" | "destination" | "activity" | "travel";
+    name: string;
+    category: "hotel" | "restaurant" | "scenic" | "fuel" | "custom" | "others" | null;
+    location_from?: string; // For travel card
+    location_to?: string;   // For travel card
+    location_id?: number | null;
+    description?: string;
+    start_time?: string;
+    end_time?: string;
+    travel_mode?: "car" | "walk" | "bike" | "bus" | "train" | "flight";
+    estimated_duration?: string;
+    notes?: string;
+  }[];
+  editable?: boolean;
+}
+
+const { itinerary = [], editable = true } = Astro.props;
+
+function formatTimeRange(start?: string, end?: string) {
+  if (!start && !end) return "";
+  const s = start ? new Date(start).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+  const e = end ? new Date(end).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+  return s && e ? `${s} - ${e}` : s || e;
+}
+
+// Group by day
+const groupedByDay = itinerary.length > 0
+  ? itinerary.reduce((acc, item) => {
+      if (!acc[item.day_index]) acc[item.day_index] = [];
+      acc[item.day_index].push(item);
+      return acc;
+    }, {} as Record<number, typeof itinerary>)
+  : {};
+  
+function getCardType(item: any) {
+  if(item.type === 'travel') return { label: 'Travel', icon: '🚗', color: 'bg-blue-100' };
+  if(item.type === 'activity' && item.category === 'custom') return { label: 'Activity', icon: '⚡', color: 'bg-green-100' };
+  return { label: 'Stay', icon: item.category === 'hotel' ? '🏨' : item.category === 'restaurant' ? '🍴' : '🏞', color: 'bg-yellow-100' };
+}
+---
+
+<div class="space-y-12 p-4">
+  {itinerary.length === 0 ? (
+    <div class="text-center py-16 bg-gray-50 rounded shadow">
+      <p class="text-lg text-gray-600 mb-4">No itinerary items found.</p>
+      {editable && <button id="addItemFallback" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600">+ Add Itinerary Item</button>}
+    </div>
+  ) : (
+    Object.entries(groupedByDay).map(([dayIndex, items]) => (
+      <section class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-2xl font-bold">Day {dayIndex} - {items[0].date}</h3>
+          {editable && <button class="editDayBtn text-blue-600 hover:underline" data-day={dayIndex}>Edit Day</button>}
+        </div>
+
+        <div class="space-y-4">
+          {items.sort((a,b) => a.sequence - b.sequence).map((item, idx) => {
+            const card = getCardType(item);
+            return (
+              <div class={`p-4 rounded shadow ${card.color}`}>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-semibold">{card.icon} {card.label}</span>
+                  <span class="text-sm text-gray-600">{formatTimeRange(item.start_time, item.end_time)} {item.estimated_duration ? `(${item.estimated_duration})` : ''}</span>
+                </div>
+
+                {item.type === 'travel' ? (
+                  <div class="ml-2">
+                    <p class="text-lg font-medium">{item.location_from} → {item.location_to}</p>
+                    {item.travel_mode && <p class="text-sm text-gray-600">Mode: {item.travel_mode}</p>}
+                  </div>
+                ) : (
+                  <div class="ml-2">
+                    <p class="text-lg font-medium">{item.name}</p>
+                    {item.category && <p class="text-sm text-gray-600">{item.category === 'custom' ? 'Custom Activity' : item.category}</p>}
+                    {item.description && <p class="text-gray-700 mt-1">{item.description}</p>}
+                    {item.notes && <p class="text-gray-500 italic mt-1">{item.notes}</p>}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {editable && <button class="addDayItemBtn mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600" data-day={dayIndex}>+ Add Item</button>}
+      </section>
+    ))
+  )}
+</div>
+
+<script type="module">
+  // Attach event listeners after mount
+  const addFallbackBtn = document.getElementById('addItemFallback');
+  if(addFallbackBtn) {
+    addFallbackBtn.addEventListener('click', () => {
+      alert('Add new itinerary item');
+    });
+  }
+
+  const editBtns = document.querySelectorAll('.editDayBtn');
+  editBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const day = btn.getAttribute('data-day');
+      alert(`Edit itinerary for Day ${day}`);
+    });
+  });
+
+  const addDayBtns = document.querySelectorAll('.addDayItemBtn');
+  addDayBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const day = btn.getAttribute('data-day');
+      alert(`Add new itinerary item to Day ${day}`);
+    });
+  });
+</script>

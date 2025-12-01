@@ -1,3 +1,4 @@
+/// <reference path="../.astro/types.d.ts" />
 interface ImportMetaEnv {
   readonly SECRET_ENVIRONMENT_STATUS: "live"|"maintenance";
  

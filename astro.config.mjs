@@ -62,7 +62,6 @@ export default defineConfig({
       external: ['node:buffer'],
     },
     plugins: [
-      // @ts-ignore
       tailwindcss()
     ],
   },

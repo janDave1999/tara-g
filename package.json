@@ -34,7 +34,7 @@
     "marked": "^17.0.0",
     "schema-dts": "^1.1.5",
     "sortablejs": "^1.15.6",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^3.0.24",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

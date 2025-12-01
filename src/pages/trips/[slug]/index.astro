@@ -66,13 +66,6 @@ let trip_images = trip.trip_images;
 ---
 
 <PagePlate title={trip.title}>
-  <!-- Hero Section -->
-  <section class="relative h-80 w-full overflow-hidden rounded-b-3xl shadow-lg">
-    <img src={cover} alt={trip.title} class="w-full h-full object-cover" />
-    <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-      <h1 class="text-4xl md:text-5xl font-bold text-white text-center px-4">{trip.title}</h1>
-    </div>
-  </section>
   <Hero server:defer trip_images={trip_images}/>
 
   <Summary server:defer

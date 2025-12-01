@@ -1,4 +1,6 @@
 ---
+import ThemeController from "@/components/ThemeController.astro";
+
 let avatarUrl = Astro.locals.avatar_url || "";
 let userID = Astro.locals.user_id || "";
 ---
@@ -70,6 +72,7 @@ let userID = Astro.locals.user_id || "";
       <li><a href="/about" class="hover:text-blue-600">About</a></li>
       <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
       <li><a href="/blogs" class="hover:text-blue-600">Blogs</a></li>
+      <ThemeController />
       {userID ? (
         <>
           <li><a href="/dashboard" class="hover:text-blue-600">Dashboard</a></li>

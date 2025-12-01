@@ -1,7 +1,8 @@
 ---
 import PagePlate from "../layouts/PagePlate.astro";
 import Blog from "@/components/Blog/Blog.astro"
-import LoadingModal from "@/components/LoadModal.astro"
+import Skeleton from "@/components/Skeleton.astro";
+
 
 const trips = [
   {
@@ -128,8 +129,9 @@ const trips = [
       </div>
     </div>
   </section> -->
+  <Skeleton />
   <Blog server:defer>
-      <LoadingModal slot="fallback" />
+      <Skeleton slot="fallback" />
   </Blog>
 
   <!-- FAQs Section -->

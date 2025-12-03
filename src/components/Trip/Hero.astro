@@ -1,18 +1,16 @@
 ---
 import { PUBLIC_R2_URL } from "astro:env/server";
 import UploadImages from "./UploadImages.astro";
+import { Picture } from "astro:assets";
 
 let trip_images = Astro.props.trip_images || [];
 const heroImages = trip_images.filter((img: any) => img.type === "hero");
 const isOwner = Astro.props.isOwner ?? true;
 
-// Total slides = hero images + 1 upload slide (if owner)
 const totalSlides = isOwner ? heroImages.length + 1 : heroImages.length;
 ---
-  
 <!-- Slider -->
-<div class="carousel w-full">
-
+<div class="carousel mx-auto w-full mt-8 shadow rounded-xl">
   <!-- IMAGE SLIDES -->
   {
     heroImages.map((image: any, index: number) => {
@@ -23,14 +21,12 @@ const totalSlides = isOwner ? heroImages.length + 1 : heroImages.length;
       const nextId = `slide${slideNum + 1 > totalSlides ? 1 : slideNum + 1}`;
 
       return (
-        <div id={slideId} class="carousel-item relative w-full">
-          <img 
+        <div id={slideId} class="carousel-item relative w-full md:flex md:items-center md:justify-center">
+            <img 
             src={`${PUBLIC_R2_URL}/${image.key_name}`} 
             alt={image.alt || "hero-image"} 
-            class="w-full object-cover" 
+            class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] rounded-xl"
           />
-
-          <!-- Navigation -->
           <div class="absolute flex justify-between transform -translate-y-1/2 left-5 right-5 top-1/2">
             <a href={`#${prevId}`} class="btn btn-circle">❮</a>
             <a href={`#${nextId}`} class="btn btn-circle">❯</a>
@@ -46,21 +42,16 @@ const totalSlides = isOwner ? heroImages.length + 1 : heroImages.length;
       const slideNum = heroImages.length + 1;
       const slideId = `slide${slideNum}`;
 
-      const prevId = `slide${slideNum - 1 <= 0 ? totalSlides : slideNum - 1}`;
-      const nextId = `slide${slideNum + 1 > totalSlides ? 1 : slideNum + 1}`;
-
       return (
-        <div id={slideId} class="carousel-item relative w-full bg-base-200 flex items-center justify-center">
+        <div id={slideId} class="carousel-item relative w-full flex items-center justify-center bg-white">
           
-          <div class="text-center space-y-4">
+          <div class="text-center space-y-4 bg-white">
             <h2 class="text-xl font-semibold">Upload Hero Image</h2>
             <UploadImages />
           </div>
 
           <!-- Navigation -->
           <div class="absolute flex justify-between transform -translate-y-1/2 left-5 right-5 top-1/2">
-            <a href={`#${prevId}`} class="btn btn-circle">❮</a>
-            <a href={`#${nextId}`} class="btn btn-circle">❯</a>
           </div>
         </div>
       );

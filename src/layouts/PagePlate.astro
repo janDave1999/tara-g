@@ -65,7 +65,7 @@ if(description && !description.fbAppId){
     {/* Prefetches */}
     <HeadTagPrefetch links={prefetch} />
   </Fragment>
-  <div class="relative min-h-screen flex flex-col">
+  <div class="relative min-h-screen flex flex-col bg-green-50/50">
     {clean?"":<>
       {noHeader ? "":<>
         <HeaderMain />
@@ -75,10 +75,17 @@ if(description && !description.fbAppId){
 
     {noContainer ?<>
       <slot />
-    </>:<>
-      <div class={`container-crs relative`} style={`min-height: ${expectedHeight}`}>
-        <slot />
-      </div>
+      </>:<>
+      <div 
+      class="
+            container mx-auto
+             lg:px-8 
+             lg:py-8 
+            relative
+          "
+      >
+      <slot />
+    </div>
     </>}
     <CookiesConsent />
     <LoadModal />

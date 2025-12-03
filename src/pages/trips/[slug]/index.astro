@@ -45,13 +45,13 @@ type TripData = {
   trip_pool_members?: Array<{ user_id: string; contribution: number; balance: number }>;
   trip_expenses?: Array<{ user_id: string; description: string; category: string; amount: number }>;
   trip_images?: Array<{ type: string; key_name: string; }>;
+  trip_visibility?: Array<{ current_participants: number; max_participants: number, visibility: string }>;
 };
 
 if (!tripDATA) {
   return Astro.redirect("/trips");
 }
 let trip = tripDATA as TripData;
-console.log(trip);
 // Extract the first detail object
 let trip_details = trip.trip_details?.[0];
 let cover = trip_details?.cover_image || "";
@@ -63,6 +63,7 @@ let trip_pools = trip.trip_pools;
 let trip_pool_members = trip.trip_pool_members;
 let trip_expenses = trip.trip_expenses;
 let trip_images = trip.trip_images;
+let trip_visibility = trip.trip_visibility;
 ---
 
 <PagePlate title={trip.title}>
@@ -80,6 +81,9 @@ let trip_images = trip.trip_images;
       maxPax={trip_details?.max_pax}
       costSharing={trip_details?.cost_sharing}
       tags={trip_details?.tags}
+      maxPax={trip_visibility?.[0].max_participants}
+      currentPax={trip_visibility?.[0].current_participants}
+      visibility={trip_visibility?.[0].visibility}
     />
   
   <Itinerary />

@@ -1,6 +1,6 @@
 import { z } from "astro:content";
 import { supabaseAdmin } from "@/lib/supabase";
-import { ActionError, defineAction } from "astro:actions";
+import { type ActionInputSchema, type ActionReturnType, ActionError, defineAction } from "astro:actions";
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
 import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_GRAPHQL_URL } from "astro:env/server";
@@ -219,6 +219,11 @@ export const trip = {
                 trip_images (
                   key_name,
                   type
+                ),
+                trip_visibility (
+                  max_participants,
+                  visibility,
+                  current_participants
                 )
               `)
         .eq('trip_id', slug)
@@ -288,3 +293,8 @@ export const trip = {
       }
     })
   }
+
+  type tripDetailsSchema = ActionInputSchema<typeof trip.getTripDetails>;
+
+  export type TripDetails = z.output<tripDetailsSchema>;
+  export type TripDetailsRES = ActionReturnType<typeof trip.getTripDetails>;

@@ -28,6 +28,10 @@ export default defineConfig({
         protocol: "https",
         hostname: "**.imagedelivery.net",
       },
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",
+      },
     ],
   },
   devToolbar: {

@@ -33,12 +33,16 @@
       "vars":{
         "SECRET_ENVIRONMENT_STATUS": "live" // For declaring if it is in maintenance or not
       },
-      // "kv_namespaces": [
-      //   {
-      //     "binding": "x--kv-namespace--x",
-      //     "id": "x--kv-id--x",
-      //   }
-      // ],
+        // Add this to your wrangler.jsonc
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "d6253a35aff94a4782f1cee8878a6296",
+          
+          // Optional: preview_id used when running `wrangler dev` for local dev
+          // "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
+        }
+      ],
       "name": "project-nomad-tara-g",
       "ai": {
         "binding": "AI"

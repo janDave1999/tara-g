@@ -1,51 +1,9 @@
-// import { Middleware } from "@/lib/middleware/main";
-// import { sequence, defineMiddleware } from "astro/middleware";
-// import { CheckIfLive, CheckIfMaintenance } from "./callbacks/maintenance";
-
-// /*|------------------------------------------------------------------------------------------|*/
-// /*|               Entry Point                                                                |*/
-// /*|------------------------------------------------------------------------------------------|*/
-// export const onRequest = sequence(Main());
-// function Main(){
-//   return defineMiddleware(async (context, next) => {
-//     // Middleware logic goes here
-
-//     // Skip if it is an action
-//     if(context.url.pathname.startsWith("/_actions")){
-//       return next();
-//     }
-//     //If it is a server island loader
-//     if(context.url.pathname.startsWith("/_server-island")){
-//       return next();
-//     }
-
-//     if(context.url.pathname.startsWith("/api/auth")) {
-//       return next();
-//     };
-
-//     // Middleware Utility
-//     const mid = new Middleware(context, next);
-
-//     // Grouping Example
-
-//     // 1st Group Middleware
-//     await mid.group(async(mid)=>{
-//       //Check if maintenance
-//       await mid.path().except(["/memo/maintenance"], "startend").do(CheckIfMaintenance);
-//       await mid.path().select(["/memo/maintenance"], "startend").do(CheckIfLive);
-
-//       return mid.fin(); // to end the group
-//     });
-
-
-//     return await mid.result();
-//   });
-// }
-
-
 import { defineMiddleware } from "astro:middleware";
 import { supabase } from "../lib/supabase";
 import micromatch from "micromatch";
+import { isBlocked, getFriendsOfUser } from "@/scripts/trip/Visibility";
+import { getTripDetails } from "@/scripts/trip/details";
+import type { TripDetailsRES } from "@/actions/trips";
 
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
@@ -88,6 +46,7 @@ export const onRequest = defineMiddleware(
     // 🔒 Protected UI pages
     if (micromatch.isMatch(url.pathname, protectedRoutes)) {
       if (!locals.user_id) {
+        console.log("🔒 Protected UI pages");
         return redirect("/signin");
       }
     }
@@ -114,6 +73,56 @@ export const onRequest = defineMiddleware(
         return redirect("/feeds");
       }
     }
+
+    if (url.pathname.startsWith("/trips/") || url.pathname.startsWith("/api/trips/")) {
+      const userId = locals.user_id;
+
+      // No user → reject immediately
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+      }
+
+      // Extract tripId from URL: /trips/123 → 123
+      const segments = url.pathname.split("/");
+      const tripId = segments[2]; // index 2 = after /trips/
+
+      if (tripId && tripId !== "create") {
+        const trip: TripDetailsRES = await getTripDetails({ slug: tripId });
+        if (!trip) {
+          return new Response("Trip not found", { status: 404 });
+        }
+
+        // 1. Block check
+        if (await isBlocked(trip.data?.owner_id, userId)) {
+          return new Response("Forbidden: You are blocked by the trip owner", { status: 403 });
+        }
+
+        // 2. Owner → always allowed
+        if (trip.data?.owner_id === userId) {
+          return next();
+        }
+
+        // 3. Public → allowed
+        if (trip.data?.trip_visibility?.[0]?.visibility === "public") {
+          return next();
+        }
+
+        // 4. Friends → check actual friendship
+        if (trip.data?.trip_visibility?.[0]?.visibility === "friends") {
+          const friends = await getFriendsOfUser(trip.data?.owner_id);
+          if (friends.includes(userId)) {
+            return next();
+          }
+          return new Response("Forbidden: Friends only", { status: 403 });
+        }
+
+        // 5. Private → block
+        if (trip.data?.trip_visibility?.[0]?.visibility === "private") {
+          return new Response("Forbidden: Private trip", { status: 403 });
+        }
+      }
+    }
+
 
     return next();
   }

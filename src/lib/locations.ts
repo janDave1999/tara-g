@@ -27,8 +27,8 @@ export async function saveLocation(locationAddress: string, coordinates: string)
     .from("locations")
     .insert({
         name: locationAddress,
-        lat: coordinatesObj[0],
-        lng: coordinatesObj[1]
+        lat: coordinatesObj[1],
+        lng: coordinatesObj[0]
     })
     .select("location_id")
     .single();

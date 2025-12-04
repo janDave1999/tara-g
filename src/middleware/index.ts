@@ -52,11 +52,12 @@ export const onRequest = defineMiddleware(
     }
 
     // 🔒 Protected actions
-    if (url.pathname.startsWith("/_actions/")) {
-      if (!locals.user_id) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-    }
+    // if (url.pathname.startsWith("/_actions/")) {
+    //   if (!locals.user_id) {
+    //     console.log("🔒 Protected actions");
+    //     return new Response("Unauthorized", { status: 401 });
+    //   }
+    // }
 
     // 🔒 Protected API
     if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {

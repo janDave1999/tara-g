@@ -58,7 +58,7 @@ export default defineConfig({
       CF_SPECIFIC_BUCKET_S3_URL: envField.string({ context: "server", access: "public" }),
       CF_ACCOUNT_ID: envField.string({ context: "server", access: "public" }),
       PUBLIC_R2_BUCKET: envField.string({ context: "server", access: "public" }),
-      PUBLIC_R2_URL: envField.string({ context: "server", access: "public" }),
+      PUBLIC_R2_URL: envField.string({ context: "client", access: "public" }),
     },
   },
   vite: {

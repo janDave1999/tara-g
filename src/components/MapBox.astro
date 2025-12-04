@@ -1,147 +1,40 @@
 ---
-import PagePlate from "@/layouts/PagePlate.astro";
-import { Mountain, Sailboat, TentTree, Kayak } from "@lucide/astro";
-
-const quickActions = [
-  { label: "Hiking", query: "hiking trail", Icon: Mountain },
-  { label: "Beach", query: "beach", Icon: Sailboat },
-  { label: "Camping", query: "camping site", Icon: TentTree },
-  { label: "Island Hopping", query: "island hopping", Icon: Kayak },
-];
+import PagePlate from "@/layouts/PagePlate.astro"
 ---
 
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mapbox GL JS map</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
 <style>
-/* Map takes entire content area between header + footer */
-#map {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 120px); /* adjust if header/footer height changes */
-  /* margin-top: 60px;  header height */
-  margin-bottom: 60px; /* bottom nav height */
-  z-index: 0;
-}
-
-/* Center floating search */
-.search-container {
-  position: absolute;
-  top: calc(5px + 1rem); /* header + 1rem spacing */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  max-width: 400px;
-  z-index: 20;
-}
-
-/* Search input */
-#mapSearchInput {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 2rem;
-  border: 1px solid rgba(255,255,255,0.55);
-  background: rgba(249, 248, 248, 0.35);
-  color: black  ;
-  box-shadow: 0 8px 20px rgba(10,10,10,0.08);
-  /* text color: #111827; */
-  
-}
-
-/* Toggle button */
-.quick-toggle {
-  position: absolute;
-  top: calc(60px + 25%); /* relative to visible content */
-  left: 1rem;
-  background: rgba(0,0,0,0.7);
-  color: white;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 30;
-}
-
-/* Floating action drawer */
-.quick-actions {
-  position: absolute;
-  top: calc(60px + 25% + 3.5rem);
-  left: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 30;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.quick-actions.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-10px);
-}
-
-.quick-actions button {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.55);
-  color: black;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+body { margin: 0; padding: 0; }
+/* #map { position: absolute; top: 0; bottom: 0; width: 100%; height: auto;} */
 </style>
-<div id="map">
-  <!-- Search -->
-  <div class="search-container">
-    <input id="mapSearchInput" type="text" placeholder="Search places..." />
-  </div>
+</head>
+<body>
+<PagePlate >
+<div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
+</PagePlate>
+<script >
+  import mapboxgl from "mapbox-gl";
+  import { actions } from "astro:actions";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+    async function getMapboxToken() {
+      const res = await fetch("/api/mapbox-token");
+      const data = await res.json();
+      if (!data.token) throw new Error("Mapbox token not available");
+      return data.token;
+    }
 
-  <!-- Floating quick actions -->
-  <div id="quickToggle" class="quick-toggle">☰</div>
-
-  <div id="quickActions" class="quick-actions">
-    {quickActions.map(action => (
-      <button onclick={`window.performSearch('${action.query}')`} title={action.label}>
-        <action.Icon class="w-5 h-5" />
-      </button>
-    ))}
-  </div>
-</div>
-
-<script>
-import mapboxgl from "mapbox-gl";
-
-interface Feed {
-  title: string;
-  location: string;
-  estimatedCost: number;
-  needsMembers: boolean;
-  lng: number;
-  lat: number;
-}
-
-let map: mapboxgl.Map;
-let feedMarkers: mapboxgl.Marker[] = [];
-let searchMarker: mapboxgl.Marker | null = null;
-let mapReady = false;
-let pendingFeeds: Feed[] = [];
-
-async function getMapboxToken(): Promise<string> {
-  const res = await fetch("/api/mapbox-token");
-  const data = await res.json();
-  if (!data.token) throw new Error("Mapbox token not available");
-  return data.token;
-}
-
-async function initMap(): Promise<void> {
+async function initMap() {
   const token = await getMapboxToken();
   mapboxgl.accessToken = token;
 
-  let userLocation: [number, number] = [120.9842, 14.5995];
+  let userLocation = [120.9842, 14.5995];
   if (navigator.geolocation) {
     await new Promise<void>(resolve => {
       navigator.geolocation.getCurrentPosition(
@@ -151,126 +44,114 @@ async function initMap(): Promise<void> {
     });
   }
 
-  map = new mapboxgl.Map({
+  let map = new mapboxgl.Map({
     container: "map",
-    style: "mapbox://styles/mapbox/streets-v12",
-    center: userLocation,
-    zoom: 12
+    style: "mapbox://styles/mapbox/standard",
+    center: [userLocation[0], userLocation[1]],
+    zoom: 10
   });
 
-  map.on("load", () => {
-    mapReady = true;
-    if (pendingFeeds.length) {
-      renderMarkers(pendingFeeds);
-      pendingFeeds = [];
-    }
-  });
-}
+  map.on("load", async () => {
+    const { data: nbTrips, error } = await actions.trip.getNearbyTrips({
+      lng: userLocation[1],
+      lat: userLocation[0],
+      radius: 50000
+    });
+    if (error) throw error;
 
-function renderMarkers(feeds: Feed[]): void {
-  if (!mapReady) {
-    pendingFeeds = feeds;
-    return;
-  }
-  feedMarkers.forEach(m => m.remove());
-  feedMarkers = [];
+    // Render markers with images
+    nbTrips.forEach((trip: any) => {
+      console.log(`Rendering marker for trip ${trip.title}`);
+      const el = document.createElement("div");
+      el.style.width = "40px";
+      el.style.height = "40px";
+      el.style.borderRadius = "50%";
+      el.style.overflow = "hidden";
+      el.style.border = trip.current_participants < trip.max_participants ? "2px solid #ff5733" : "2px solid #3bb2d0";
 
-  feeds.forEach(feed => {
-    const marker = new mapboxgl.Marker({ color: feed.needsMembers ? "#ff5733" : "#3bb2d0" })
-      .setLngLat([feed.lng, feed.lat])
-      .setPopup(new mapboxgl.Popup().setHTML(`
-        <div class="p-2 text-sm text-gray-900">
-          <h3 class="font-bold">${feed.title}</h3>
-          <p>${feed.location}</p>
-          <p class="font-semibold">₱${feed.estimatedCost}</p>
-          <p class="text-${feed.needsMembers ? "red-500" : "green-500"}">
-            ${feed.needsMembers ? "Looking for members!" : "Full"}
-          </p>
+      const img = document.createElement("img");
+      img.src = `${PUBLIC_R2_URL}/${trip.images?.[0] || "fallback.png"}`;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+
+      el.appendChild(img);
+
+    
+   const imageURL = trip.images?.length
+  ? `${PUBLIC_R2_URL}/${trip.images[0]}`
+  : "/images/default-trip.jpg";
+
+const distanceKm = (trip.distance_meters / 1000).toFixed(1);
+
+new mapboxgl.Marker({ element: el })
+  .setLngLat([trip.lng, trip.lat])
+  .setPopup(
+    new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <!-- Hero Image -->
+        <div class="w-full h-32 bg-gray-200">
+          <img src="${imageURL}" class="w-full h-full object-cover" />
         </div>
-      `))
-      .addTo(map);
-    feedMarkers.push(marker);
-  });
+
+        <div class="p-3 text-gray-800 space-y-2">
+          
+          <!-- Title -->
+          <div>
+            <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
+            <p class="text-sm text-gray-600"><span class="font-semibold">Location:</span> ${trip.location_name}</p>
+          </div>
+
+          <!-- Date & Distance -->
+          <div class="text-xs text-gray-500 flex justify-between">
+            <span>📅 ${trip.start_date} → ${trip.end_date}</span>
+            <span>📍 ${distanceKm} km away</span>
+          </div>
+
+          <!-- Badges -->
+          <div class="flex gap-2 pt-1 flex-wrap">
+            <span class="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700">
+              ${trip.location_type}
+            </span>
+
+            <span class="px-2 py-1 text-xs rounded-md 
+              ${trip.visibility === "private" 
+                ? "bg-yellow-100 text-yellow-700" 
+                : "bg-green-100 text-green-700"}">
+              ${trip.visibility}
+            </span>
+
+            <span class="px-2 py-1 text-xs rounded-md 
+              ${trip.current_participants < trip.max_participants 
+                ? "bg-red-100 text-red-600" 
+                : "bg-green-100 text-green-600"}">
+              ${trip.current_participants}/${trip.max_participants} slots
+            </span>
+          </div>
+
+          <!-- Description Teaser -->
+          <p class="text-sm text-gray-700 line-clamp-2">
+            ${trip.trip_details || "No description available."}
+          </p>
+
+          <!-- CTA Button -->
+          <button 
+            onclick="window.location.href='/trips/${trip.trip_id}'"
+            class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">
+            View Trip →
+          </button>
+        </div>
+    `)
+  )
+  .addTo(map);
+
+    });
+  })
 }
 
-declare global {
-  interface Window {
-    performSearch: (query: string) => Promise<void>;
-  }
-}
-
-// Search function
-window.performSearch = async function(query: string): Promise<void> {
-  if (!map) return;
-  const token = mapboxgl.accessToken;
-
-  const res = await fetch(
-    `https://api.mapbox.com/geocoding/v6/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&limit=5&country=PH`
-  );
-  const data = await res.json();
-  if (!data.features?.length) return;
-
-  const feature = data.features[0];
-  const [lng, lat] = feature.center;
-
-  map.flyTo({ center: [lng, lat], zoom: 10 });
-
-  if (searchMarker) searchMarker.remove();
-  searchMarker = new mapboxgl.Marker({ color: "#ff0000" })
-    .setLngLat([lng, lat])
-    .setPopup(new mapboxgl.Popup().setHTML(`<strong>${feature.place_name}</strong>`))
-    .addTo(map);
-
-  // Filter nearby feed markers
-  const maxDistanceKm = 5;
-  feedMarkers.forEach(marker => {
-    const { lat: mLat, lng: mLng } = marker.getLngLat();
-    const distance = getDistanceKm(lat, lng, mLat, mLng);
-    marker.getElement().style.display = distance <= maxDistanceKm ? "block" : "none";
-  });
-}
-
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  await initMap();
-
-  const searchInput = document.getElementById("mapSearchInput") as HTMLInputElement;
-  const searchBtn = document.getElementById("mapSearchBtn") as HTMLButtonElement;
-
-  searchBtn.addEventListener("click", () => {
-    const query = searchInput.value.trim();
-    if (query) window.performSearch(query);
-  });
-
-  searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      const query = searchInput.value.trim();
-      if (query) window.performSearch(query);
-    }
-  });
+window.addEventListener("DOMContentLoaded", () => {
+  initMap();
 });
-window.addEventListener("feedsLoaded", (e) => {
-  const event = e as CustomEvent<Feed[]>;
-  renderMarkers(event.detail);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const toggle = document.getElementById("quickToggle") as HTMLElement;
-  const actions = document.getElementById("quickActions") as HTMLElement;
-
-  toggle.addEventListener("click", () => {
-    actions.classList.toggle("hidden");
-  });
-});
-
-
 </script>
+
+</body>
+</html>

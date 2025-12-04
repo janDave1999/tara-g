@@ -1,6 +1,7 @@
 import type { TripDetailsRES } from "@/actions/trips";
 import { supabaseAdmin } from "@/lib/supabase";
 export async function getTripDetails({ slug }: { slug: string }): Promise<TripDetailsRES> {
+     console.log("Fetching trip details for slug:", slug);
     const { data, error } = await supabaseAdmin
     .from('trips')
     .select(`
@@ -62,6 +63,7 @@ export async function getTripDetails({ slug }: { slug: string }): Promise<TripDe
         .single(); // fetch only one record
         
     if (error) {
+      console.error("Error fetching trip details:", error);
         throw new Error(error.message);
     } else {
         return data as unknown as TripDetailsRES;

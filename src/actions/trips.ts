@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { type ActionInputSchema, type ActionReturnType, ActionError, defineAction } from "astro:actions";
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
-import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_GRAPHQL_URL } from "astro:env/server";
 import { uploadToR2 } from "@/scripts/R2/upload";
 // get user id in astro locals
 
@@ -244,7 +243,7 @@ export const trip = {
         return supabaseAdmin.from("trips").select("*").eq("owner_id", context.locals.user_id || "");
       }
     }),
-    
+
     uploadToR2: defineAction({
       accept: "json",
       input: z.object({
@@ -290,6 +289,36 @@ export const trip = {
         })
         
         return reponse;
+      }
+    }),
+
+    getNearbyTrips: defineAction({
+      input: z.object({
+        lat: z.number(),
+        lng: z.number(),
+        radius: z.number(),
+        location_filter: z.string().default("destination"),
+      }),
+
+      async handler(input) {
+        const { data, error  } = await supabaseAdmin.rpc("get_nearby_trips", {
+          user_lng: input.lat,
+          user_lat: input.lng,
+          page: 1,
+          page_size: 50,
+          radius_meters: input.radius,
+          location_filter: input.location_filter
+        }) 
+        console.log("data", data);
+
+        if (error) {
+          console.log("[error]", error);
+          throw new ActionError({
+            message: error.message,
+            code: "INTERNAL_SERVER_ERROR"
+          })
+        }
+        return data;
       }
     })
   }

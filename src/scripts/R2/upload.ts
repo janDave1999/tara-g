@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { r2 } from "@/lib/cf_s3_client";
-import { PUBLIC_R2_BUCKET, PUBLIC_R2_URL } from "astro:env/server";
+import { PUBLIC_R2_BUCKET,  } from "astro:env/server";
+import { PUBLIC_R2_URL } from "astro:env/client";
 export async function uploadToR2(fileBuffer: Buffer, fileName: string, contentType: string, keyname: string) {
   console.log("uploadToR2 called with", { fileName, contentType });
 

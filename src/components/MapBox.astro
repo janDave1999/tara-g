@@ -234,7 +234,7 @@ searchBtn.onclick = async () => {
     ? `${PUBLIC_R2_URL}/${trip.images?.[0]}`
     : "/images/default-trip.jpg";
 
-    const distanceKm = (nbTrips.distance_meters / 1000).toFixed(2);
+    const distanceKm = (trip.distance_meters / 1000).toFixed(2);
 
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([trip.lng, trip.lat])

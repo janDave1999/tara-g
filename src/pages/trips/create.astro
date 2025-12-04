@@ -249,7 +249,7 @@ createMapboxSearchBox({
             showToast({ message: data.error.message, type: "error" });
           } else {
             let slug = JSON.parse(data.data)
-            slug = slug.data.slug
+            slug = slug.data.trip_id
             console.log("slug", slug);
             window.location.href = `/trips/${slug}`;
           }

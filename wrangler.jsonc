@@ -21,6 +21,12 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  "r2_buckets": [
+    {
+      "binding": "TRIP_HERO",
+      "bucket_name": "staging-tara-g-assets"
+    }
+  ],
   // KV
   "env": {
     "production":{

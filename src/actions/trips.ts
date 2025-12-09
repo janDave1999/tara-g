@@ -137,16 +137,6 @@ export const trip = {
           code: "INTERNAL_SERVER_ERROR"
         })
       }
-      // const { error: tripDropoffError } = await saveTripLoc(trip_id, dropoff, "dropoff", "", "", 0);
-      // if (tripDropoffError) {
-      //     await rollBack("trips", trip_id);
-      //     console.log("[error]Checkpoint 4:", tripDropoffError);
-      //     throw new ActionError({
-      //         message: tripDropoffError,
-      //         code: "INTERNAL_SERVER_ERROR"
-      //     })
-      // }
-      
       let reponse = JSON.stringify({
         success: true,
         message: "Trip created successfully!",
@@ -245,52 +235,80 @@ export const trip = {
     }),
 
     uploadToR2: defineAction({
-      accept: "json",
-      input: z.object({
-        files: z.array(
-          z.object({
-            file: z.string(),  // base64
-            name: z.string(),
-            type: z.string(),
-          })
-        ),
-        trip_id: z.string(),
-      }),
-      
-      async handler({ files, trip_id }) {
-        
-        for (const f of files) {
-          const buffer = Buffer.from(f.file, "base64");
-          const keyname = `trip/hero/${f.name}`;
-          const url = await uploadToR2(buffer, f.name, f.type, keyname);
-          if (url) {
-            // save keyname to database
-            const { error } = await supabaseAdmin
-              .from("trip_images")
-              .insert({ "trip_id": trip_id, "key_name": keyname, "type": "hero" })
-            if (error) {
-              console.log("[error]", error);
-              throw new ActionError({
-                message: error.message,
-                code: "INTERNAL_SERVER_ERROR"
-              })
-            }
-          } else {
-            throw new ActionError({
-              message: "Error uploading image",
-              code: "INTERNAL_SERVER_ERROR"
-            })
-          }
-        }
+  accept: "json",
 
-        let reponse = JSON.stringify({
-          success: true,
-          message: "Image uploaded successfully!",
-        })
+  input: z.object({
+    files: z.array(
+      z.object({
+        file: z.string(), // base64
+        name: z.string(),
+        type: z.string(),
+      })
+    ),
+    trip_id: z.string(),
+  }),
+
+  async handler({ files, trip_id }) {
+    try {
+      for (const f of files) {
+        // --- Proper base64 file size check (in bytes) ---
+        const base64 = f.file;
+        const sizeInBytes = (base64.length * 3) / 4 - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0);
         
-        return reponse;
+        if (sizeInBytes > 5 * 1024 * 1024) {
+          throw new ActionError({
+            message: "File too large (max 5MB)",
+            code: "BAD_REQUEST",
+          });
+        }
+        
+        // decode
+        const buffer = Buffer.from(base64, "base64");
+        
+        // unique filename
+        const keyname = `trip/hero/${Date.now()}-${crypto.randomUUID()}-${f.name}`;
+        
+        const url = await uploadToR2(buffer, f.name, f.type, keyname);
+        
+        if (!url) {
+          throw new ActionError({
+            message: "Upload failed",
+            code: "INTERNAL_SERVER_ERROR",
+          });
+        }
+        
+        // save record in DB
+        const { error } = await supabaseAdmin
+        .from("trip_images")
+        .insert({
+          trip_id,
+          key_name: keyname,
+          type: "hero",
+        });
+        
+        if (error) {
+          console.log("[DB ERROR]", error);
+          throw new ActionError({
+            message: error.message,
+            code: "INTERNAL_SERVER_ERROR",
+          });
+        }
       }
-    }),
+      
+      return {
+        success: true,
+        message: "Images uploaded successfully!",
+      };
+    } catch (error: any) {
+      console.log("[ERROR]", error);
+      throw new ActionError({
+        message: error?.message || "Upload failed",
+        code: "INTERNAL_SERVER_ERROR",
+      });
+    }
+  },
+  }),
+
 
     getNearbyTrips: defineAction({
       input: z.object({
@@ -308,11 +326,9 @@ export const trip = {
           page_size: 50,
           radius_meters: input.radius,
           location_filter: input.location_filter
-        }) 
-        console.log("data", data);
+        })
 
         if (error) {
-          console.log("[error]", error);
           throw new ActionError({
             message: error.message,
             code: "INTERNAL_SERVER_ERROR"

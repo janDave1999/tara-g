@@ -1,5 +1,6 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro"
+import { Search } from "@lucide/astro";
 ---
 
 <!DOCTYPE html>
@@ -13,206 +14,120 @@ import PagePlate from "@/layouts/PagePlate.astro"
 <style>
   #search-area-btn {
     position: absolute;
-    top: 80px;
+    top: 160px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 999;
     background: white;
     padding: 8px 14px;
     border-radius: 6px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    box-shadow: 0 1px 4px rgba(66, 43, 43, 0.25);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     display: none; /* hidden by default */
   }
+
+    #search-box {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: #ffffff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-weight: 600;
+    display: flex;
+    flex-wrap: wrap;
+    width: 90%;
+    max-width: 500px;
+    transition: all 0.2s ease;
+  }
 body { margin: 0; padding: 0; }
-/* #map { position: absolute; top: 0; bottom: 0; width: 100%; height: auto;} */
 </style>
 </head>
 <body>
-<PagePlate >
+<PagePlate title="Maps" noContainer >
+  <!-- search input -->
+   <div id="search-box" class="flex items-center">
+    <div class="flex-1 mr-2 relative">
+    <input type="text" class="border-0 outline-none text-sm w-full" id="search-area-input" placeholder="Search trips by province" />
+    <ul id="search-results" class="search-results absolute top-10 right-0 mt-2 bg-white hidden shadow-md rounded-md p-2 w-full max-h-[calc(50vh-120px)] overflow-y-auto">No results</ul>
+    </div>
+    <button id="search-button">
+      <Search class="w-5 h-5 text-black" />
+    </button>
+   </div>
   <button id="search-area-btn">Search this area</button>
-<div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
+  <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
-<script >
-  import mapboxgl from "mapbox-gl";
-  import { actions } from "astro:actions";
-  import { PUBLIC_R2_URL } from "astro:env/client";
-    async function getMapboxToken() {
-      const res = await fetch("/api/mapbox-token");
-      const data = await res.json();
-      if (!data.token) throw new Error("Mapbox token not available");
-      return data.token;
+<script>
+import mapboxgl from "mapbox-gl";
+import { actions } from "astro:actions";
+import { PUBLIC_R2_URL } from "astro:env/client";
+import { PH_PROVINCES } from "@/data/phProvinces";
+
+async function getMapboxToken() {
+  const res = await fetch("/api/mapbox-token");
+  const data = await res.json();
+  if (!data.token) throw new Error("Mapbox token not available");
+  return data.token;
+}
+
+const searchBox = document.getElementById("search-area-input") as HTMLInputElement;
+const resultsEl = document.getElementById("search-results") as HTMLUListElement;
+const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
+
+let map: mapboxgl.Map;
+let markers: mapboxgl.Marker[] = [];
+
+function clearMarkers() {
+  markers.forEach(m => m.remove());
+  markers = [];
+}
+
+// Dynamic radius based on zoom
+function getRadiusByZoom(zoom: number) {
+  if (zoom <= 6) return 200_000;
+  if (zoom <= 7) return 100_000;
+  if (zoom <= 8) return 50_000;
+  if (zoom <= 9) return 25_000;
+  return 10_000;
+}
+
+// Fetch trips in batches until no data is returned
+async function fetchNearbyTrips(lng: number, lat: number) {
+  let page = 1;
+  const allTrips: any[] = [];
+  const radius = getRadiusByZoom(map.getZoom());
+  console.log(radius);
+  while (true) {
+    const { data: trips, error } = await actions.trip.getNearbyTrips({
+      lng,
+      lat,
+      page,
+      radius,
+    });
+
+    if (error) {
+      console.error(error);
+      break;
     }
-  
-  let map: mapboxgl.Map;
-  let markers: mapboxgl.Marker[] = [];
 
-  function clearMarkers() {
-    console.log("Clearing markers");
-    markers.forEach(m => m.remove());
-    markers = [];
+    if (!trips || trips.length === 0) break;
+
+    allTrips.push(...trips);
+    page++;
   }
 
-  const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
+  return allTrips;
+}
 
-// Show button when map is moved
-
-
-async function initMap() {
-  const token = await getMapboxToken();
-  mapboxgl.accessToken = token;
-
-  let userLocation = [120.9842, 14.5995];
-  if (navigator.geolocation) {
-    await new Promise<void>(resolve => {
-      navigator.geolocation.getCurrentPosition(
-        pos => { userLocation = [pos.coords.longitude, pos.coords.latitude]; resolve(); },
-        () => resolve()
-      );
-    });
-  }
-
-   map = new mapboxgl.Map({
-    container: "map",
-    style: "mapbox://styles/mapbox/standard",
-    center: [userLocation[0], userLocation[1]],
-    zoom: 14
-  });
-  
-  map.addControl(new mapboxgl.NavigationControl());
-
-  map.on("load", async () => {
-    console.log("Map loaded", userLocation);
-    const { data: nbTrips, error } = await actions.trip.getNearbyTrips({
-      lng: userLocation[1],
-      lat: userLocation[0],
-      radius: 5000
-    });
-    if (error) throw error;
-
-    // Render markers with images
-    nbTrips.forEach((trip: any) => {
-      console.log(`Rendering marker for trip ${trip.title}`);
-      const el = document.createElement("div");
-      el.style.width = "40px";
-      el.style.height = "40px";
-      el.style.borderRadius = "50%";
-      el.style.overflow = "hidden";
-      el.style.border = trip.current_participants < trip.max_participants ? "2px solid #ff5733" : "2px solid #3bb2d0";
-
-      const img = document.createElement("img");
-      img.src = `${PUBLIC_R2_URL}/${trip.images?.[0] || "fallback.png"}`;
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
-
-      el.appendChild(img);
-
-    
-   const imageURL = trip.images?.length
-  ? `${PUBLIC_R2_URL}/${trip.images[0]}`
-  : "/images/default-trip.jpg";
-
-const distanceKm = (trip.distance_meters / 1000).toFixed(2);
-
-const marker = new mapboxgl.Marker({ element: el })
-  .setLngLat([trip.lng, trip.lat])
-  .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <!-- Hero Image -->
-        <div class="w-full h-32 bg-gray-200">
-          <img src="${imageURL}" class="w-full h-full object-cover" />
-        </div>
-
-        <div class="p-3 text-gray-800 space-y-2">
-          
-          <!-- Title -->
-          <div>
-            <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
-            <p class="text-sm text-gray-600"><span class="font-semibold">Location:</span> ${trip.location_name}</p>
-          </div>
-
-          <!-- Date & Distance -->
-          <div class="text-xs text-gray-500 flex justify-between">
-            <span>📅 ${trip.start_date} → ${trip.end_date}</span>
-            <span>📍 ${distanceKm} km away</span>
-          </div>
-
-          <!-- Badges -->
-          <div class="flex gap-2 pt-1 flex-wrap">
-            <span class="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700">
-              ${trip.location_type}
-            </span>
-
-            <span class="px-2 py-1 text-xs rounded-md 
-              ${trip.visibility === "private" 
-                ? "bg-yellow-100 text-yellow-700" 
-                : "bg-green-100 text-green-700"}">
-              ${trip.visibility}
-            </span>
-
-            <span class="px-2 py-1 text-xs rounded-md 
-              ${trip.current_participants < trip.max_participants 
-                ? "bg-red-100 text-red-600" 
-                : "bg-green-100 text-green-600"}">
-              ${trip.current_participants}/${trip.max_participants} slots
-            </span>
-          </div>
-
-          <!-- Description Teaser -->
-          <p class="text-sm text-gray-700 line-clamp-2">
-            ${trip.trip_details || "No description available."}
-          </p>
-
-          <!-- CTA Button -->
-          <button 
-            onclick="window.location.href='/trips/${trip.trip_id}'"
-            class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">
-            View Trip →
-          </button>
-        </div>
-    `)
-  )
-  .addTo(map);
-      markers.push(marker);
-    });
-  })
-
-  map.on("moveend", () => {
-  searchBtn.style.display = "block";
-});
-
-// On click → fetch nearby trips using new center
-searchBtn.onclick = async () => {
-  searchBtn.textContent = "Searching...";
-  searchBtn.disabled = true;
-
-  const center = map.getCenter();
-  const newLng = center.lng;
-  const newLat = center.lat;
-
-  console.log("New center:", newLng, newLat);
-  // Fetch trips
-  const { data: nbTrips, error } = await actions.trip.getNearbyTrips({
-    lng: newLat,
-    lat: newLng,
-    radius: 5000
-  });
-
-  
-
-  searchBtn.textContent = "Search this area";
-  searchBtn.disabled = false;
-  searchBtn.style.display = "none";
-
-  if (error) return console.error(error);
-
-  // Clear old markers
+function renderMarkers(trips: any[]) {
   clearMarkers();
-
-  // Re-render markers
-  nbTrips.forEach((trip: any) => {
+  trips.forEach(trip => {
     const el = document.createElement("div");
     el.style.width = "40px";
     el.style.height = "40px";
@@ -229,81 +144,125 @@ searchBtn.onclick = async () => {
     img.style.objectFit = "cover";
     el.appendChild(img);
 
-    const imageURL = trip.images?.length
-
-    ? `${PUBLIC_R2_URL}/${trip.images?.[0]}`
-    : "/images/default-trip.jpg";
-
     const distanceKm = (trip.distance_meters / 1000).toFixed(2);
+    const imageURL = trip.images?.length ? `${PUBLIC_R2_URL}/${trip.images[0]}` : "/images/default-trip.jpg";
 
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([trip.lng, trip.lat])
       .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <!-- Hero Image -->
         <div class="w-full h-32 bg-gray-200">
           <img src="${imageURL}" class="w-full h-full object-cover" />
         </div>
-
         <div class="p-3 text-gray-800 space-y-2">
-          
-          <!-- Title -->
           <div>
             <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
             <p class="text-sm text-gray-600"><span class="font-semibold">Location:</span> ${trip.location_name}</p>
           </div>
-
-          <!-- Date & Distance -->
           <div class="text-xs text-gray-500 flex justify-between">
             <span>📅 ${trip.start_date} → ${trip.end_date}</span>
             <span>📍 ${distanceKm} km away</span>
           </div>
-
-          <!-- Badges -->
           <div class="flex gap-2 pt-1 flex-wrap">
-            <span class="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700">
-              ${trip.location_type}
-            </span>
-
-            <span class="px-2 py-1 text-xs rounded-md 
-              ${trip.visibility === "private" 
-                ? "bg-yellow-100 text-yellow-700" 
-                : "bg-green-100 text-green-700"}">
-              ${trip.visibility}
-            </span>
-
-            <span class="px-2 py-1 text-xs rounded-md 
-              ${trip.current_participants < trip.max_participants 
-                ? "bg-red-100 text-red-600" 
-                : "bg-green-100 text-green-600"}">
-              ${trip.current_participants}/${trip.max_participants} slots
-            </span>
+            <span class="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700">${trip.location_type}</span>
+            <span class="px-2 py-1 text-xs rounded-md ${trip.visibility === "private" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}">${trip.visibility}</span>
+            <span class="px-2 py-1 text-xs rounded-md ${trip.current_participants < trip.max_participants ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}">${trip.current_participants}/${trip.max_participants} slots</span>
           </div>
-
-          <!-- Description Teaser -->
-          <p class="text-sm text-gray-700 line-clamp-2">
-            ${trip.trip_details || "No description available."}
-          </p>
-
-          <!-- CTA Button -->
-          <button 
-            onclick="window.location.href='/trips/${trip.trip_id}'"
-            class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">
-            View Trip →
-          </button>
+          <p class="text-sm text-gray-700 line-clamp-2">${trip.trip_details || "No description available."}</p>
+          <button onclick="window.location.href='/trips/${trip.trip_id}'" class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">View Trip →</button>
         </div>
-    `)
-  )
+      `))
       .addTo(map);
 
     markers.push(marker);
   });
-};
-
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  initMap();
-});
+async function initMap() {
+  const token = await getMapboxToken();
+  mapboxgl.accessToken = token;
+
+  let userLocation: [number, number] = [120.9842, 14.5995];
+  if (navigator.geolocation) {
+    await new Promise<void>(resolve => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        userLocation = [pos.coords.longitude, pos.coords.latitude];
+        resolve();
+      }, () => resolve());
+    });
+  }
+
+  map = new mapboxgl.Map({
+    container: "map",
+    style: "mapbox://styles/mapbox/standard",
+    center: userLocation,
+    zoom: 14
+  });
+
+  const nav = new mapboxgl.NavigationControl();
+  const geolocate = new mapboxgl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: true
+  })
+  map.addControl(nav, 'bottom-left');
+  map.addControl(geolocate, 'bottom-left');
+
+  // Initial nearby trips
+  const initialTrips = await fetchNearbyTrips(userLocation[1], userLocation[0]);
+  renderMarkers(initialTrips);
+
+  // Show search button on move
+  map.on("moveend", () => { searchBtn.style.display = "block"; });
+
+  // Search button click
+  searchBtn.onclick = async () => {
+    searchBtn.textContent = "Searching...";
+    searchBtn.disabled = true;
+    const center = map.getCenter();
+    const trips = await fetchNearbyTrips(center.lat, center.lng);
+    renderMarkers(trips);
+    searchBtn.textContent = "Search this area";
+    searchBtn.disabled = false;
+    searchBtn.style.display = "none";
+  };
+
+  // Province search input
+  searchBox.addEventListener("input", () => {
+    searchBtn.style.display = "none";
+    const query = searchBox.value.trim().toLowerCase();
+    resultsEl.innerHTML = "";
+    if (query.length < 2) return;
+
+    const matches = PH_PROVINCES.filter(p =>
+      p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
+    ).slice(0, 8);
+
+    matches.forEach(province => {
+      resultsEl.classList.remove("hidden");
+      const li = document.createElement("li");
+      li.textContent = province.name;
+      li.addEventListener("click", async () => {
+        resultsEl.classList.add("hidden");
+        searchBox.value = province.name;
+        resultsEl.innerHTML = "";
+
+        map.flyTo({
+          center: [province.lng, province.lat],
+          zoom: 10,
+          essential: true
+        });
+        const trips = await fetchNearbyTrips(province.lat, province.lng);
+        
+        searchBtn.style.display = "none";
+        renderMarkers(trips);
+      });
+      resultsEl.appendChild(li);
+    });
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => initMap());
 </script>
 
 </body>

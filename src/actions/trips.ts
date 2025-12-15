@@ -310,34 +310,59 @@ export const trip = {
   }),
 
 
-    getNearbyTrips: defineAction({
-      input: z.object({
-        lat: z.number(),
-        lng: z.number(),
-        radius: z.number(),
-        location_filter: z.string().default("destination"),
-      }),
+ getNearbyTrips: defineAction({
+  input: z.object({
+    lat: z.number(),
+    lng: z.number(),
+    radius: z.number(),
+    page: z.number().default(1),
+    location_filter: z.string().default("destination"),
+  }),
 
-      async handler(input) {
-        const { data, error  } = await supabaseAdmin.rpc("get_nearby_trips", {
-          user_lng: input.lat,
-          user_lat: input.lng,
-          page: 1,
-          page_size: 50,
-          radius_meters: input.radius,
-          location_filter: input.location_filter
-        })
+  async handler(input) {
+    const allTrips: any[] = [];
+    let page = input.page;
+    const pageSize = 50;
+    let lastBatchLength = -1;
 
-        if (error) {
-          throw new ActionError({
-            message: error.message,
-            code: "INTERNAL_SERVER_ERROR"
-          })
-        }
-        return data;
+    while (true) {
+      const { data, error } = await supabaseAdmin.rpc("get_nearby_trips", {
+        user_lng: input.lat,
+        user_lat: input.lng,
+        page: page,
+        page_size: pageSize,
+        radius_meters: input.radius,
+        location_filter: input.location_filter,
+      });
+
+      if (error) {
+        console.error(error);
+        throw new ActionError({
+          message: error.message,
+          code: "INTERNAL_SERVER_ERROR",
+        });
       }
-    })
-  }
+
+      // Ensure it's an array
+      const batch = Array.isArray(data) ? data : [];
+      console.log("BAAAAAAAAAAAATCH", batch);
+      // Stop if no data or same length as previous batch (safety check)
+      if (batch.length === 0 || batch.length === lastBatchLength) break;
+
+      allTrips.push(...batch);
+
+      // Stop if less than pageSize (last page)
+      if (batch.length < pageSize) break;
+
+      lastBatchLength = batch.length;
+      page++;
+    }
+
+    return allTrips;
+  },
+  })
+
+}
 
   type tripDetailsSchema = ActionInputSchema<typeof trip.getTripDetails>;
 

@@ -60,7 +60,7 @@ body { margin: 0; padding: 0; }
       <Search class="w-5 h-5 text-black" />
     </button>
    </div>
-  <button id="search-area-btn">Search this area</button>
+  <button id="search-area-btn">Search trips in this area</button>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
 <script>
@@ -69,7 +69,6 @@ import { actions } from "astro:actions";
 import { PUBLIC_R2_URL } from "astro:env/client";
 import { PH_PROVINCES } from "@/data/phProvinces";
 import { slugify } from "@/scripts/Slugify";
-import { toLower } from "lodash";
 
 
 async function getMapboxToken() {

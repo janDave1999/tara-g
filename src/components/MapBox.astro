@@ -68,6 +68,9 @@ import mapboxgl from "mapbox-gl";
 import { actions } from "astro:actions";
 import { PUBLIC_R2_URL } from "astro:env/client";
 import { PH_PROVINCES } from "@/data/phProvinces";
+import { slugify } from "@/scripts/Slugify";
+import { toLower } from "lodash";
+
 
 async function getMapboxToken() {
   const res = await fetch("/api/mapbox-token");
@@ -177,6 +180,16 @@ function renderMarkers(trips: any[]) {
   });
 }
 
+// function to remove map source and layer
+function clearLayers() {
+  const layer = map.getLayer("province");
+  if (layer) {
+    map.removeLayer("province");
+    const source = map.getSource("province");
+    if (source) map.removeSource("province");
+  }
+}
+
 async function initMap() {
   const token = await getMapboxToken();
   mapboxgl.accessToken = token;
@@ -217,6 +230,7 @@ async function initMap() {
 
   // Search button click
   searchBtn.onclick = async () => {
+    clearLayers();
     searchBtn.textContent = "Searching...";
     searchBtn.disabled = true;
     const center = map.getCenter();
@@ -243,8 +257,12 @@ async function initMap() {
       const li = document.createElement("li");
       li.textContent = province.name;
       li.addEventListener("click", async () => {
+        clearLayers();
         resultsEl.classList.add("hidden");
-        searchBox.value = province.name;
+        
+        let provinceName = province.name;
+        searchBox.value = provinceName;
+
         resultsEl.innerHTML = "";
 
         map.flyTo({
@@ -252,6 +270,30 @@ async function initMap() {
           zoom: 10,
           essential: true
         });
+
+        // let 
+      
+        provinceName = provinceName.toLowerCase()
+        let provinceSlugify = await slugify(provinceName);
+
+        const jsonurl = `geojson/${provinceSlugify}.geojson`;
+        const res = await fetch(jsonurl);
+        const data = await res.json();
+        console.log("DATA", data);
+        map.addSource("province", {
+          type: "geojson",
+          data: data.geometry
+        })
+
+        map.addLayer({
+          id: "province",
+          type: "fill",
+          source: "province",
+          paint: {
+            "fill-color": "#ff0000",
+            "fill-opacity": 0.2
+          }
+        })
         const trips = await fetchNearbyTrips(province.lat, province.lng);
         
         searchBtn.style.display = "none";

@@ -81,12 +81,12 @@ let statusColors = {
           {(owner === userID) && (
             <div class="flex flex-wrap gap-2 md:justify-end">
               {status in statusColors && (
-                <div class={`badge ${statusColors[status]} gap-1 border-none text-white font-semibold py-3`}>
+                <div class={`badge ${( statusColors as any )[(status)]} gap-1 border-none text-white font-semibold py-3`}>
                   {String(status).toUpperCase()}
                 </div>
               )}
               {visibility in statusColors && (
-                <div class={`badge ${statusColors[visibility]} gap-1 border-none text-white font-semibold py-3`}>
+                <div class={`badge ${( statusColors as any )[visibility]} gap-1 border-none text-white font-semibold py-3`}>
                   {String(visibility).toUpperCase()}
                 </div>
               )}

@@ -1,5 +1,7 @@
 export type TripFormData = {
   gender_preference: string;
+  tags: string[];
+  joined_by: string;
   title: string;
   region_address: string;
   region_coordinates: string;

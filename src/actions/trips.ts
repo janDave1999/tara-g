@@ -24,6 +24,8 @@ export const trip = {
       pickup_dates: z.string(),
       waiting_time: z.number(),
       gender_preference: z.string(),
+      tags: z.array(z.string()),
+      joined_by: z.string()
     }),
     
     async handler(input, context) {
@@ -68,6 +70,8 @@ export const trip = {
         region: input.region_address,
         gender_pref: input.gender_preference,
         max_pax: input.max_pax,
+        tags: input.tags,
+        join_by: input.joined_by
       })
       .single();
       
@@ -173,6 +177,8 @@ export const trip = {
                   cost_sharing,
                   region,
                   cover_image,
+                  tags,
+                  join_by,
                   tags,
                   max_pax
                 ),

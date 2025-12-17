@@ -6,6 +6,7 @@ import Itinerary from '@/components/Trip/Itinerary.astro';
 import Hero from '@/components/Trip/Hero.astro';
 // import type { Trip } from '@/types/trip';
 
+let userID = Astro.locals.user_id || "";
 let slug = Astro.params.slug || "";
 
 // Fetch trip data
@@ -20,6 +21,7 @@ type TripData = {
   description: string;
   status: string;
   trip_details?: Array<{
+    join_by: string;
     start_date: string;
     end_date: string;
     gender_pref: string;
@@ -71,8 +73,10 @@ let trip_visibility = trip.trip_visibility;
 
   <Summary server:defer
       owner={trip.owner_id}
+      userID={userID}
       status={trip.status}
       title={trip.title}
+      joinBy={trip_details?.join_by}
       description={trip.description}
       destination={trip_details?.region}
       tripStart={trip_details?.start_date}

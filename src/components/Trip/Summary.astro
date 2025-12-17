@@ -1,140 +1,173 @@
 ---
-import { Calendar, Users, MapPin, HandCoins, LucideVenusAndMars } from "@lucide/astro";
+import { MapPin, Calendar, Users, LucideVenusAndMars, HandCoins } from '@lucide/astro';
 
+// Mock props for context (You keep your existing props)
 const {
-  owner,
-  status,
   title,
-  description,
+  status,
+  visibility,
+  tags,
   destination,
   tripStart,
   tripEnd,
   currentPax,
-  genderPref,
   maxPax,
+  genderPref,
   costSharing,
+  description,
+  owner,
   userID,
-  visibility,
-  tags = [],
 } = Astro.props;
+console.log(owner, userID);
+let tagsArray = [];
 
-const statusColors = {
-  complete: "bg-green-600",
-  draft: "bg-gray-600",
-  ongoing: "bg-blue-600",
-  pending: "bg-yellow-600",
-};
+if (Array.isArray(tags)) {
+  // It's already a real array
+  tagsArray = tags;
+} else if (typeof tags === "string") {
+  const cleaned = tags.trim();
+  if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+    try {
+      // It looks like '["a","b"]', so parse it as JSON
+      tagsArray = JSON.parse(cleaned);
+    } catch (e) {
+      // Fallback if parsing fails
+      tagsArray = [];
+    }
+  } else {
+    // It looks like "a, b, c", so split it
+    tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
+  }
+}
+
+// Helper to calculate percentage for the progress bar
+const paxPercentage = Math.min((currentPax / maxPax) * 100, 100);
+
+
+let statusColors = {
+  "active": "text-blue-500",
+  "completed": "text-green-500",
+  "cancelled": "text-red-500",
+  "draft": "text-yellow-500",
+  "archived": "text-gray-500",
+  "private": "text-yellow-500",
+  "public": "text-green-500",
+}
 ---
 
-<section class="w-full space-y-8 px-4 bg-white py-2 max-w-5xl mx-auto shadow rounded-xl mt-2 mb-16t">
+<section class="max-w-5xl mx-auto mt-6 mb-16 px-4">
+  <div class="card bg-base-100 shadow-xl border border-base-200">
+    <div class="card-body p-6 md:p-8">
 
-  <!-- TITLE & STATUS -->
-  <header class="space-y-1">
-    <div class="flex items-start gap-2">
-      <h1 class="text-3xl md:text-4xl font-semibold leading-tight">{title}</h1>
+      <div class="flex flex-col gap-4 mb-2">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+          
+          <div class="space-y-2">
+            <h1 class="text-3xl md:text-4xl font-bold text-base-content tracking-tight">
+              {title}
+            </h1>
+            
+            {tagsArray.length > 0 && (
+              <div class="flex flex-wrap gap-2">
+                {tagsArray.map((tag: string) => (
+                  <span class="badge badge-neutral badge-outline text-xs">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
-      {status in statusColors && owner === userID ? (
-        <span
-        class={`inline-flex items-center px-2 py-0.5 rounded-full text-white text-[10px] md:text-xs font-semibold ${statusColors[status as keyof typeof statusColors]}`}
-        >
-        {String(status).toUpperCase()}
-      </span>
-      ) : null}
-    <!-- Visibility -->
-    {visibility in statusColors && owner === userID ? (
-      <span
-        class={`inline-flex items-center px-2 py-0.5 rounded-full text-white text-[10px] md:text-xs font-semibold ${statusColors[visibility as keyof typeof statusColors]}`}
-      >
-        {String(visibility).toUpperCase()}
-      </span>
-    ) : null}
+          {(owner === userID) && (
+            <div class="flex flex-wrap gap-2 md:justify-end">
+              {status in statusColors && (
+                <div class={`badge ${statusColors[status]} gap-1 border-none text-white font-semibold py-3`}>
+                  {String(status).toUpperCase()}
+                </div>
+              )}
+              {visibility in statusColors && (
+                <div class={`badge ${statusColors[visibility]} gap-1 border-none text-white font-semibold py-3`}>
+                  {String(visibility).toUpperCase()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-    <div class="flex items-center gap-2">
-      <MapPin size={18} class="text-gray-600" />
-      <span class="font-semibold text-gray-500 text-sm md:text-base">Destination</span><span class="font-medium text-gray-800 text-sm md:text-base">{destination}</span>
+      <div class="divider my-2"></div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <div class="flex items-start gap-3">
+          <div class="p-2 bg-primary/10 rounded-lg text-primary">
+            <MapPin size={20} />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Destination</p>
+            <p class="font-medium text-base-content text-lg">{destination}</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="p-2 bg-secondary/10 rounded-lg text-secondary">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Trip Dates</p>
+            <div class="flex flex-row">
+               <span class="font-medium text-base-content">{tripStart}</span>
+               <span class="font-medium text-base-content">to {tripEnd}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="p-2 bg-accent/10 rounded-lg text-accent">
+            <Users size={20} />
+          </div>
+          <div class="w-full max-w-[180px]">
+            <div class="flex justify-between items-baseline mb-1">
+              <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Joiners</p>
+              <span class="text-sm font-bold">{currentPax} <span class="text-base-content/40 font-normal">/ {maxPax}</span></span>
+            </div>
+            <progress class="progress progress-accent w-full" value={paxPercentage} max="100"></progress>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="p-2 bg-neutral/10 rounded-lg text-neutral">
+            <LucideVenusAndMars size={20} />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Gender Pref</p>
+            <p class="font-medium text-base-content capitalize">{genderPref || "Any"}</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="p-2 bg-success/10 rounded-lg text-success-content">
+            <HandCoins size={20} />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Cost Sharing</p>
+            <div class="badge badge-ghost badge-sm mt-1 font-medium">
+               {String(costSharing).toUpperCase()}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="divider my-2"></div>
+
+      <div class="mt-2">
+        <h3 class="text-lg font-semibold text-base-content mb-2">About this trip</h3>
+        <p class="text-base-content/80 leading-relaxed whitespace-pre-line">
+          {description}
+        </p>
+      </div>
+
     </div>
   </div>
-
-    <!-- <div>
-      <p class="text-xs text-gray-500">Organized by</p>
-      <p class="font-medium text-gray-800 text-sm md:text-base">{owner}</p>
-    </div> -->
-  </header>
-
-  <hr class="border-gray-300" />
-
-  <!-- DETAILS -->
-  <section class="space-y-4">
-
-    <!-- DESTINATION -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <MapPin size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">Destination</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">{destination}</span>
-    </div>
-
-    <!-- TRIP START -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <Calendar size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">Trip Start</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">{tripStart}</span>
-    </div>
-
-    <!-- TRIP END -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <Calendar size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">Trip End</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">{tripEnd}</span>
-    </div>
-
-    <!-- JOINERS -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <Users size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">No. of Joiners</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">
-        {currentPax} / {maxPax}
-      </span>
-    </div>
-
-    <!-- GENDER PREF -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <LucideVenusAndMars size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">Gender Preference</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">
-        {genderPref || "None"}
-      </span>
-    </div>
-
-    <!-- COST SHARING -->
-    <div class="flex justify-between items-start">
-      <div class="flex items-center gap-2">
-        <HandCoins size={18} class="text-gray-600" />
-        <span class="font-semibold text-gray-500 text-sm md:text-base">Cost Sharing</span>
-      </div>
-      <span class="font-medium text-gray-800 text-sm md:text-base">
-        {String(costSharing).toUpperCase()}
-      </span>
-    </div>
-
-  </section>
-
-  <hr class="border-gray-300" />
-
-  <!-- DESCRIPTION -->
-  <section class="space-y-4">
-    <h2 class="font-semibold text-gray-500 text-sm md:text-base">Description</h2>
-    <p class="text-gray-800 text-sm md:text-base">{description}</p>
-  </section>
 </section>
-
-

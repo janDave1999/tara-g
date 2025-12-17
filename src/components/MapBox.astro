@@ -1,6 +1,6 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro"
-import { Search } from "@lucide/astro";
+import { Search, X } from "@lucide/astro";
 ---
 
 <!DOCTYPE html>
@@ -57,7 +57,7 @@ body { margin: 0; padding: 0; }
     <ul id="search-results" class="search-results absolute top-10 right-0 mt-2 bg-white hidden shadow-md rounded-md p-2 w-full max-h-[calc(50vh-120px)] overflow-y-auto">No results</ul>
     </div>
     <button id="search-button">
-      <Search class="w-5 h-5 text-black" />
+      <X class="w-5 h-5 text-black" />
     </button>
    </div>
   <button id="search-area-btn">Search trips in this area</button>
@@ -219,9 +219,9 @@ async function initMap() {
   })
   map.addControl(nav, 'bottom-left');
   map.addControl(geolocate, 'bottom-left');
-
+  console.log("userLocation", userLocation);
   // Initial nearby trips
-  const initialTrips = await fetchNearbyTrips(userLocation[1], userLocation[0]);
+  const initialTrips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
   renderMarkers(initialTrips);
 
   // Show search button on move
@@ -233,7 +233,7 @@ async function initMap() {
     searchBtn.textContent = "Searching...";
     searchBtn.disabled = true;
     const center = map.getCenter();
-    const trips = await fetchNearbyTrips(center.lat, center.lng);
+    const trips = await fetchNearbyTrips(center.lng, center.lat);
     renderMarkers(trips);
     searchBtn.textContent = "Search this area";
     searchBtn.disabled = false;
@@ -293,7 +293,7 @@ async function initMap() {
             "fill-opacity": 0.2
           }
         })
-        const trips = await fetchNearbyTrips(province.lat, province.lng);
+        const trips = await fetchNearbyTrips(province.lng, province.lat);
         
         searchBtn.style.display = "none";
         renderMarkers(trips);

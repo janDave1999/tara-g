@@ -333,8 +333,8 @@ export const trip = {
 
     while (true) {
       const { data, error } = await supabaseAdmin.rpc("get_nearby_trips", {
-        user_lng: input.lat,
-        user_lat: input.lng,
+        user_lng: input.lng,
+        user_lat: input.lat,
         page: page,
         page_size: pageSize,
         radius_meters: input.radius,

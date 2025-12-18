@@ -1,123 +1,276 @@
 ---
+interface Location {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+interface TripLocation {
+  start_time: string;
+  end_time: string;
+  waiting_time: number;
+  type: string;
+  locations: Location | undefined;
+}
 
 interface Props {
-  itinerary?: {
-    id: number;
-    trip_id: number;
-    day_index: number;
-    date: string;
-    sequence: number;
-    type: "pickup" | "dropoff" | "stop" | "destination" | "activity" | "travel";
-    name: string;
-    category: "hotel" | "restaurant" | "scenic" | "fuel" | "custom" | "others" | null;
-    location_from?: string; // For travel card
-    location_to?: string;   // For travel card
-    location_id?: number | null;
-    description?: string;
-    start_time?: string;
-    end_time?: string;
-    travel_mode?: "car" | "walk" | "bike" | "bus" | "train" | "flight";
-    estimated_duration?: string;
-    notes?: string;
-  }[];
-  editable?: boolean;
+  trip_location: TripLocation[];
+  isOwner: boolean;
+  tripId: string;
 }
 
-const { itinerary = [], editable = true } = Astro.props;
+const { isOwner, tripId, trip_location = [] } = Astro.props;
 
-function formatTimeRange(start?: string, end?: string) {
-  if (!start && !end) return "";
-  const s = start ? new Date(start).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
-  const e = end ? new Date(end).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
-  return s && e ? `${s} - ${e}` : s || e;
-}
+// Helper: Format Date
+const formatDate = (isoStr: string) => {
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+};
 
-// Group by day
-const groupedByDay = itinerary.length > 0
-  ? itinerary.reduce((acc, item) => {
-      if (!acc[item.day_index]) acc[item.day_index] = [];
-      acc[item.day_index].push(item);
-      return acc;
-    }, {} as Record<number, typeof itinerary>)
-  : {};
-  
-function getCardType(item: any) {
-  if(item.type === 'travel') return { label: 'Travel', icon: '🚗', color: 'bg-blue-100' };
-  if(item.type === 'activity' && item.category === 'custom') return { label: 'Activity', icon: '⚡', color: 'bg-green-100' };
-  return { label: 'Stay', icon: item.category === 'hotel' ? '🏨' : item.category === 'restaurant' ? '🍴' : '🏞', color: 'bg-yellow-100' };
-}
+// Helper: Format Time
+const formatTime = (isoStr: string) => {
+  const d = new Date(isoStr);
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+};
+
+// Helper: Human Readable Timeline Logic
+const getDisplayTime = (start: string, end: string) => {
+  const isSameDay = start.slice(0, 10) === end.slice(0, 10);
+  if (isSameDay) {
+    return `${formatDate(start)} | ${formatTime(start)} - ${formatTime(end)}`;
+  }
+  return `${formatDate(start)}, ${formatTime(start)} — ${formatDate(end)}, ${formatTime(end)}`;
+};
+
+// Sort timeline by start_time
+const sortedLocations = [...trip_location].sort((a, b) => 
+  new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+);
 ---
 
-<div class="space-y-12 p-4">
-  {itinerary.length === 0 ? (
-    <div class="text-center py-16 bg-gray-50 rounded shadow">
-      <p class="text-lg text-gray-600 mb-4">No itinerary items found.</p>
-      {editable && <button id="addItemFallback" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600">+ Add Itinerary Item</button>}
+<div id="itinerary-root" class="max-w-3xl mx-auto p-4" data-is-owner={isOwner} data-trip-id={tripId}>
+  
+  <div class="flex justify-between items-center mb-8">
+    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Trip Itinerary</h2>
+    <div class="flex gap-3">
+      {isOwner && (
+        <>
+          <button id="add-stop-btn" class="hidden text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm items-center gap-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+             Add Stop
+          </button>
+          <button id="toggle-mode-btn" class="text-sm px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm font-medium">
+            Edit Timeline
+          </button>
+        </>
+      )}
     </div>
-  ) : (
-    Object.entries(groupedByDay).map(([dayIndex, items]) => (
-      <section class="space-y-4">
-        <div class="flex justify-between items-center">
-          <h3 class="text-2xl font-bold">Day {dayIndex} - {items[0].date}</h3>
-          {editable && <button class="editDayBtn text-blue-600 hover:underline" data-day={dayIndex}>Edit Day</button>}
-        </div>
+  </div>
 
-        <div class="space-y-4">
-          {items.sort((a,b) => a.sequence - b.sequence).map((item, idx) => {
-            const card = getCardType(item);
-            return (
-              <div class={`p-4 rounded shadow ${card.color}`}>
-                <div class="flex justify-between items-center mb-2">
-                  <span class="font-semibold">{card.icon} {card.label}</span>
-                  <span class="text-sm text-gray-600">{formatTimeRange(item.start_time, item.end_time)} {item.estimated_duration ? `(${item.estimated_duration})` : ''}</span>
-                </div>
+  <div id="timeline-container" class="space-y-8 relative border-l-2 border-slate-200 ml-4 pl-8 pb-10">
+    {sortedLocations.map((item) => (
+      <div class="timeline-item relative group">
+        <div class="absolute -left-[41px] top-1 w-5 h-5 bg-white border-4 border-slate-300 rounded-full group-hover:border-indigo-500 transition-colors z-10"></div>
 
-                {item.type === 'travel' ? (
-                  <div class="ml-2">
-                    <p class="text-lg font-medium">{item.location_from} → {item.location_to}</p>
-                    {item.travel_mode && <p class="text-sm text-gray-600">Mode: {item.travel_mode}</p>}
-                  </div>
-                ) : (
-                  <div class="ml-2">
-                    <p class="text-lg font-medium">{item.name}</p>
-                    {item.category && <p class="text-sm text-gray-600">{item.category === 'custom' ? 'Custom Activity' : item.category}</p>}
-                    {item.description && <p class="text-gray-700 mt-1">{item.description}</p>}
-                    {item.notes && <p class="text-gray-500 italic mt-1">{item.notes}</p>}
-                  </div>
-                )}
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
+          
+          <div class="view-mode">
+            <div class="flex justify-between items-start">
+              <div class="space-y-1">
+                <span class={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.type === 'destination' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                  {item.type}
+                </span>
+                <h3 class="text-lg font-bold text-slate-800 leading-tight">
+                  {item.locations?.name || 'Unnamed Stop'}
+                </h3>
+                <p class="text-sm text-slate-500 font-medium">
+                  {getDisplayTime(item.start_time, item.end_time)}
+                </p>
               </div>
-            )
-          })}
-        </div>
+              
+              {item.type !== 'destination' && item.waiting_time > 0 && (
+                <div class="text-right">
+                  <span class="text-[10px] font-bold text-slate-400 uppercase">Wait Time</span>
+                  <p class="text-xs font-semibold text-slate-600">{item.waiting_time} mins</p>
+                </div>
+              )}
+            </div>
+          </div>
 
-        {editable && <button class="addDayItemBtn mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600" data-day={dayIndex}>+ Add Item</button>}
-      </section>
-    ))
-  )}
+          {isOwner && (
+            <form class="edit-mode hidden space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-slate-400 uppercase">Category</label>
+                  <select name="type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="pickup" selected={item.type === 'pickup'}>Pickup</option>
+                    <option value="transit" selected={item.type === 'transit'}>Transit</option>
+                    <option value="activity" selected={item.type === 'activity'}>Activity</option>
+                    <option value="lodging" selected={item.type === 'lodging'}>Lodging</option>
+                    <option value="destination" selected={item.type === 'destination'}>Destination</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-slate-400 uppercase">Waiting Time (min)</label>
+                  <input type="number" name="waiting_time" value={item.waiting_time} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-slate-400 uppercase">Start Date/Time</label>
+                  <input type="datetime-local" name="start_time" value={item.start_time.slice(0, 16)} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[10px] font-bold text-slate-400 uppercase">End Date/Time</label>
+                  <input type="datetime-local" name="end_time" value={item.end_time.slice(0, 16)} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase">Location Name</label>
+                <input type="text" name="location_name" value={item.locations?.name || ''} class="w-full p-2 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Airport, Hotel, Attraction" />
+                <input type="hidden" name="lat" value={item.locations?.lat || 0} />
+                <input type="hidden" name="lng" value={item.locations?.lng || 0} />
+              </div>
+
+              <div class="flex justify-between items-center pt-3 border-t border-slate-100 mt-2">
+                <button type="button" class="delete-btn text-xs text-red-500 hover:text-red-700 font-bold uppercase tracking-tight">Delete</button>
+                <button type="button" class="save-btn px-6 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow hover:bg-indigo-700 transition-colors">
+                  Save Stop
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <template id="new-stop-template">
+    <div class="timeline-item relative group is-new animate-in fade-in slide-in-from-left-4">
+      <div class="absolute -left-[41px] top-1 w-5 h-5 bg-indigo-500 border-4 border-indigo-200 rounded-full z-10"></div>
+      <div class="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-xl p-5 mb-8">
+        <h4 class="text-indigo-700 font-bold text-sm mb-4">New Stop Information</h4>
+        <form class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <select name="type" class="w-full p-2 border rounded-lg text-sm">
+              <option value="activity">Activity</option>
+              <option value="transit">Transit</option>
+              <option value="lodging">Lodging</option>
+              <option value="destination">Destination</option>
+            </select>
+            <input type="number" name="waiting_time" placeholder="Wait (mins)" class="w-full p-2 border rounded-lg text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <input type="datetime-local" name="start_time" class="w-full p-2 border rounded-lg text-sm" />
+            <input type="datetime-local" name="end_time" class="w-full p-2 border rounded-lg text-sm" />
+          </div>
+          <input type="text" name="location_name" placeholder="Enter location name..." class="w-full p-2 border rounded-lg text-sm font-medium" />
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" class="cancel-new-btn text-xs text-slate-500 font-bold uppercase">Cancel</button>
+            <button type="button" class="save-btn px-6 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow">Create Stop</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </template>
 </div>
 
-<script type="module">
-  // Attach event listeners after mount
-  const addFallbackBtn = document.getElementById('addItemFallback');
-  if(addFallbackBtn) {
-    addFallbackBtn.addEventListener('click', () => {
-      alert('Add new itinerary item');
+<script>
+  function initItinerary() {
+    const root = document.getElementById('itinerary-root');
+    const container = document.getElementById('timeline-container');
+    const template = document.getElementById('new-stop-template') as HTMLTemplateElement;
+    
+    if (!root || !container || !template) return;
+
+    const toggleBtn = document.getElementById('toggle-mode-btn');
+    const addBtn = document.getElementById('add-stop-btn');
+    const isOwner = root.dataset.isOwner === 'true';
+
+    if (!isOwner) return;
+
+    let isEditing = false;
+
+    // 1. Toggle Edit Mode
+    toggleBtn?.addEventListener('click', () => {
+      isEditing = !isEditing;
+      toggleBtn.innerText = isEditing ? 'Finish Editing' : 'Edit Timeline';
+      toggleBtn.classList.toggle('bg-slate-900', !isEditing);
+      toggleBtn.classList.toggle('bg-green-600', isEditing);
+      
+      addBtn?.classList.toggle('hidden', !isEditing);
+      addBtn?.classList.toggle('flex', isEditing);
+
+      document.querySelectorAll('.view-mode').forEach(el => el.classList.toggle('hidden', isEditing));
+      document.querySelectorAll('.edit-mode').forEach(el => el.classList.toggle('hidden', !isEditing));
+    });
+
+    // 2. Add New Stop to DOM
+    addBtn?.addEventListener('click', () => {
+      const clone = template.content.cloneNode(true) as HTMLElement;
+      // Pre-fill dates with current time
+      const now = new Date().toISOString().slice(0, 16);
+      clone.querySelectorAll('input[type="datetime-local"]').forEach((input: any) => input.value = now);
+      
+      container.prepend(clone);
+    });
+
+    // 3. Event Delegation for Save/Delete/Cancel
+    root.addEventListener('click', async (e) => {
+      const target = e.target as HTMLElement;
+
+      // CANCEL NEW
+      if (target.classList.contains('cancel-new-btn')) {
+        target.closest('.timeline-item')?.remove();
+      }
+
+      // DELETE
+      if (target.classList.contains('delete-btn')) {
+        if (confirm("Remove this stop from your itinerary?")) {
+          target.closest('.timeline-item')?.remove();
+          // TODO: Call Action to delete from DB
+        }
+      }
+
+      // SAVE (New or Existing)
+      if (target.classList.contains('save-btn')) {
+        const form = target.closest('form');
+        const item = target.closest('.timeline-item');
+        if (!form || !item) return;
+
+        const formData = new FormData(form);
+        const payload = {
+          start_time: formData.get('start_time'),
+          end_time: formData.get('end_time'),
+          waiting_time: Number(formData.get('waiting_time')),
+          type: formData.get('type'),
+          locations: {
+            name: formData.get('location_name'),
+            lat: Number(formData.get('lat')) || 0,
+            lng: Number(formData.get('lng')) || 0
+          }
+        };
+
+        target.innerText = "Saving...";
+        target.setAttribute('disabled', 'true');
+
+        console.log("Submitting to Astro Action:", payload);
+        
+        // Example Action Call:
+        // const { data, error } = await actions.trip.updateItinerary({ tripId, payload });
+        
+        setTimeout(() => {
+          target.innerText = "Saved!";
+          // We reload because the new item needs to be sorted chronologically by the server
+          window.location.reload();
+        }, 800);
+      }
     });
   }
 
-  const editBtns = document.querySelectorAll('.editDayBtn');
-  editBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const day = btn.getAttribute('data-day');
-      alert(`Edit itinerary for Day ${day}`);
-    });
-  });
-
-  const addDayBtns = document.querySelectorAll('.addDayItemBtn');
-  addDayBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const day = btn.getAttribute('data-day');
-      alert(`Add new itinerary item to Day ${day}`);
-    });
-  });
+  // Load logic
+  initItinerary();
+  document.addEventListener('astro:page-load', initItinerary);
 </script>

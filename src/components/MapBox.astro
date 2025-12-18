@@ -294,6 +294,7 @@ function initEventListeners() {
   // Province Search Input (with simple debounce)
   let debounceTimer: ReturnType<typeof setTimeout>;
   elements.searchBox.addEventListener("input", () => {
+    elements.tags.forEach(t => t.classList.add("hidden"));
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       const query = elements.searchBox.value.trim().toLowerCase();
@@ -332,6 +333,7 @@ function initEventListeners() {
 
       const center = map.getCenter();
       const trips = await fetchNearbyTrips(center.lng, center.lat);
+      elements.tags.forEach(t => t.classList.remove("hidden"));
       renderMarkers(trips);
     });
   });

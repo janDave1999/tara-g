@@ -322,11 +322,18 @@ export const trip = {
     lng: z.number(),
     radius: z.number(),
     page: z.number().default(1),
+    tag_filter: z.array(z.string()).default([]),
     location_filter: z.string().default("destination"),
   }),
 
   async handler(input) {
     const allTrips: any[] = [];
+    let tag: string[] | null = null;
+    if (input.tag_filter.length > 0) {
+      tag = input.tag_filter;
+    } else {
+      tag = null;
+    }
     let page = input.page;
     const pageSize = 50;
     let lastBatchLength = -1;
@@ -338,6 +345,7 @@ export const trip = {
         page: page,
         page_size: pageSize,
         radius_meters: input.radius,
+        tag_filter: tag,
         location_filter: input.location_filter,
       });
 

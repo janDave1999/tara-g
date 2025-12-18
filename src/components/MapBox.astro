@@ -12,9 +12,54 @@ import { Search, X } from "@lucide/astro";
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
 <style>
+  /* Container for the tags */
+#tag-container {
+  position: absolute;
+  top: 155px; /* Positioned below your search box */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  width: 90%;
+  max-width: 500px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+#tag-container::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome/Safari */
+}
+
+/* Individual Tag Style */
+.search-tag {
+  white-space: nowrap;
+  background: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.search-tag:hover {
+  background: #f8f8f8;
+}
+
+.active-tag-style {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #1a1a1a;
+  transform: translateY(-1px);
+}
+
   #search-area-btn {
     position: absolute;
-    top: 160px;
+    top: 200px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 999;
@@ -25,7 +70,6 @@ import { Search, X } from "@lucide/astro";
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    display: none; /* hidden by default */
   }
 
     #search-box {
@@ -60,6 +104,13 @@ body { margin: 0; padding: 0; }
       <X class="w-5 h-5 text-black" />
     </button>
    </div>
+   <div id="tag-container">
+  <div class="search-tag" data-tag="hiking">🥾 Hiking</div>
+  <div class="search-tag" data-tag="nightlife">💃 Nightlife</div>
+  <div class="search-tag" data-tag="bar">🍸 Bars</div>
+  <div class="search-tag" data-tag="beach">🏖️ Beach</div>
+  <div class="search-tag" data-tag="culture">🏛️ Culture</div>
+</div>
   <button id="search-area-btn">Search trips in this area</button>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
@@ -70,28 +121,43 @@ import { PUBLIC_R2_URL } from "astro:env/client";
 import { PH_PROVINCES } from "@/data/phProvinces";
 import { slugify } from "@/scripts/Slugify";
 
-
-async function getMapboxToken() {
-  const res = await fetch("/api/mapbox-token");
-  const data = await res.json();
-  if (!data.token) throw new Error("Mapbox token not available");
-  return data.token;
-}
-
-const searchBox = document.getElementById("search-area-input") as HTMLInputElement;
-const resultsEl = document.getElementById("search-results") as HTMLUListElement;
-const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
+/** * CONFIG & STATE
+ */
+const CONFIG = {
+  DEFAULT_CENTER: [120.9842, 14.5995] as [number, number],
+  DEFAULT_ZOOM: 14,
+  PROVINCE_ZOOM: 10,
+  FALLBACK_IMAGE: "fallback.png",
+};
 
 let map: mapboxgl.Map;
 let markers: mapboxgl.Marker[] = [];
+let activeTags: string[] = [];
 
-function clearMarkers() {
-  markers.forEach(m => m.remove());
-  markers = [];
+// DOM Elements
+const elements = {
+  searchBox: document.getElementById("search-area-input") as HTMLInputElement,
+  resultsEl: document.getElementById("search-results") as HTMLUListElement,
+  searchBtn: document.getElementById("search-area-btn") as HTMLButtonElement,
+  tags: document.querySelectorAll(".search-tag") as NodeListOf<HTMLDivElement>,
+};
+
+/**
+ * API & DATA FETCHING
+ */
+async function getMapboxToken(): Promise<string> {
+  try {
+    const res = await fetch("/api/mapbox-token");
+    const data = await res.json();
+    if (!data.token) throw new Error();
+    return data.token;
+  } catch (e) {
+    console.error("Mapbox token missing");
+    return "";
+  }
 }
 
-// Dynamic radius based on zoom
-function getRadiusByZoom(zoom: number) {
+function getRadiusByZoom(zoom: number): number {
   if (zoom <= 6) return 200_000;
   if (zoom <= 7) return 100_000;
   if (zoom <= 8) return 50_000;
@@ -99,107 +165,193 @@ function getRadiusByZoom(zoom: number) {
   return 10_000;
 }
 
-// Fetch trips in batches until no data is returned
 async function fetchNearbyTrips(lng: number, lat: number) {
   let page = 1;
   const allTrips: any[] = [];
   const radius = getRadiusByZoom(map.getZoom());
-  console.log(radius);
+
   while (true) {
     const { data: trips, error } = await actions.trip.getNearbyTrips({
-      lng,
-      lat,
-      page,
-      radius,
+      lng, lat, radius, page,
+      tag_filter: activeTags.length > 0 ? activeTags : undefined,
     });
 
-    if (error) {
-      console.error(error);
-      break;
-    }
-
-    if (!trips || trips.length === 0) break;
-
+    if (error || !trips || trips.length === 0) break;
     allTrips.push(...trips);
     page++;
   }
-
   return allTrips;
+}
+
+/**
+ * MAP OPERATIONS
+ */
+function clearMarkers() {
+  markers.forEach(m => m.remove());
+  markers = [];
+}
+
+function clearLayers() {
+  if (map.getLayer("province")) map.removeLayer("province");
+  if (map.getSource("province")) map.removeSource("province");
+}
+
+function createMarkerElement(trip: any) {
+  const el = document.createElement("div");
+  el.className = "trip-marker";
+  Object.assign(el.style, {
+    width: "40px", height: "40px", borderRadius: "50%",
+    overflow: "hidden", border: trip.current_participants < trip.max_participants ? "2px solid #ff5733" : "2px solid #3bb2d0"
+  });
+
+  const img = document.createElement("img");
+  img.src = `${PUBLIC_R2_URL}/${trip.images?.[0] || CONFIG.FALLBACK_IMAGE}`;
+  img.style.cssText = "width:100%; height:100%; object-fit:cover;";
+  el.appendChild(img);
+  return el;
 }
 
 function renderMarkers(trips: any[]) {
   clearMarkers();
   trips.forEach(trip => {
-    const el = document.createElement("div");
-    el.style.width = "40px";
-    el.style.height = "40px";
-    el.style.borderRadius = "50%";
-    el.style.overflow = "hidden";
-    el.style.border = trip.current_participants < trip.max_participants
-      ? "2px solid #ff5733"
-      : "2px solid #3bb2d0";
+    const popupHtml = `
+      <div class="w-full h-32 bg-gray-200">
+        <img src="${trip.images?.length ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg'}" class="w-full h-full object-cover" />
+      </div>
+      <div class="p-3 text-gray-800 space-y-2">
+        <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
+        <div class="grid grid-rows-1 items-center gap-1">
+          <span class="font-bold">Location: </span>
+          <p class="text-sm text-gray-600">${trip.location_name}</p>
+        </div>
+        <div class="text-xs text-gray-500">
+          <div class="grid grid-rows-1 items-center gap-1">
+            <span class="font-bold"> Trip Dates: </span>
+            <span>${trip.start_date} to ${trip.end_date}</span>
+            <span class="font-bold"> Join by: </span>
+            <span>${trip.join_by}</span>
+          </div>
+          <span>👥 ${trip.current_participants}/${trip.max_participants}</span>
+          <span class="badge badge-sm badge-primary mx-1">${trip.location_type}</span>
+        </div>
+        <button onclick="window.location.href='/trips/${trip.trip_id}'" class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md">View Trip</button>
+      </div>`;
 
-    const img = document.createElement("img");
-    img.src = `${PUBLIC_R2_URL}/${trip.images?.[0] || "fallback.png"}`;
-    img.style.width = "100%";
-    img.style.height = "100%";
-    img.style.objectFit = "cover";
-    el.appendChild(img);
-
-    const distanceKm = (trip.distance_meters / 1000).toFixed(2);
-    const imageURL = trip.images?.length ? `${PUBLIC_R2_URL}/${trip.images[0]}` : "/images/default-trip.jpg";
-
-    const marker = new mapboxgl.Marker({ element: el })
+    const marker = new mapboxgl.Marker({ element: createMarkerElement(trip) })
       .setLngLat([trip.lng, trip.lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div class="w-full h-32 bg-gray-200">
-          <img src="${imageURL}" class="w-full h-full object-cover" />
-        </div>
-        <div class="p-3 text-gray-800 space-y-2">
-          <div>
-            <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
-            <p class="text-sm text-gray-600"><span class="font-semibold">Location:</span> ${trip.location_name}</p>
-          </div>
-          <div class="text-xs text-gray-500 flex justify-between">
-            <span>📅 ${trip.start_date} → ${trip.end_date}</span>
-            <span>📍 ${distanceKm} km away</span>
-          </div>
-          <div class="flex gap-2 pt-1 flex-wrap">
-            <span class="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700">${trip.location_type}</span>
-            <span class="px-2 py-1 text-xs rounded-md ${trip.visibility === "private" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}">${trip.visibility}</span>
-            <span class="px-2 py-1 text-xs rounded-md ${trip.current_participants < trip.max_participants ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}">${trip.current_participants}/${trip.max_participants} slots</span>
-          </div>
-          <p class="text-sm text-gray-700 line-clamp-2">${trip.trip_details || "No description available."}</p>
-          <button onclick="window.location.href='/trips/${trip.trip_id}'" class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">View Trip →</button>
-        </div>
-      `))
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
       .addTo(map);
 
     markers.push(marker);
   });
 }
 
-// function to remove map source and layer
-function clearLayers() {
-  const layer = map.getLayer("province");
-  if (layer) {
-    map.removeLayer("province");
-    const source = map.getSource("province");
-    if (source) map.removeSource("province");
+/**
+ * UI EVENT HANDLERS
+ */
+async function handleProvinceSelect(province: any) {
+  clearLayers();
+  elements.resultsEl.classList.add("hidden");
+  elements.searchBox.value = province.name;
+
+  map.flyTo({ center: [province.lng, province.lat], zoom: CONFIG.PROVINCE_ZOOM, essential: true });
+
+  try {
+    const slug = await slugify(province.name.toLowerCase());
+    const res = await fetch(`/geojson/${slug}.geojson`);
+    const geojsonData = await res.json();
+
+    map.addSource("province", { type: "geojson", data: geojsonData.geometry });
+    map.addLayer({
+      id: "province", type: "fill", source: "province",
+      paint: { "fill-color": "#0000ff", "fill-opacity": 0.1 }
+    });
+  } catch (e) {
+    console.error("Could not load province boundary");
   }
+
+  const trips = await fetchNearbyTrips(province.lng, province.lat);
+  renderMarkers(trips);
+  elements.tags.forEach(t => t.classList.remove("hidden"));
 }
 
+function initEventListeners() {
+  // Search button
+  elements.searchBtn.addEventListener("click", async () => {
+    elements.searchBtn.textContent = "Searching...";
+    elements.searchBtn.disabled = true;
+    
+    const center = map.getCenter();
+    const trips = await fetchNearbyTrips(center.lng, center.lat);
+    
+    renderMarkers(trips);
+    elements.searchBtn.textContent = "Search this area";
+    elements.searchBtn.disabled = false;
+    elements.searchBtn.style.display = "none";
+  });
+
+  // Province Search Input (with simple debounce)
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  elements.searchBox.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const query = elements.searchBox.value.trim().toLowerCase();
+      elements.resultsEl.innerHTML = "";
+      
+      if (query.length < 2) return;
+
+      const matches = PH_PROVINCES.filter(p => 
+        p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
+      ).slice(0, 8);
+
+      matches.forEach(province => {
+        const li = document.createElement("li");
+        li.textContent = province.name;
+        li.className = "cursor-pointer hover:bg-gray-100 p-2"; // Add styles via class
+        li.onclick = () => handleProvinceSelect(province);
+        elements.resultsEl.appendChild(li);
+      });
+      
+      elements.resultsEl.classList.remove("hidden");
+    }, 300);
+  });
+
+  // Tag Filtering
+  elements.tags.forEach(tagEl => {
+    tagEl.addEventListener("click", async () => {
+      const tag = tagEl.dataset.tag; // Ensure your HTML has data-tag="hiking"
+      if (!tag) return;
+
+      tagEl.classList.toggle("active-tag-style"); // Visual feedback
+      if (activeTags.includes(tag)) {
+        activeTags = activeTags.filter(t => t !== tag);
+      } else {
+        activeTags.push(tag);
+      }
+
+      const center = map.getCenter();
+      const trips = await fetchNearbyTrips(center.lng, center.lat);
+      renderMarkers(trips);
+    });
+  });
+}
+
+/**
+ * INITIALIZATION
+ */
 async function initMap() {
   const token = await getMapboxToken();
+  if (!token) return;
   mapboxgl.accessToken = token;
 
-  let userLocation: [number, number] = [120.9842, 14.5995];
+  let userLocation = CONFIG.DEFAULT_CENTER;
+
   if (navigator.geolocation) {
-    await new Promise<void>(resolve => {
-      navigator.geolocation.getCurrentPosition(pos => {
-        userLocation = [pos.coords.longitude, pos.coords.latitude];
-        resolve();
-      }, () => resolve());
+    userLocation = await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve([pos.coords.longitude, pos.coords.latitude]),
+        () => resolve(CONFIG.DEFAULT_CENTER)
+      );
     });
   }
 
@@ -207,103 +359,25 @@ async function initMap() {
     container: "map",
     style: "mapbox://styles/mapbox/standard",
     center: userLocation,
-    zoom: 14
+    zoom: CONFIG.DEFAULT_ZOOM
   });
 
-  const nav = new mapboxgl.NavigationControl();
-  const geolocate = new mapboxgl.GeolocateControl({
-    positionOptions: {
-      enableHighAccuracy: true
-    },
-    trackUserLocation: true
-  })
-  map.addControl(nav, 'bottom-left');
-  map.addControl(geolocate, 'bottom-left');
-  console.log("userLocation", userLocation);
-  // Initial nearby trips
-  const initialTrips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
-  renderMarkers(initialTrips);
+  map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
+  map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'bottom-left');
 
-  // Show search button on move
-  map.on("moveend", () => { searchBtn.style.display = "block"; });
+  map.on("load", async () => {
+    const initialTrips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
+    renderMarkers(initialTrips);
+    initEventListeners();
+  });
 
-  // Search button click
-  searchBtn.onclick = async () => {
-    clearLayers();
-    searchBtn.textContent = "Searching...";
-    searchBtn.disabled = true;
-    const center = map.getCenter();
-    const trips = await fetchNearbyTrips(center.lng, center.lat);
-    renderMarkers(trips);
-    searchBtn.textContent = "Search this area";
-    searchBtn.disabled = false;
-    searchBtn.style.display = "none";
-  };
-
-  // Province search input
-  searchBox.addEventListener("input", () => {
-    searchBtn.style.display = "none";
-    const query = searchBox.value.trim().toLowerCase();
-    resultsEl.innerHTML = "";
-    if (query.length < 2) return;
-
-    const matches = PH_PROVINCES.filter(p =>
-      p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
-    ).slice(0, 8);
-
-    matches.forEach(province => {
-      resultsEl.classList.remove("hidden");
-      const li = document.createElement("li");
-      li.textContent = province.name;
-      li.addEventListener("click", async () => {
-        clearLayers();
-        resultsEl.classList.add("hidden");
-        
-        let provinceName = province.name;
-        searchBox.value = provinceName;
-
-        resultsEl.innerHTML = "";
-
-        map.flyTo({
-          center: [province.lng, province.lat],
-          zoom: 10,
-          essential: true
-        });
-
-        // let 
-      
-        provinceName = provinceName.toLowerCase()
-        let provinceSlugify = await slugify(provinceName);
-
-        const jsonurl = `geojson/${provinceSlugify}.geojson`;
-        const res = await fetch(jsonurl);
-        const data = await res.json();
-        console.log("DATA", data);
-        map.addSource("province", {
-          type: "geojson",
-          data: data.geometry
-        })
-
-        map.addLayer({
-          id: "province",
-          type: "fill",
-          source: "province",
-          paint: {
-            "fill-color": "#ff0000",
-            "fill-opacity": 0.2
-          }
-        })
-        const trips = await fetchNearbyTrips(province.lng, province.lat);
-        
-        searchBtn.style.display = "none";
-        renderMarkers(trips);
-      });
-      resultsEl.appendChild(li);
-    });
+  map.on("moveend", () => {
+    console.log("moveend");
+    elements.searchBtn.style.display = "block";
   });
 }
 
-window.addEventListener("DOMContentLoaded", () => initMap());
+window.addEventListener("DOMContentLoaded", initMap);
 </script>
 
 </body>

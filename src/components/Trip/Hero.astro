@@ -1,7 +1,6 @@
 ---
 import { PUBLIC_R2_URL } from "astro:env/client";
 import UploadImages from "./UploadImages.astro";
-import { Picture } from "astro:assets";
 
 let trip_images = Astro.props.trip_images || [];
 const heroImages = trip_images.filter((img: any) => img.type === "hero");

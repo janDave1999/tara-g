@@ -56,7 +56,6 @@ if (!tripDATA) {
 let trip = tripDATA as TripData;
 // Extract the first detail object
 let trip_details = trip.trip_details?.[0];
-let cover = trip_details?.cover_image || "";
 
 // Keep other nested arrays
 let trip_location = trip.trip_location;
@@ -66,10 +65,18 @@ let trip_pool_members = trip.trip_pool_members;
 let trip_expenses = trip.trip_expenses;
 let trip_images = trip.trip_images;
 let trip_visibility = trip.trip_visibility;
+
+let isOwner: boolean = false;
+
+if (trip.owner_id === userID) {
+  isOwner = true;
+} else {
+  isOwner = false;
+}
 ---
 
 <PagePlate title={trip.title}>
-  <Hero server:defer trip_images={trip_images}/>
+  <Hero server:defer isOwner={isOwner} trip_images={trip_images}/>
 
   <Summary server:defer
       owner={trip.owner_id}

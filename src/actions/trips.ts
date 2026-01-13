@@ -4,6 +4,7 @@ import { type ActionInputSchema, type ActionReturnType, ActionError, defineActio
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
 import { uploadToR2 } from "@/scripts/R2/upload";
+import JoinTrip from "@/components/Trip/JoinTrip.astro";
 // get user id in astro locals
 
 
@@ -153,77 +154,73 @@ export const trip = {
       return reponse;
     }
   }),
+
+  joinTrip: defineAction({
+    input: z.object({
+      trip_id: z.string(),
+    }),
+
+    async handler(input, context) {
+      const user_id = context.locals.user_id
+      const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: user_id });
+      console.log(data);
+      console.log("NAG ERROR:", error);
+      let message = data[0].message
+      console.log(message);
+      if (error) {
+        console.log(error);
+        throw new ActionError({
+          message: error.message,
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      if (!data[0].success){
+        throw new ActionError({
+          message: data[0].message,
+          code: "BAD_REQUEST"
+        })
+      }
+      return data
+    }
+
+  }),
+
+  cancelJoinRequest: defineAction({
+    input: z.object({
+      trip_id: z.string(),
+    }),
+
+    async handler(input, context) {
+      const user_id = context.locals.user_id
+      const { data, error } = await supabaseAdmin.rpc("cancel_join_request", { p_trip_id: input.trip_id, p_user_id: user_id });
+      if (error) {
+        throw new ActionError({
+          message: error.message,
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      if(!data[0].success){
+        throw new ActionError({
+          message: data[0].message,
+          code: "BAD_REQUEST"
+        })
+      }
+      return data
+    }
+  }),
   
   getTripDetails: defineAction({
     input: z.object({
       slug: z.string(),
+      user_id: z.string().optional()
     }),
     
     async handler(input) {
       let slug = input.slug
       
-      const { data, error } = await supabaseAdmin
-      .from('trips')
-      .select(`
-                trip_id,
-                owner_id,
-                title,
-                description,
-                status,
-                trip_details (
-                  start_date,
-                  end_date,
-                  gender_pref,
-                  cost_sharing,
-                  region,
-                  cover_image,
-                  tags,
-                  join_by,
-                  tags,
-                  max_pax
-                ),
-                trip_location (
-                  start_time,
-                  end_time,
-                  waiting_time,
-                  type,
-                  locations (
-                    name,
-                    lat,
-                    lng
-                  )
-                ),
-                trip_members (
-                  user_id
-                ),
-                trip_pools (
-                  total_pool,
-                  currency
-                ),
-                trip_pool_members (
-                  contribution,
-                  balance,
-                  user_id
-                ),
-                trip_expenses (
-                  user_id,
-                  description,
-                  category,
-                  amount
-                ),
-                trip_images (
-                  key_name,
-                  type
-                ),
-                trip_visibility (
-                  max_participants,
-                  visibility,
-                  current_participants
-                )
-              `)
-        .eq('trip_id', slug)
-        .single(); // fetch only one record
-        
+      const { data, error } = await supabaseAdmin.rpc("get_trip_details", { trip_slug:slug, current_user_id: input.user_id ?? null });
         if (error) {
           throw new ActionError({
             message: error.message,
@@ -359,7 +356,6 @@ export const trip = {
 
       // Ensure it's an array
       const batch = Array.isArray(data) ? data : [];
-      console.log("BAAAAAAAAAAAATCH", batch);
       // Stop if no data or same length as previous batch (safety check)
       if (batch.length === 0 || batch.length === lastBatchLength) break;
 

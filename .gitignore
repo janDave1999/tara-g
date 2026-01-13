@@ -28,3 +28,5 @@ pnpm-debug.log*
 .wrangler/
 
 bun.lockb
+# Localflare generated files
+.localflare/

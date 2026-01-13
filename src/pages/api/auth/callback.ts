@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   }
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
+  console.log("data", data);
   if (error) {
     return new Response(error.message, { status: 500 });
   }

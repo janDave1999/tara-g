@@ -1,0 +1,62 @@
+---
+import PagePlate from '@/layouts/PagePlate.astro';
+import { actions } from 'astro:actions';
+import Summary from '@/components/Trip/Summary.astro';
+import Member from '@/components/Trip/Member.astro';
+import Itinerary from '@/components/Trip/Itinerary.astro';
+import Hero from '@/components/Trip/Hero.astro';
+import { undefined } from 'astro:schema';
+
+let userID = Astro.locals.user_id || "";
+let slug = Astro.params.trip_id || "";
+
+// Fetch trip data
+let { data: tripDATA, error } = await Astro.callAction(actions.trip.getTripDetails, { slug, user_id: userID });
+if (error) throw error;
+
+if (!tripDATA) {
+  return Astro.redirect("/trips");
+}
+let trip = tripDATA
+// Extract the first detail object
+let trip_details = trip.trip_details
+
+// Keep other nested arrays
+let trip_location = trip.trip_location;
+let trip_members = trip.trip_members;
+let trip_pools = trip.trip_pools;
+let trip_pool_members = trip.trip_pool_members;
+let trip_expenses = trip.trip_expenses;
+let trip_images = trip.trip_images;
+let trip_visibility = trip.trip_visibility;
+---
+
+<PagePlate title={trip.title}>
+  <Hero server:defer userRole={trip.user_role} trip_images={trip_images}/>
+
+  <Summary server:defer
+      tripMembers={trip_members}
+      userRole={trip.user_role}
+      status={trip.status}
+      title={trip.title}
+      joinBy={trip_details?.join_by}
+      description={trip.description}
+      destination={trip_details?.region}
+      tripStart={trip_details?.start_date}
+      tripEnd={trip_details?.end_date}
+      genderPref={trip_details?.gender_pref}
+      maxPax={trip_details?.max_pax}
+      costSharing={trip_details?.cost_sharing}
+      tags={trip_details?.tags}
+      maxPax={trip_visibility?.max_participants}
+      currentPax={trip_visibility?.current_participants}
+      visibility={trip_visibility?.visibility}
+    />
+  
+<Itinerary 
+  server:defer
+  trip_location={(trip_location as any) || undefined}
+  userRole={trip.user_role}
+  tripId={trip.trip_id}
+/>
+</PagePlate>

@@ -24,7 +24,8 @@
   "r2_buckets": [
     {
       "binding": "TRIP_HERO",
-      "bucket_name": "staging-tara-g-assets"
+      "bucket_name": "staging-tara-g-assets",
+      "remote": true
     }
   ],
   // KV

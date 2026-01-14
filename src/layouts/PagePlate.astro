@@ -22,14 +22,14 @@ let {
   noFooter = false,
   noContainer = false,
   clean = false,
-  expectedHeight = "calc(100vh - 10rem)",
+  expectedHeight = "calc(100vh - 10rem)", // 5rem is header + footer height
   prefetch,
   description,
   html = {},
 } = Astro.props;
-let pageVariant = "default";
-// Preflight
-if (description == undefined) {
+
+//---> Preflight
+if(description == undefined){
   description = {
     title,
     type: "WebPage",
@@ -38,30 +38,20 @@ if (description == undefined) {
     authorIs: "Organization",
   };
 }
-if (description && !description.title) {
+if(description && !description.title){
   description.title = title;
 }
-if (description && !description.fbAppId) {
+if(description && !description.fbAppId){
   // description.fbAppId = "__PROJECT_FB_APP_ID__";
 }
-
-// Container variants for different page types
-const containerVariants = {
-  default: "container mx-auto px-4 lg:px-8 py-6 lg:py-8 relative",
-  hero: "w-full relative", // Full width for hero sections
-  minimal: "container mx-auto px-4 max-w-4xl py-6 lg:py-8 relative", // Narrower for reading
-  full: "w-full min-h-screen relative", // Full viewport
-};
-
-const containerClass = noContainer ? "" : containerVariants[pageVariant as keyof typeof containerVariants] || containerVariants.default;
 ---
 
 <Layout title={title} html={html}>
   <Fragment slot={`head-first`}>
     {/* Language */}
     <HeadTagAltLanguages />
+
   </Fragment>
-  
   <Fragment slot={`head-last`}>
     {/* Schema.org JSON-LD */}
     <PageSchema description={description} />
@@ -71,245 +61,39 @@ const containerClass = noContainer ? "" : containerVariants[pageVariant as keyof
     <HeadTagTwitter description={description} />
     {/* OG */}
     <HeadTagOG description={description} />
+
     {/* Prefetches */}
     <HeadTagPrefetch links={prefetch} />
   </Fragment>
-
-  <!-- Page Wrapper with Smooth Transitions -->
-  <div class="page-wrapper min-h-screen flex flex-col bg-gradient-to-br from-green-50/30 via-white to-emerald-50/30">
-    
-    <!-- Header Section -->
-    {!clean && !noHeader && (
-      <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-gray-100 shadow-sm transition-all">
+    {clean?"":<>
+      {noHeader ? "":<>
         <HeaderMain />
-      </header>
-    )}
-    
-    <!-- Custom Header Slot -->
+      </>}
+    </>}
     <slot name="header" />
 
-    <!-- Main Content Area -->
-    <main class="flex-1 relative">
-      {noContainer ? (
-        <slot />
-      ) : (
-        <div class={containerClass}>
-          <!-- Decorative Elements for Visual Interest -->
-          {pageVariant === "default" && (
-            <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-              <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-green-100/40 to-emerald-100/40 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
-              <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-teal-100/40 to-cyan-100/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
-            </div>
-          )}
-          
-          <!-- Page Content -->
-          <div class="relative z-10">
-            <slot />
-          </div>
-        </div>
-      )}
-    </main>
-
-    <!-- Bottom Navigation (Mobile) -->
-    {user_id && (
-      <nav class="lg:hidden sticky bottom-0 z-50 backdrop-blur-md bg-white/90 border-t border-gray-100 shadow-lg">
-        <BottomNav currentPath={Astro.url.pathname} />
-      </nav>
-    )}
-
-    <!-- Footer Section -->
-    {!clean && !noFooter && (
-      <footer class="mt-auto border-t border-gray-100 bg-gradient-to-br from-gray-50 to-green-50/30">
+    {noContainer ?<>
+      <slot />
+      </>:<>
+      <div
+      class="
+            container mx-auto
+             lg:px-8
+             lg:py-8 
+            relative
+          "
+      >
+      <slot />
+    </div>
+    </>}
+    <CookiesConsent />
+    <LoadModal />
+    {
+     user_id ? <BottomNav currentPath={Astro.url.pathname} /> : ""
+    }
+    {clean?"": <>
+      {noFooter ? "":<>
         <FooterMain />
-      </footer>
-    )}
-  </div>
-
-  <!-- Global Components -->
-  <CookiesConsent />
-  <LoadModal />
+      </>}
+    </>}
 </Layout>
-
-<style is:global>
-  /* Smooth Page Transitions */
-  .page-wrapper {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  /* Smooth Scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Custom Scrollbar (Webkit) */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #f1f5f9;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, #10b981, #059669);
-    border-radius: 5px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(to bottom, #059669, #047857);
-  }
-
-  /* Focus Visible for Accessibility */
-  *:focus-visible {
-    outline: 2px solid #10b981;
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-
-  /* Smooth Card Hover Effects */
-  .card,
-  .timeline-item,
-  .carousel-item {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-
-  /* Loading State Skeleton */
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-
-  .skeleton {
-    background: linear-gradient(
-      90deg,
-      #f0f0f0 0%,
-      #e0e0e0 20%,
-      #f0f0f0 40%,
-      #f0f0f0 100%
-    );
-    background-size: 1000px 100%;
-    animation: shimmer 2s infinite linear;
-    border-radius: 8px;
-  }
-
-  /* Utility: Hide scrollbar but keep functionality */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Enhanced button interactions */
-  .btn {
-    transition: all 0.2s ease-in-out;
-    transform-origin: center;
-  }
-
-  .btn:active {
-    transform: scale(0.97);
-  }
-
-  /* Backdrop blur fallback for older browsers */
-  @supports not (backdrop-filter: blur(12px)) {
-    .backdrop-blur-md {
-      background-color: rgba(255, 255, 255, 0.95);
-    }
-  }
-</style>
-
-<script>
-  // Progressive Enhancement: Smooth scroll to hash links
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e: Event) {
-        let href = (e.target as HTMLAnchorElement).getAttribute('href');
-        if (!href || href === '#') return;
-        
-        const target = document.querySelector(href);
-        if (target) {
-          e.preventDefault();
-          target.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-          
-          // Update URL without triggering navigation
-          history.pushState(null, '', href);
-        }
-      });
-    });
-  });
-
-  // Add loading state to buttons on click
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'BUTTON' && !target.classList.contains('no-loading')) {
-      const isSubmit = target.getAttribute('type') === 'submit' || 
-                      target.closest('form') !== null;
-      
-      if (isSubmit && !target.hasAttribute('disabled')) {
-        // Store original content
-        const originalContent = target.innerHTML;
-        target.setAttribute('data-original-content', originalContent);
-        
-        // Show loading state
-        target.innerHTML = `
-          <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        `;
-        target.setAttribute('disabled', 'true');
-      }
-    }
-  });
-
-  // Restore button state on page load (for back button navigation)
-  window.addEventListener('pageshow', () => {
-    document.querySelectorAll('button[data-original-content]').forEach(btn => {
-      const original = btn.getAttribute('data-original-content');
-      if (original) {
-        btn.innerHTML = original;
-        btn.removeAttribute('disabled');
-        btn.removeAttribute('data-original-content');
-      }
-    });
-  });
-
-  // Add intersection observer for fade-in animations
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animate-in');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    });
-
-    // Observe elements with fade-in class
-    document.querySelectorAll('.fade-in-on-scroll').forEach(el => {
-      observer.observe(el);
-    });
-  }
-</script>

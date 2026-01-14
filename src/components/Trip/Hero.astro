@@ -2,58 +2,279 @@
 import { PUBLIC_R2_URL } from "astro:env/client";
 import UploadImages from "./UploadImages.astro";
 
-let trip_images = Astro.props.trip_images || [];
-const heroImages = trip_images.filter((img: any) => img.type === "hero");
-const isOwner = Astro.props.isOwner ?? true;
+// TypeScript interfaces for better type safety
+interface TripImage {
+  key_name: string;
+  type: 'hero' | 'gallery';
+  alt?: string;
+  location?: string;
+  description?: string;
+}
 
+interface Props {
+  trip_images?: TripImage[];
+  userRole?: string;
+}
+
+const { trip_images = [], userRole }: Props = Astro.props;
+
+let isOwner = userRole === 'owner' ? true : false;
+const heroImages = trip_images.filter((img) => img.type === "hero");
 const totalSlides = isOwner ? heroImages.length + 1 : heroImages.length;
+
+// Helper functions for slide navigation
+const getPrevSlide = (current: number) => current - 1 <= 0 ? totalSlides : current - 1;
+const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : current + 1;
 ---
-<!-- Slider -->
-<div class="carousel mx-auto w-full mt-8 shadow rounded-xl">
-  <!-- IMAGE SLIDES -->
-  {
-    heroImages.map((image: any, index: number) => {
+
+<!-- Carousel Container -->
+<div 
+  role="region" 
+  aria-label="Image carousel"
+  aria-live="polite"
+  class="relative mx-auto w-full mt-6 md:mt-8"
+>
+  <!-- Main Carousel -->
+  <div class="carousel w-full shadow-2xl rounded-2xl overflow-hidden bg-gray-100">
+    <!-- IMAGE SLIDES -->
+    {heroImages.map((image, index) => {
       const slideNum = index + 1;
       const slideId = `slide${slideNum}`;
-
-      const prevId = `slide${slideNum - 1 <= 0 ? totalSlides : slideNum - 1}`;
-      const nextId = `slide${slideNum + 1 > totalSlides ? 1 : slideNum + 1}`;
+      const prevId = `slide${getPrevSlide(slideNum)}`;
+      const nextId = `slide${getNextSlide(slideNum)}`;
 
       return (
-        <div id={slideId} class="carousel-item relative w-full md:flex md:items-center md:justify-center">
-            <img 
-            src={`${PUBLIC_R2_URL}/${image.key_name}`} 
-            alt={image.alt || "hero-image"} 
-            class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] rounded-xl"
+        <div 
+          id={slideId} 
+          class="carousel-item relative w-full md:flex md:items-center md:justify-center"
+        >
+          <!-- Image with lazy loading and optimized sizing -->
+          <img 
+            src={`${PUBLIC_R2_URL}/${image.key_name}`}
+            alt={image.alt || "Adventure hero image"} 
+            loading="lazy"
+            class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] bg-gray-200"
           />
-          <div class="absolute flex justify-between transform -translate-y-1/2 left-5 right-5 top-1/2">
-            <a href={`#${prevId}`} class="btn btn-circle">❮</a>
-            <a href={`#${nextId}`} class="btn btn-circle">❯</a>
+          
+          <!-- Caption Overlay -->
+          {(image.location || image.description) && (
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-6 pb-8">
+              {image.location && (
+                <h3 class="text-white text-xl md:text-2xl font-bold mb-1">
+                  {image.location}
+                </h3>
+              )}
+              {image.description && (
+                <p class="text-white/90 text-sm md:text-base">
+                  {image.description}
+                </p>
+              )}
+            </div>
+          )}
+
+          <!-- Enhanced Navigation Buttons -->
+          <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
+            <a 
+              href={`#${prevId}`} 
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-white font-bold shadow-lg"
+              aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
+            >
+              ❮
+            </a>
+            <a 
+              href={`#${nextId}`} 
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-white font-bold shadow-lg"
+              aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
+            >
+              ❯
+            </a>
           </div>
         </div>
       );
-    })
-  }
+    })}
 
-  <!-- UPLOAD SLIDE (OWNER ONLY) -->
-  {isOwner && (
-    (() => {
+    <!-- ENHANCED UPLOAD SLIDE (OWNER ONLY) -->
+    {isOwner && (() => {
       const slideNum = heroImages.length + 1;
       const slideId = `slide${slideNum}`;
+      const prevId = `slide${getPrevSlide(slideNum)}`;
+      const nextId = `slide${getNextSlide(slideNum)}`;
 
       return (
-        <div id={slideId} class="carousel-item relative w-full flex items-center justify-center bg-white">
-          
-          <div class="text-center space-y-4 bg-white">
-            <h2 class="text-xl font-semibold">Upload Hero Image</h2>
-            <UploadImages />
+        <div 
+          id={slideId} 
+          class="carousel-item relative w-full flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh]"
+        >
+          <!-- Upload Card -->
+          <div class="border-2 border-dashed border-green-300 bg-white/90 backdrop-blur-sm rounded-2xl p-8 md:p-12 max-w-md mx-4 shadow-xl">
+            <div class="text-center space-y-4">
+              <!-- Icon -->
+              <div class="w-16 h-16 mx-auto bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center shadow-lg">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </div>
+              
+              <!-- Text -->
+              <h2 class="text-xl md:text-2xl font-bold text-gray-900">Add Hero Image</h2>
+              <p class="text-gray-600 text-sm md:text-base">Upload stunning photos of your adventure</p>
+              
+              <!-- Upload Component -->
+              <UploadImages />
+            </div>
           </div>
 
-          <!-- Navigation -->
-          <div class="absolute flex justify-between transform -translate-y-1/2 left-5 right-5 top-1/2">
+          <!-- Navigation Buttons -->
+          <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
+            <a 
+              href={`#${prevId}`} 
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-md hover:bg-white/50 border-2 border-green-300/60 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-green-700 font-bold shadow-lg"
+              aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
+            >
+              ❮
+            </a>
+            <a 
+              href={`#${nextId}`} 
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-md hover:bg-white/50 border-2 border-green-300/60 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-green-700 font-bold shadow-lg"
+              aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
+            >
+              ❯
+            </a>
           </div>
         </div>
       );
-    })()
-  )}
+    })()}
+  </div>
+
+  <!-- Slide Indicators (Dots) -->
+  <div class="flex justify-center gap-2.5 mt-6" role="tablist" aria-label="Slide navigation">
+    {Array.from({ length: totalSlides }).map((_, i) => {
+      const slideNum = i + 1;
+      return (
+        <a 
+          href={`#slide${slideNum}`}
+          role="tab"
+          aria-label={`Go to slide ${slideNum} of ${totalSlides}`}
+          class="indicator-dot w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-500 transition-all hover:scale-125 focus:ring-2 focus:ring-green-500 focus:outline-none shadow-sm"
+          data-slide={slideNum}
+        />
+      );
+    })}
+  </div>
 </div>
+
+<!-- Keyboard Navigation & Touch Gestures -->
+<script define:vars={{ totalSlides }}>
+  function initCarousel() {
+    const carousel = document.querySelector('.carousel');
+    const indicators = document.querySelectorAll('.indicator-dot');
+    let currentSlide = 1;
+    
+    if (!carousel || indicators.length === 0) return;
+    
+    // Update current slide based on hash
+    const updateCurrentSlide = () => {
+      const hash = window.location.hash;
+      const match = hash.match(/slide(\d+)/);
+      if (match) {
+        currentSlide = parseInt(match[1]);
+      } else {
+        // Default to first slide if no hash
+        currentSlide = 1;
+      }
+      updateIndicators();
+    };
+    
+    // Update indicator active state
+    const updateIndicators = () => {
+      indicators.forEach((dot) => {
+        const slideNum = parseInt(dot.getAttribute('data-slide') || '0');
+        if (slideNum === currentSlide) {
+          dot.classList.remove('bg-gray-300', 'hover:bg-gray-500');
+          dot.classList.add('bg-gradient-to-br', 'from-green-500', 'to-emerald-600', 'scale-125', 'shadow-md');
+        } else {
+          dot.classList.add('bg-gray-300', 'hover:bg-gray-500');
+          dot.classList.remove('bg-gradient-to-br', 'from-green-500', 'to-emerald-600', 'scale-125', 'shadow-md');
+        }
+      });
+    };
+    
+    // Initialize - set first slide as active on load
+    if (!window.location.hash) {
+      window.location.hash = 'slide1';
+    }
+    updateCurrentSlide();
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        currentSlide = currentSlide - 1 <= 0 ? totalSlides : currentSlide - 1;
+        window.location.hash = `slide${currentSlide}`;
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        currentSlide = currentSlide + 1 > totalSlides ? 1 : currentSlide + 1;
+        window.location.hash = `slide${currentSlide}`;
+      }
+    });
+    
+    // Touch/Swipe gestures
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    if (carousel) {
+      carousel.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+      
+      carousel.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      }, { passive: true });
+    }
+    
+    function handleSwipe() {
+      const swipeThreshold = 50;
+      
+      if (touchEndX < touchStartX - swipeThreshold) {
+        // Swipe left - next slide
+        currentSlide = currentSlide + 1 > totalSlides ? 1 : currentSlide + 1;
+        window.location.hash = `slide${currentSlide}`;
+      }
+      
+      if (touchEndX > touchStartX + swipeThreshold) {
+        // Swipe right - previous slide
+        currentSlide = currentSlide - 1 <= 0 ? totalSlides : currentSlide - 1;
+        window.location.hash = `slide${currentSlide}`;
+      }
+    }
+    
+    // Update current slide when hash changes
+    window.addEventListener('hashchange', updateCurrentSlide);
+    
+    // Also update when clicking indicators directly
+    indicators.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        setTimeout(updateCurrentSlide, 50);
+      });
+    });
+  }
+  
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', initCarousel);
+  
+  // Reinitialize on Astro page transitions
+  document.addEventListener('astro:page-load', initCarousel);
+</script>
+
+<style>
+  /* Smooth scroll behavior for carousel */
+  .carousel {
+    scroll-behavior: smooth;
+  }
+  
+  /* Smooth transitions for indicators */
+  .indicator-dot {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+</style>

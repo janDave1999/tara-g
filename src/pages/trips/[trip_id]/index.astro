@@ -29,6 +29,7 @@ let trip_pool_members = trip.trip_pool_members;
 let trip_expenses = trip.trip_expenses;
 let trip_images = trip.trip_images;
 let trip_visibility = trip.trip_visibility;
+console.log("trip_visibility", trip_members);
 ---
 
 <PagePlate title={trip.title}>
@@ -51,8 +52,8 @@ let trip_visibility = trip.trip_visibility;
       maxPax={trip_visibility?.max_participants}
       currentPax={trip_visibility?.current_participants}
       visibility={trip_visibility?.visibility}
-    />
-  
+      members={trip_members}
+    /> 
 <Itinerary 
   server:defer
   trip_location={(trip_location as any) || undefined}

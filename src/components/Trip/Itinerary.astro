@@ -15,11 +15,12 @@ interface TripLocation {
 
 interface Props {
   trip_location: TripLocation[];
-  userRole:string;
+  userRole: string;
   tripId: string;
 }
 
 const { userRole, tripId, trip_location = [] } = Astro.props;
+
 // Helper: Format Date
 const formatDate = (isoStr: string) => {
   const d = new Date(isoStr);
@@ -45,130 +46,249 @@ const getDisplayTime = (start: string, end: string) => {
 const sortedLocations = [...trip_location].sort((a, b) => 
   new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
 );
+
+// Category color mapping (green theme)
+const categoryStyles = {
+  destination: { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'border-emerald-500' },
+  activity: { bg: 'bg-green-100', text: 'text-green-700', dot: 'border-green-500' },
+  lodging: { bg: 'bg-teal-100', text: 'text-teal-700', dot: 'border-teal-500' },
+  transit: { bg: 'bg-lime-100', text: 'text-lime-700', dot: 'border-lime-500' },
+  pickup: { bg: 'bg-cyan-100', text: 'text-cyan-700', dot: 'border-cyan-500' }
+};
 ---
 
-<div id="itinerary-root" class="max-w-3xl mx-auto p-4" data-is-owner={userRole} data-trip-id={tripId}>
+<div id="itinerary-root" class="max-w-4xl mx-auto p-4 md:p-6" data-is-owner={userRole} data-trip-id={tripId}>
   
-  <div class="flex justify-between items-center mb-8">
-    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Trip Itinerary</h2>
-    <div class="flex gap-3">
-      {userRole === 'owner' && (
-        <>
-          <button id="add-stop-btn" class="hidden text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm items-center gap-2">
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-             Add Stop
-          </button>
-          <button id="toggle-mode-btn" class="text-sm px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm font-medium">
-            Edit Timeline
-          </button>
-        </>
-      )}
+  <!-- Header Section -->
+  <div class="bg-gradient-to-br from-green-50 via-white to-emerald-50 rounded-2xl p-6 md:p-8 mb-8 border border-gray-100 shadow-xl">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <div>
+        <h2 class="text-3xl font-bold text-gray-900 tracking-tight mb-1">Trip Itinerary</h2>
+        <p class="text-gray-600 text-sm">Your adventure timeline</p>
+      </div>
+      
+      <div class="flex gap-2">
+        {userRole === 'owner' && (
+          <>
+            <button 
+              id="add-stop-btn" 
+              class="hidden items-center gap-2 px-4 py-2.5 bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 transition-all shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Stop
+            </button>
+            <button 
+              id="toggle-mode-btn" 
+              class="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/30 focus:ring-2 focus:ring-green-500 focus:outline-none"
+            >
+              Edit Timeline
+            </button>
+          </>
+        )}
+      </div>
     </div>
   </div>
 
-  <div id="timeline-container" class="space-y-8 relative border-l-2 border-slate-200 ml-4 pl-8 pb-10">
-    {sortedLocations.map((item) => (
-      <div class="timeline-item relative group">
-        <div class="absolute -left-[41px] top-1 w-5 h-5 bg-white border-4 border-slate-300 rounded-full group-hover:border-indigo-500 transition-colors z-10"></div>
+  <!-- Timeline Container -->
+  <div id="timeline-container" class="space-y-6 relative ml-6 md:ml-8">
+    <!-- Vertical Line -->
+    <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-green-200 via-emerald-200 to-teal-200"></div>
+    
+    {sortedLocations.map((item) => {
+      const style = categoryStyles[item.type as keyof typeof categoryStyles] || categoryStyles.activity;
+      
+      return (
+        <div class="timeline-item relative group pl-8 md:pl-10">
+          <!-- Timeline Dot -->
+          <div class={`absolute -left-[9px] top-2 w-5 h-5 bg-white border-4 ${style.dot} rounded-full group-hover:scale-125 transition-transform z-10 shadow-sm`}></div>
 
-        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
-          
-          <div class="view-mode">
-            <div class="flex justify-between items-start">
-              <div class="space-y-1">
-                <span class={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.type === 'destination' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {item.type}
-                </span>
-                <h3 class="text-lg font-bold text-slate-800 leading-tight">
-                  {item.location?.name || 'Unnamed Stop'}
-                </h3>
-                <p class="text-sm text-slate-500 font-medium">
-                  {getDisplayTime(item.start_time, item.end_time)}
-                </p>
-              </div>
-              
-              {item.type !== 'destination' && item.waiting_time > 0 && (
-                <div class="text-right">
-                  <span class="text-[10px] font-bold text-slate-400 uppercase">Wait Time</span>
-                  <p class="text-xs font-semibold text-slate-600">{item.waiting_time} mins</p>
+          <!-- Card -->
+          <div class="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-md hover:shadow-xl transition-all">
+            
+            <!-- View Mode -->
+            <div class="view-mode">
+              <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
+                <div class="space-y-2 flex-1">
+                  <span class={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
+                    {item.type}
+                  </span>
+                  <h3 class="text-xl font-bold text-gray-900 leading-tight">
+                    {item.location?.name || 'Unnamed Stop'}
+                  </h3>
+                  <p class="text-sm text-gray-600 font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {getDisplayTime(item.start_time, item.end_time)}
+                  </p>
                 </div>
-              )}
+                
+                {item.type !== 'destination' && item.waiting_time > 0 && (
+                  <div class="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p class="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Wait Time</p>
+                      <p class="text-sm font-bold text-amber-700">{item.waiting_time} mins</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            <!-- Edit Mode -->
+            {userRole === 'owner' && (
+              <form class="edit-mode hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Category</label>
+                    <select 
+                      name="type" 
+                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    >
+                      <option value="pickup" selected={item.type === 'pickup'}>Pickup</option>
+                      <option value="transit" selected={item.type === 'transit'}>Transit</option>
+                      <option value="activity" selected={item.type === 'activity'}>Activity</option>
+                      <option value="lodging" selected={item.type === 'lodging'}>Lodging</option>
+                      <option value="destination" selected={item.type === 'destination'}>Destination</option>
+                    </select>
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Waiting Time (min)</label>
+                    <input 
+                      type="number" 
+                      name="waiting_time" 
+                      value={item.waiting_time} 
+                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Start Date/Time</label>
+                    <input 
+                      type="datetime-local" 
+                      name="start_time" 
+                      value={item.start_time.slice(0, 16)} 
+                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    />
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">End Date/Time</label>
+                    <input 
+                      type="datetime-local" 
+                      name="end_time" 
+                      value={item.end_time.slice(0, 16)} 
+                      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Location Name</label>
+                  <input 
+                    type="text" 
+                    name="location_name" 
+                    value={item.location?.name || ''} 
+                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all" 
+                    placeholder="e.g. Airport, Hotel, Attraction" 
+                  />
+                  <input type="hidden" name="lat" value={item.location?.lat || 0} />
+                  <input type="hidden" name="lng" value={item.location?.lng || 0} />
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                  <button 
+                    type="button" 
+                    class="delete-btn px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-semibold transition-all focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  >
+                    Delete Stop
+                  </button>
+                  <button 
+                    type="button" 
+                    class="save-btn px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-green-500/30 transition-all focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  >
+                    Save Stop
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
-
-          {userRole === 'owner' && (
-            <form class="edit-mode hidden space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-slate-400 uppercase">Category</label>
-                  <select name="type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="pickup" selected={item.type === 'pickup'}>Pickup</option>
-                    <option value="transit" selected={item.type === 'transit'}>Transit</option>
-                    <option value="activity" selected={item.type === 'activity'}>Activity</option>
-                    <option value="lodging" selected={item.type === 'lodging'}>Lodging</option>
-                    <option value="destination" selected={item.type === 'destination'}>Destination</option>
-                  </select>
-                </div>
-                <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-slate-400 uppercase">Waiting Time (min)</label>
-                  <input type="number" name="waiting_time" value={item.waiting_time} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-slate-400 uppercase">Start Date/Time</label>
-                  <input type="datetime-local" name="start_time" value={item.start_time.slice(0, 16)} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
-                <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-slate-400 uppercase">End Date/Time</label>
-                  <input type="datetime-local" name="end_time" value={item.end_time.slice(0, 16)} class="w-full p-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-[10px] font-bold text-slate-400 uppercase">Location Name</label>
-                <input type="text" name="location_name" value={item.location?.name || ''} class="w-full p-2 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Airport, Hotel, Attraction" />
-                <input type="hidden" name="lat" value={item.location?.lat || 0} />
-                <input type="hidden" name="lng" value={item.location?.lng || 0} />
-              </div>
-
-              <div class="flex justify-between items-center pt-3 border-t border-slate-100 mt-2">
-                <button type="button" class="delete-btn text-xs text-red-500 hover:text-red-700 font-bold uppercase tracking-tight">Delete</button>
-                <button type="button" class="save-btn px-6 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow hover:bg-indigo-700 transition-colors">
-                  Save Stop
-                </button>
-              </div>
-            </form>
-          )}
         </div>
-      </div>
-    ))}
+      );
+    })}
   </div>
 
+  <!-- New Stop Template -->
   <template id="new-stop-template">
-    <div class="timeline-item relative group is-new animate-in fade-in slide-in-from-left-4">
-      <div class="absolute -left-[41px] top-1 w-5 h-5 bg-indigo-500 border-4 border-indigo-200 rounded-full z-10"></div>
-      <div class="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-xl p-5 mb-8">
-        <h4 class="text-indigo-700 font-bold text-sm mb-4">New Stop Information</h4>
+    <div class="timeline-item relative group pl-8 md:pl-10 animate-in fade-in slide-in-from-left-4">
+      <div class="absolute -left-[9px] top-2 w-5 h-5 bg-gradient-to-br from-green-500 to-emerald-500 border-4 border-green-200 rounded-full z-10 shadow-lg"></div>
+      
+      <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-dashed border-green-300 rounded-2xl p-5 md:p-6 shadow-md">
+        <h4 class="text-green-700 font-bold text-base mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          New Stop Information
+        </h4>
+        
         <form class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <select name="type" class="w-full p-2 border rounded-lg text-sm">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <select 
+              name="type" 
+              class="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 transition-all"
+            >
               <option value="activity">Activity</option>
               <option value="transit">Transit</option>
               <option value="lodging">Lodging</option>
               <option value="destination">Destination</option>
             </select>
-            <input type="number" name="waiting_time" placeholder="Wait (mins)" class="w-full p-2 border rounded-lg text-sm" />
+            <input 
+              type="number" 
+              name="waiting_time" 
+              placeholder="Wait time (mins)" 
+              class="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-green-500 transition-all" 
+            />
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <input type="datetime-local" name="start_time" class="w-full p-2 border rounded-lg text-sm" />
-            <input type="datetime-local" name="end_time" class="w-full p-2 border rounded-lg text-sm" />
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input 
+              type="datetime-local" 
+              name="start_time" 
+              class="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-green-500 transition-all" 
+            />
+            <input 
+              type="datetime-local" 
+              name="end_time" 
+              class="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-green-500 transition-all" 
+            />
           </div>
-          <input type="text" name="location_name" placeholder="Enter location name..." class="w-full p-2 border rounded-lg text-sm font-medium" />
+          
+          <input 
+            type="text" 
+            name="location_name" 
+            placeholder="Enter location name..." 
+            class="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-green-500 transition-all" 
+          />
+          
           <div class="flex justify-end gap-3 pt-2">
-            <button type="button" class="cancel-new-btn text-xs text-slate-500 font-bold uppercase">Cancel</button>
-            <button type="button" class="save-btn px-6 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow">Create Stop</button>
+            <button 
+              type="button" 
+              class="cancel-new-btn px-4 py-2 text-sm text-gray-600 hover:bg-white/50 rounded-lg font-semibold transition-all focus:ring-2 focus:ring-gray-500 focus:outline-none"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              class="save-btn px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-green-500/30 transition-all focus:ring-2 focus:ring-green-500 focus:outline-none"
+            >
+              Create Stop
+            </button>
           </div>
         </form>
       </div>
@@ -192,12 +312,13 @@ const sortedLocations = [...trip_location].sort((a, b) =>
 
     let isEditing = false;
 
-    // 1. Toggle Edit Mode
+    // Toggle Edit Mode
     toggleBtn?.addEventListener('click', () => {
       isEditing = !isEditing;
       toggleBtn.innerText = isEditing ? 'Finish Editing' : 'Edit Timeline';
-      toggleBtn.classList.toggle('bg-slate-900', !isEditing);
-      toggleBtn.classList.toggle('bg-green-600', isEditing);
+      toggleBtn.className = isEditing 
+        ? 'px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-amber-500/30 focus:ring-2 focus:ring-amber-500 focus:outline-none'
+        : 'px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/30 focus:ring-2 focus:ring-green-500 focus:outline-none';
       
       addBtn?.classList.toggle('hidden', !isEditing);
       addBtn?.classList.toggle('flex', isEditing);
@@ -206,17 +327,16 @@ const sortedLocations = [...trip_location].sort((a, b) =>
       document.querySelectorAll('.edit-mode').forEach(el => el.classList.toggle('hidden', !isEditing));
     });
 
-    // 2. Add New Stop to DOM
+    // Add New Stop to DOM
     addBtn?.addEventListener('click', () => {
       const clone = template.content.cloneNode(true) as HTMLElement;
-      // Pre-fill dates with current time
       const now = new Date().toISOString().slice(0, 16);
       clone.querySelectorAll('input[type="datetime-local"]').forEach((input: any) => input.value = now);
       
       container.prepend(clone);
     });
 
-    // 3. Event Delegation for Save/Delete/Cancel
+    // Event Delegation for Save/Delete/Cancel
     root.addEventListener('click', async (e) => {
       const target = e.target as HTMLElement;
 
@@ -262,7 +382,6 @@ const sortedLocations = [...trip_location].sort((a, b) =>
         
         setTimeout(() => {
           target.innerText = "Saved!";
-          // We reload because the new item needs to be sorted chronologically by the server
           window.location.reload();
         }, 800);
       }

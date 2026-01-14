@@ -102,7 +102,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     micromatch.isMatch(pathname, protectedAPIRoutes) &&
 
     !locals.user_id &&
-    !micromatch.isMatch(pathname, "/api/auth/**")
+    !micromatch.isMatch(pathname, "/api/auth/**") &&
+
+    !micromatch.isMatch(pathname, "/api/mapbox-token")
   ) {
     console.log("Unauthorized");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

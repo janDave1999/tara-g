@@ -1,7 +1,8 @@
 ---
 import { MapPin, Calendar, Users, LucideVenusAndMars, HandCoins, Share2Icon, EllipsisVertical } from '@lucide/astro';
+import Member from './Member.astro';
 
-// Mock props for context (You keep your existing props)
+// Props
 const {
   title,
   visibility,
@@ -15,372 +16,234 @@ const {
   costSharing,
   description,
   userRole,
+  members
 } = Astro.props;
+
 let tagsArray = [];
 
 const isFull = currentPax >= maxPax ? true : false;
 if (Array.isArray(tags)) {
-  // It's already a real array
   tagsArray = tags;
 } else if (typeof tags === "string") {
   const cleaned = tags.trim();
   if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
     try {
-      // It looks like '["a","b"]', so parse it as JSON
       tagsArray = JSON.parse(cleaned);
     } catch (e) {
-      // Fallback if parsing fails
       tagsArray = [];
     }
   } else {
-    // It looks like "a, b, c", so split it
     tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
   }
 }
 
-// Helper to calculate percentage for the progress bar
 const paxPercentage = Math.min((currentPax / maxPax) * 100, 100);
 
-
 const statusColors: { [key in 'active' | 'completed' | 'cancelled' | 'draft' | 'archived' | 'private' | 'public']: string } = {
-  active: 'badge-primary',
-  completed: 'badge-success',
-  cancelled: 'badge-error',
-  draft: 'badge-warning',
-  archived: 'badge-gray',
-  private: 'badge-secondary',
-  public: 'badge-primary',
+  active: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
+  completed: 'bg-blue-100 text-blue-700 ring-blue-600/20',
+  cancelled: 'bg-red-100 text-red-700 ring-red-600/20',
+  draft: 'bg-amber-100 text-amber-700 ring-amber-600/20',
+  archived: 'bg-gray-100 text-gray-700 ring-gray-600/20',
+  private: 'bg-purple-100 text-purple-700 ring-purple-600/20',
+  public: 'bg-sky-100 text-sky-700 ring-sky-600/20',
 };
-
 ---
 
-<section class="max-w-5xl mx-auto mt-6 mb-16 px-4">
-  <div class="card bg-base-100 shadow-xl border border-base-200">
-    <div class="card-body p-6 md:p-8">
-
-      <div class="flex flex-col gap-4 mb-2">
-        <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-          
-          <div class="space-y-2">
-            <h1 class="text-3xl md:text-4xl font-bold text-base-content tracking-tight">
+<section class="max-w-5xl mx-auto mt-8 mb-16 px-4">
+  <!-- Main Card with Modern Styling -->
+  <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+    
+    <!-- Header Section -->
+    <div class="bg-gradient-to-br from-green-50 via-white to-emerald-50 p-6 md:p-8 border-b border-gray-100">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+        
+        <!-- Title & Tags -->
+        <div class="space-y-3 flex-1">
+          <div class="flex items-start gap-3">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
               {title}
             </h1>
-            
-            {tagsArray.length > 0 && (
-              <div class="flex flex-wrap gap-2">
-                {tagsArray.map((tag: string) => (
-                  <span class="badge badge-neutral badge-outline text-xs">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+            {visibility && (
+              <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
+                {visibility.toUpperCase()}
+              </span>
             )}
           </div>
-
-        <div class="flex flex-wrap gap-2 md:justify-end items-center">
-           {userRole === 'owner' && (
-              <button class="outline-none btn btn-sm gap-2" onclick="/* open settings modal */">
-                <EllipsisVertical />
-                </button>
-            )}
-            <div class="flex gap-2">
-              <button class="btn btn-sm gap-2" onclick="/* open share modal */">
-                <Share2Icon />
-              </button>
-            </div>
-           
           
-            
-            {userRole === 'member' && (
-                <button class="btn btn-ghost btn-sm text-error" onclick="if(confirm('Leave trip?')) window.location.href=`/api/trips/${Astro.props.tripId}/leave` ">
-                  Leave
-                </button>
-              )}
-            { (userRole === 'owner' || userRole === 'member') && (
-              <button class="btn btn-sm" id="member-btn">
-                Members
-              </button>
-            )}
-            {userRole === 'visitor' && (
-              <button id="join-btn" class="btn btn-ghost btn-sm text-error">
-                Join
-              </button>
-            )}
-              {userRole === 'pending' && (
-                <div class="flex flex-col items-end gap-1">
-                  <button id="cancel-req-btn" class="btn btn-warning btn-sm gap-2">
-                    Cancel Request
-                  </button>
-                </div>
-                )}
-                
-                <!-- {(!isOwner && !isMember && !isPending) && (
-                  <>
-                  {isFull ? (
-                    <button class="btn btn-disabled btn-sm">Trip Full</button>
-                    ) : (
-                    <button class="btn btn-primary btn-sm px-6 shadow-lg shadow-primary/20" onclick="window.location.href=`/trips/${trip_id}/join`">
-                      Request to Join
-                    </button>
-                    )}
-                    </>
-                    )} -->
-                    
-                    {visibility && (
-                      <div class={`badge ${( statusColors as any)[visibility] || 'badge-ghost'} badge-md font-bold py-3 ml-2 uppercase text-[10px]`}>
-                        {visibility}
-                      </div>
-                      )}
-                    </div>
-          {(userRole !== 'owner' && currentPax >= maxPax) && (
-            <div class="flex flex-wrap gap-2 md:justify-end">
-              <button class="btn btn-error gap-1 border-none text-white font-semibold py-3" onclick="window.location.href=`/trips/${tripStart}/leave`">
-                Leave Trip
-              </button>
-              {visibility in statusColors && (
-                <div class={`badge ${(statusColors as any )[visibility]} gap-1 border-none text-white font-semibold py-3`}>
-                  {String(visibility).toUpperCase()}
-                </div>
-              )}
+          {tagsArray.length > 0 && (
+            <div class="flex flex-wrap gap-2">
+              {tagsArray.map((tag: string) => (
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
+                  {tag}
+                </span>
+              ))}
             </div>
           )}
         </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-2 items-center">
+          {userRole === 'owner' && (
+            <button 
+              class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              onclick="/* open settings modal */"
+              aria-label="Trip settings"
+            >
+              <EllipsisVertical class="w-4 h-4" />
+            </button>
+          )}
+          
+          <button 
+            class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            onclick="/* open share modal */"
+            aria-label="Share trip"
+          >
+            <Share2Icon class="w-4 h-4" />
+            <span class="hidden sm:inline">Share</span>
+          </button>
+          
+          {userRole === 'member' && (
+            <button 
+              class="btn btn-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all focus:ring-2 focus:ring-red-500 focus:outline-none"
+              onclick="if(confirm('Leave trip?')) window.location.href=`/api/trips/${Astro.props.tripId}/leave`"
+            >
+              Leave Trip
+            </button>
+          )}
+          
+          {(userRole === 'owner' || userRole === 'member') && (
+            <Member member={members} />
+          )}
+          
+          {userRole === 'visitor' && !isFull && (
+            <button 
+              id="join-btn" 
+              class="btn btn-sm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-none shadow-lg shadow-green-500/30 transition-all focus:ring-2 focus:ring-green-500 focus:outline-none"
+            >
+              Request to Join
+            </button>
+          )}
+          
+          {userRole === 'visitor' && isFull && (
+            <button 
+              class="btn btn-sm bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed" 
+              disabled
+            >
+              Trip Full
+            </button>
+          )}
+          
+          {userRole === 'pending' && (
+            <button 
+              id="cancel-req-btn" 
+              class="btn btn-sm bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-all focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            >
+              Cancel Request
+            </button>
+          )}
+        </div>
       </div>
+    </div>
 
-      <div class="divider my-2"></div>
-
+    <!-- Trip Details Grid -->
+    <div class="p-6 md:p-8">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        <div class="flex items-start gap-3">
-          <div class="p-2 bg-primary/10 rounded-lg text-primary">
-            <MapPin size={20} />
+        
+        <!-- Destination -->
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-transparent hover:shadow-md transition-shadow">
+          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg shadow-green-500/30">
+            <MapPin class="w-5 h-5 text-white" />
           </div>
-          <div>
-            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Destination</p>
-            <p class="font-medium text-base-content text-lg">{destination}</p>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Destination</p>
+            <p class="font-semibold text-gray-900 text-lg">{destination}</p>
           </div>
         </div>
 
-        <div class="flex items-start gap-3">
-          <div class="p-2 bg-secondary/10 rounded-lg text-secondary">
-            <Calendar size={20} />
+        <!-- Trip Dates -->
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-transparent hover:shadow-md transition-shadow">
+          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/30">
+            <Calendar class="w-5 h-5 text-white" />
           </div>
-          <div>
-            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Trip Dates</p>
-            <div class="flex flex-row">
-               <span class="font-medium text-base-content">{new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripStart))}</span>
-               <span class="font-medium text-base-content mx-2">to</span>
-               <span class="font-medium text-base-content">{new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripEnd))}</span>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Trip Dates</p>
+            <div class="flex flex-col gap-0.5">
+              <span class="font-medium text-gray-900 text-sm">
+                {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripStart))}
+              </span>
+              <span class="text-gray-400 text-xs">to</span>
+              <span class="font-medium text-gray-900 text-sm">
+                {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripEnd))}
+              </span>
             </div>
           </div>
         </div>
 
-        <div class="flex items-start gap-3">
-          <div class="p-2 bg-accent/10 rounded-lg text-accent">
-            <Users size={20} />
+        <!-- Joiners Progress -->
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-teal-50 to-transparent hover:shadow-md transition-shadow">
+          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-500/30">
+            <Users class="w-5 h-5 text-white" />
           </div>
-          <div class="w-full max-w-[180px]">
-            <div class="flex justify-between items-baseline mb-1">
-              <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Joiners</p>
-              <span class="text-sm font-bold">{currentPax} <span class="text-base-content/40 font-normal">/ {maxPax}</span></span>
+          <div class="flex-1 w-full">
+            <div class="flex justify-between items-center mb-2">
+              <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Joiners</p>
+              <span class="text-sm font-bold text-gray-900">
+                {currentPax} <span class="text-gray-400 font-normal">/ {maxPax}</span>
+              </span>
             </div>
-            <progress class="progress progress-accent w-full" value={paxPercentage} max="100"></progress>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3">
-          <div class="p-2 bg-neutral/10 rounded-lg text-neutral">
-            <LucideVenusAndMars size={20} />
-          </div>
-          <div>
-            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Gender Pref</p>
-            <p class="font-medium text-base-content capitalize">{genderPref || "Any"}</p>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3">
-          <div class="p-2 bg-success/10 rounded-lg text-success-content">
-            <HandCoins size={20} />
-          </div>
-          <div>
-            <p class="text-xs font-bold text-base-content/60 uppercase tracking-wide">Cost Sharing</p>
-            <div class="badge badge-ghost badge-sm mt-1 font-medium">
-               {String(costSharing).toUpperCase()}
+            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div 
+                class="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-500" 
+                style={`width: ${paxPercentage}%`}
+              ></div>
             </div>
           </div>
         </div>
 
+        <!-- Gender Preference -->
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-lime-50 to-transparent hover:shadow-md transition-shadow">
+          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-lime-500 to-lime-600 rounded-xl shadow-lg shadow-lime-500/30">
+            <LucideVenusAndMars class="w-5 h-5 text-white" />
+          </div>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Gender Pref</p>
+            <p class="font-semibold text-gray-900 capitalize">{genderPref || "Any"}</p>
+          </div>
+        </div>
+
+        <!-- Cost Sharing -->
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-transparent hover:shadow-md transition-shadow">
+          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg shadow-amber-500/30">
+            <HandCoins class="w-5 h-5 text-white" />
+          </div>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Cost Sharing</p>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 mt-1">
+              {String(costSharing).toUpperCase()}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div class="divider my-2"></div>
-
-      <div class="mt-2">
-        <h3 class="text-lg font-semibold text-base-content mb-2">About this trip</h3>
-        <p class="text-base-content/80 leading-relaxed whitespace-pre-line">
+      <!-- Description Section -->
+      <div class="mt-8 p-6 rounded-xl bg-gradient-to-br from-green-50 to-white border border-gray-100">
+        <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span class="w-1 h-5 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></span>
+          About this trip
+        </h3>
+        <p class="text-gray-700 leading-relaxed whitespace-pre-line">
           {description}
         </p>
       </div>
-
     </div>
   </div>
 </section>
-<div id="members-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-  <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-    
-    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-      <div>
-        <h3 class="text-lg font-bold text-slate-800">Trip Members</h3>
-        <p id="role-indicator" class="text-xs text-slate-500 italic"></p>
-      </div>
-      <button id="close-modal" class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-
-    <div class="overflow-y-auto max-h-[400px]">
-      <table class="w-full text-left border-separate border-spacing-0">
-        <thead class="sticky top-0 bg-white shadow-[0_1px_0_rgba(0,0,0,0.05)] z-10">
-          <tr id="table-headers">
-            <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">User ID</th>
-            </tr>
-        </thead>
-        <tbody id="members-list" class="divide-y divide-slate-100">
-          </tbody>
-      </table>
-    </div>
-
-    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 text-right">
-      <button id="close-modal-btn" class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors">
-        Close
-      </button>
-    </div>
-  </div>
-</div>
 
 <script>
-  const modal = document.getElementById('members-modal') as HTMLDivElement;
-  const membersList = document.getElementById('members-list') as HTMLTableSectionElement;
-  const tableHeaders = document.getElementById('table-headers') as HTMLTableSectionElement;
-  const roleIndicator = document.getElementById('role-indicator') as HTMLParagraphElement;
-  const tripMembersData = document.getElementById('trip-members') as HTMLDivElement;
-  // Logic State - Change to 'viewer' to test the hidden columns
-  const currentUserRole: 'owner' | 'member' = 'owner'; 
-  const isOwner = ( currentUserRole as any) === 'owner';
-
-  let tripMembers = [
-    { role: 'viewer', user_id: 'e2c04fda-0e0f-4eb2-b689-fae258181cec', member_status: 'pending' },
-    { role: 'editor', user_id: '88d12-fa21-4eb2-b689-fae258181abc', member_status: 'joined' },
-    { role: 'viewer', user_id: '99a34-bb11-4eb2-b689-fae258181xyz', member_status: 'joined' }
-  ];
-
-  function setupTableStructure() {
-    roleIndicator.textContent = isOwner ? "You are the Owner (Full Access)" : "Viewing as Member";
-    
-    // Clear dynamic headers
-    const existingDynamicHeaders = tableHeaders.querySelectorAll('.dynamic-header');
-    existingDynamicHeaders.forEach(h => h.remove());
-
-    if (isOwner) {
-      tableHeaders.innerHTML += `
-        <th class="dynamic-header px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-        <th class="dynamic-header px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">Actions</th>
-      `;
-    }
-  }
-
-  function renderMembers() {
-    membersList.innerHTML = '';
-
-    const statusConfig = {
-      pending: 'bg-amber-100 text-amber-700 ring-amber-600/20',
-      joined: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
-      invited: 'bg-blue-100 text-blue-700 ring-blue-600/20',
-      left: 'bg-slate-100 text-slate-700 ring-slate-600/20'
-    };
-
-    tripMembers.forEach((member: any) => {
-      const row = document.createElement('tr');
-      row.className = 'hover:bg-slate-50/80 transition-colors';
-
-      // Base Column: User ID (Visible to everyone)
-      let rowHTML = `
-        <td class="px-6 py-4">
-          <div class="flex flex-col">
-            <span class="text-sm font-mono font-medium text-slate-700">${member.user_id.slice(0, 8)}...</span>
-            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-tight">${member.role}</span>
-          </div>
-        </td>
-      `;
-
-      // Conditional Columns: Status and Actions (Owner only)
-      if (isOwner) {
-        rowHTML += `
-          <td class="px-6 py-4">
-            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${(statusConfig as any)[member.member_status]}">
-              ${member.member_status}
-            </span>
-          </td>
-          <td class="px-6 py-4 text-right">
-            <div class="flex justify-end gap-2 action-container"></div>
-          </td>
-        `;
-      }
-
-      row.innerHTML = rowHTML;
-
-      // Inject Action Buttons if Owner
-      if (isOwner) {
-        const actionContainer = row.querySelector('.action-container') as HTMLDivElement;
-        if (member.member_status === 'pending') {
-          actionContainer.appendChild(createButton('Accept', 'bg-emerald-600 text-white hover:bg-emerald-700', () => updateStatus(member.user_id, 'joined')));
-          actionContainer.appendChild(createButton('Reject', 'border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600', () => updateStatus(member.user_id, 'left')));
-        } else if (member.member_status === 'joined') {
-          actionContainer.appendChild(createButton('Kick', 'text-red-600 hover:bg-red-50 px-2 py-1', () => kickMember(member.user_id)));
-        }
-      }
-
-      membersList.appendChild(row);
-    });
-  }
-
-  function createButton(text: string, classes: string, onClick: any) {
-    const btn = document.createElement('button');
-    btn.className = `text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${classes}`;
-    btn.textContent = text;
-    btn.onclick = onClick;
-    return btn;
-  }
-
-  function updateStatus(userId: string, newStatus: string) {
-    const member = tripMembers.find((m: any) => m.user_id === userId);
-    if (member) {
-      member.member_status = newStatus;
-      renderMembers();
-    }
-  }
-
-  function kickMember(userId: string) {
-    if (confirm("Remove this member?")) {
-      tripMembers = tripMembers.filter(( m: any) => m.user_id !== userId);
-      renderMembers();
-    }
-  }
-
-  document.getElementById('member-btn')?.addEventListener('click', () => {
-    modal.classList.remove('hidden');
-    setupTableStructure(); // Ensure headers match role
-    renderMembers();
-  });
-
-  [document.getElementById('close-modal'), document.getElementById('close-modal-btn')].forEach(btn => {
-    btn?.addEventListener('click', () => modal.classList.add('hidden'));
-  });
-
-import { showToast } from '@/scripts/Toast';
-import { actions, ActionError } from 'astro:actions';
-import { createConfirmModal } from 'src/scripts/Modal';
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+  import { createConfirmModal } from 'src/scripts/Modal';
 
   const joinBtn = document.getElementById("join-btn") as HTMLButtonElement;
   const cancelRequestBtn = document.getElementById("cancel-req-btn") as HTMLButtonElement;
@@ -394,12 +257,11 @@ import { createConfirmModal } from 'src/scripts/Modal';
         confirmText: "Join",
         onConfirm: async () => {
           let {data, error } = await actions.trip.joinTrip({trip_id: tripID});
-          console.log("data", data);
           if (error instanceof ActionError) {
-            console.log("ERROR:", error);
             showToast({ message: error.message, type: "error" });
           } else {
             showToast({ message: "Joined trip successfully!", type: "success" });
+            setTimeout(() => window.location.reload(), 1500);
           }
         },
       })
@@ -413,12 +275,11 @@ import { createConfirmModal } from 'src/scripts/Modal';
         confirmText: "Yes, cancel request",
         onConfirm: async () => {
           let {data, error } = await actions.trip.cancelJoinRequest({trip_id: tripID});
-          console.log("data", data);
           if (error instanceof ActionError) {
-            console.log("ERROR:", error);
             showToast({ message: error.message, type: "error" });
           } else {
             showToast({ message: "Canceled trip request successfully!", type: "success" });
+            setTimeout(() => window.location.reload(), 1500);
           }
         },
       })

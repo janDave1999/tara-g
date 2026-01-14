@@ -1,64 +1,285 @@
 ---
-// src/components/MemberTable.astro
-interface Member {
-  role: string;
-  user_id: string;
-  joined_at: string;
-  member_status: 'pending' | 'joined' | 'invited' | 'left';
-}
+import { obfuscate } from "@/lib/obfuscate";
 
-interface Props {
-  members: Member[];
-}
+// 1. Get real data from Props
+const { member } = Astro.props;
+let currentUserId = Astro.locals.user_id || "";
 
-const { members } = Astro.props;
+// 2. Transform data for secure client-side use
+const secureMembers = member.map((m: any) => ({
+  role: m.role,
+  status: m.member_status,
+  fullName: m.full_name,
+  displayId: m.user_id.slice(0, 8),
+  // Obfuscated ID for secure operations
+  secureId: obfuscate(m.user_id),
+  // Flag to identify current user without exposing full ID
+  isCurrentUser: m.user_id === currentUserId
+}));
 
-const statusStyles = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  joined: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  invited: 'bg-blue-50 text-blue-700 border-blue-200',
-  left: 'bg-slate-50 text-slate-700 border-slate-200',
-};
-
-// Helper to format date
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
+// 3. Determine current user's role
+const currentUserMember = member.find((m: any) => m.user_id === currentUserId);
+const userRole = currentUserMember?.role || 'visitor';
+const isOwner = userRole === 'owner';
 ---
 
-<div class="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
-  <table class="w-full text-left text-sm border-collapse bg-white">
-    <thead class="bg-slate-50 border-b border-slate-200">
-      <tr>
-        <th class="px-6 py-4 font-semibold text-slate-900">User ID</th>
-        <th class="px-6 py-4 font-semibold text-slate-900">Role</th>
-        <th class="px-6 py-4 font-semibold text-slate-900">Status</th>
-        <th class="px-6 py-4 font-semibold text-slate-900">Joined Date</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      {members?.map((member) => (
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="px-6 py-4 font-mono text-xs text-slate-600">
-            {member.user_id}
-          </td>
-          <td class="px-6 py-4 text-slate-700 capitalize">
-            {member.role}
-          </td>
+<div 
+  id="members-data-container" 
+  data-members={JSON.stringify(secureMembers)}
+  data-user-role={userRole}
+>
+  <button class="btn btn-sm" id="member-btn">
+    Members
+  </button>
+</div>
+
+<div 
+  id="members-modal" 
+  class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+>
+  <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+    
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="text-lg font-bold text-slate-800">Trip Members</h3>
+        <p id="role-indicator" class="text-xs text-slate-500 italic"></p>
+      </div>
+      <button 
+        id="close-modal" 
+        class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full"
+        aria-label="Close modal"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-y-auto max-h-[400px]">
+      <table class="w-full text-left border-separate border-spacing-0">
+        <thead class="sticky top-0 bg-white shadow-[0_1px_0_rgba(0,0,0,0.05)] z-10">
+          <tr id="table-headers">
+            <!-- Headers will be dynamically populated -->
+          </tr>
+        </thead>
+        <tbody id="members-list" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 text-right">
+      <button 
+        id="close-modal-btn" 
+        class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { deobfuscate } from "@/lib/obfuscate";
+
+  // ===== Configuration =====
+  const STATUS_CONFIG: Record<string, string> = {
+    pending: 'bg-amber-100 text-amber-700 ring-amber-600/20',
+    joined: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
+    invited: 'bg-blue-100 text-blue-700 ring-blue-600/20',
+    left: 'bg-slate-100 text-slate-700 ring-slate-600/20'
+  };
+
+  // ===== Data Initialization =====
+  const container = document.getElementById('members-data-container');
+  const rawMembers = container?.getAttribute('data-members');
+  const userRole = container?.getAttribute('data-user-role') || 'visitor';
+
+  let tripMembers = rawMembers ? JSON.parse(rawMembers) : [];
+  const isOwner = userRole === 'owner';
+
+  // ===== DOM Elements =====
+  const modal = document.getElementById('members-modal') as HTMLDivElement;
+  const membersList = document.getElementById('members-list') as HTMLTableSectionElement;
+  const tableHeaders = document.getElementById('table-headers') as HTMLTableRowElement;
+  const roleIndicator = document.getElementById('role-indicator') as HTMLParagraphElement;
+
+  // ===== Table Setup =====
+  function setupTableStructure() {
+    const roleText = isOwner 
+      ? "You are the Owner (Full Access)" 
+      : userRole === 'member' 
+        ? "Viewing as Member" 
+        : "Viewing as Visitor";
+    
+    roleIndicator.textContent = roleText;
+
+    // Build headers based on role
+    let headersHTML = `
+      <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Member</th>
+      <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Role</th>
+    `;
+
+    if (isOwner) {
+      headersHTML += `
+        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+      `;
+    }
+
+    tableHeaders.innerHTML = headersHTML;
+  }
+
+  // ===== Render Members =====
+  function renderMembers() {
+    membersList.innerHTML = '';
+
+    tripMembers.forEach((member: any) => {
+      const row = document.createElement('tr');
+      row.className = 'hover:bg-slate-50/80 transition-colors';
+
+      // User column
+      let rowHTML = `
+        <td class="px-6 py-4">
+          <div class="flex flex-col">
+            <span class="text-sm font-medium text-slate-800">
+              ${member.isCurrentUser ? 'You' : member.fullName}
+            </span>
+          </div>
+        </td>
+        <td class="px-6 py-4">
+          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/20 capitalize">
+            ${member.role}
+          </span>
+        </td>
+      `;
+
+      // Owner-only columns
+      if (isOwner) {
+        rowHTML += `
           <td class="px-6 py-4">
-            <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[member.member_status]}`}>
-              {member.member_status}
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${STATUS_CONFIG[member.status] || STATUS_CONFIG.pending} capitalize">
+              ${member.status}
             </span>
           </td>
-          <td class="px-6 py-4 text-slate-500">
-            {formatDate(member.joined_at)}
+          <td class="px-6 py-4 text-right">
+            <div class="flex justify-end gap-2 action-container"></div>
           </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+        `;
+      }
+
+      row.innerHTML = rowHTML;
+
+      // Add action buttons for owners (excluding current user)
+      if (isOwner && !member.isCurrentUser) {
+        const actionContainer = row.querySelector('.action-container') as HTMLDivElement;
+        
+        if (member.status === 'pending') {
+          actionContainer.appendChild(
+            createButton('Accept', 'bg-emerald-600 hover:bg-emerald-700 text-white', 
+              () => handleUpdateStatus(member.secureId, 'joined'))
+          );
+          actionContainer.appendChild(
+            createButton('Reject', 'border border-slate-300 hover:bg-slate-100 text-slate-700', 
+              () => handleUpdateStatus(member.secureId, 'left'))
+          );
+        } else if (member.status === 'joined') {
+          actionContainer.appendChild(
+            createButton('Kick', 'text-red-600 hover:bg-red-50 border border-red-200', 
+              () => handleKick(member.secureId))
+          );
+        }
+      }
+
+      membersList.appendChild(row);
+    });
+  }
+
+  // ===== Action Handlers =====
+  async function handleUpdateStatus(secureId: string, status: string) {
+    try {
+      // Deobfuscate the ID for API call
+      const userId = deobfuscate(secureId);
+      
+      // TODO: Replace with actual API call
+      // const response = await fetch('/api/trip/update-member-status', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ userId, status })
+      // });
+      
+      // Optimistic UI update
+      const member = tripMembers.find((m: any) => m.secureId === secureId);
+      if (member) {
+        member.status = status;
+        renderMembers();
+      }
+    } catch (error) {
+      console.error('Failed to update member status:', error);
+      alert('Failed to update member status. Please try again.');
+    }
+  }
+
+  async function handleKick(secureId: string) {
+    if (!confirm("Are you sure you want to remove this member from the trip?")) return;
+    
+    try {
+      const userId = deobfuscate(secureId);
+      
+      // TODO: Replace with actual API call
+      // const response = await fetch('/api/trip/remove-member', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ userId })
+      // });
+      
+      // Optimistic UI update
+      tripMembers = tripMembers.filter((m: any) => m.secureId !== secureId);
+      renderMembers();
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+      alert('Failed to remove member. Please try again.');
+    }
+  }
+
+  // ===== Utility Functions =====
+  function createButton(text: string, classes: string, onClick: () => void) {
+    const btn = document.createElement('button');
+    btn.className = `text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${classes}`;
+    btn.textContent = text;
+    btn.onclick = onClick;
+    return btn;
+  }
+
+  // ===== Event Listeners =====
+  document.getElementById('member-btn')?.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setupTableStructure();
+    renderMembers();
+  });
+
+  [document.getElementById('close-modal'), document.getElementById('close-modal-btn')].forEach(btn => {
+    btn?.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    });
+  });
+
+  // Close modal on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  });
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  });
+</script>

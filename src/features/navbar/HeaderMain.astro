@@ -27,18 +27,15 @@ let userID = Astro.locals.user_id || "";
       </a>
     </div>
 
-    <!-- Desktop Menu -->
     <ul class="hidden md:flex space-x-6 items-center font-medium text-gray-700">
       <li><a href="/about" class="hover:text-blue-600">About</a></li>
       <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
       <li><a href="/blogs" class="hover:text-blue-600">Blogs</a></li>
     </ul>
 
-    <!-- Right section: profile or sign in -->
     <div class="relative">
       {userID ? (
         <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
-          {/* Profile picture */}
 
           {avatarUrl ? (
             <img src={avatarUrl} alt="Profile" class="w-8 h-8 rounded-full" />
@@ -59,7 +56,7 @@ let userID = Astro.locals.user_id || "";
           class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
           <li><a href="/trips" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Trips</a></li>
           <li><a href="/settings" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a></li>
-          <li><a href="/api/auth/signout" class="block px-4 py-2 text-red-500 hover:bg-gray-100">Logout</a></li>
+          <li><button class="block px-4 sign-out py-2 text-red-500 hover:bg-gray-100">Logout</button></li>
         </ul>
       )}
     </div>
@@ -75,7 +72,7 @@ let userID = Astro.locals.user_id || "";
       {userID ? (
         <>
           <li><a href="/dashboard" class="hover:text-blue-600">Dashboard</a></li>
-          <li><a href="/api/auth/signout" class="text-red-500 hover:underline">Logout</a></li>
+          <li><button class="text-red-500 signout hover:underline">Logout</button></li>
         </>
       ) : (
         <li>
@@ -87,13 +84,14 @@ let userID = Astro.locals.user_id || "";
   </div>
 </header>
 
-<!-- Inline Script -->
 <script>
+  import { actions } from "astro:actions";
   document.addEventListener('DOMContentLoaded', () => {
     const menuBtn = document.getElementById('menu-btn') as HTMLButtonElement;
     const mobileMenu = document.getElementById('mobile-menu') as HTMLDivElement;
     const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement;
     const profileMenu = document.getElementById('profile-menu') as HTMLUListElement;
+    const signOutBtns = document.querySelectorAll('.sign-out');
 
     if (menuBtn) {
       menuBtn.addEventListener('click', () => {
@@ -113,5 +111,12 @@ let userID = Astro.locals.user_id || "";
         }
       });
     }
+
+    signOutBtns.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await actions.auth.signout();
+        window.location.href = '/signin';
+      });
+    });
   });
 </script>

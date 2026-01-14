@@ -4,7 +4,7 @@ import { type ActionInputSchema, type ActionReturnType, ActionError, defineActio
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
 import { uploadToR2 } from "@/scripts/R2/upload";
-import JoinTrip from "@/components/Trip/JoinTrip.astro";
+import { defineProtectedAction } from "./utils";
 // get user id in astro locals
 
 
@@ -160,11 +160,8 @@ export const trip = {
       trip_id: z.string(),
     }),
 
-    async handler(input, context) {
-      const user_id = context.locals.user_id
-      const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: user_id });
-      console.log(data);
-      console.log("NAG ERROR:", error);
+     handler: defineProtectedAction(async (input, {userId}) => {
+      const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: userId });
       let message = data[0].message
       console.log(message);
       if (error) {
@@ -182,7 +179,7 @@ export const trip = {
         })
       }
       return data
-    }
+    })
 
   }),
 
@@ -191,9 +188,8 @@ export const trip = {
       trip_id: z.string(),
     }),
 
-    async handler(input, context) {
-      const user_id = context.locals.user_id
-      const { data, error } = await supabaseAdmin.rpc("cancel_join_request", { p_trip_id: input.trip_id, p_user_id: user_id });
+    handler: defineProtectedAction(async (input, {userId}) => {
+      const { data, error } = await supabaseAdmin.rpc("cancel_join_request", { p_trip_id: input.trip_id, p_user_id: userId });
       if (error) {
         throw new ActionError({
           message: error.message,
@@ -208,7 +204,7 @@ export const trip = {
         })
       }
       return data
-    }
+    })
   }),
   
   getTripDetails: defineAction({

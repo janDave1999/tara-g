@@ -2,75 +2,117 @@ import { defineMiddleware } from "astro:middleware";
 import { supabase } from "../lib/supabase";
 import micromatch from "micromatch";
 
-const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/trips/create"];
-const redirectRoutes = ["/signin(|/)", "/register(|/)", "/"];
-const proptectedAPIRoutes = ["/api/trips/**", "/api/feeds/**"];
+/* -------------------- Route Config -------------------- */
+const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**"];
+const protectedAPIRoutes = ["/api/**"];
+const guestOnlyRoutes = ["/signin(|/)", "/register(|/)", "/", "/api/auth/**"];
+const ACTION_PREFIX = "/_actions";
 
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    const accessToken = cookies.get("sb-access-token");
-    const refreshToken = cookies.get("sb-refresh-token");
+/* -------------------- Helpers -------------------- */
+const decodeJwt = (token: string) => {
+  const base64 = token.split(".")[1]
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
 
-    // ✨ Always try to resolve logged-in user (even on public routes)
-    if (accessToken && refreshToken) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
+  return JSON.parse(
+    decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+        .join("")
+    )
+  );
+};
 
-      if (!error) {
-        const { data: userData } = await supabase.auth.getUser(
-          data?.session?.access_token
-        );
-        locals.user_id = userData?.user?.id ?? null;
-        locals.avatar_url = userData?.user?.user_metadata?.avatar_url ?? null;
+/* -------------------- Middleware -------------------- */
+export const onRequest = defineMiddleware(async (ctx, next) => {
+  const { url, cookies, locals, redirect, request } = ctx;
+  const pathname = url.pathname;
+  const isAction = pathname.startsWith(ACTION_PREFIX);
 
-        // update cookies silently in the background
-        cookies.set("sb-access-token", data.session?.access_token!, {
-          sameSite: "strict",
-          path: "/",
-          secure: true,
-        });
-        cookies.set("sb-refresh-token", data.session?.refresh_token!, {
-          sameSite: "strict",
-          path: "/",
-          secure: true,
-        });
-      }
-    }
-
-    // 🔒 Protected UI pages
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-      if (!locals.user_id) {
-        return redirect("/signin");
-      }
-    }
-
-    // 🔒 Protected actions
-    // if (url.pathname.startsWith("/_actions/")) {
-    //   if (!locals.user_id) {
-    //     console.log("🔒 Protected actions");
-    //     return new Response("Unauthorized", { status: 401 });
-    //   }
-    // }
-
-    // 🔒 Protected API
-    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
-      if (!locals.user_id) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-        });
-      }
-    }
-
-    // 🚫 Redirect if a logged-in user visits /signin or /register
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      if (locals.user_id) {
-        return redirect("/feeds");
-      }
-    }
-
+  /* ---------- NEVER skip auth for POST / actions ---------- */
+  if (
+    request.method === "GET" &&
+    pathname.includes(".") &&
+    !pathname.endsWith(".html")
+  ) {
     return next();
   }
-);
 
+  const accessToken = cookies.get("sb-access-token")?.value;
+  const refreshToken = cookies.get("sb-refresh-token")?.value;
+
+  /* -------------------- Auth Resolver -------------------- */
+  if (accessToken && refreshToken) {
+    try {
+      const payload = decodeJwt(accessToken);
+      const isExpired = Date.now() >= payload.exp * 1000;
+
+      if (!isExpired) {
+        locals.user_id = payload.sub;
+        locals.avatar_url = payload.user_metadata?.avatar_url;
+      } else {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (!error && data.user) {
+          locals.user_id = data.user.id;
+          locals.avatar_url = data.user.user_metadata?.avatar_url;
+
+          cookies.set("sb-access-token", data.session!.access_token, {
+            path: "/",
+            httpOnly: true,
+            sameSite: "strict",
+            secure: true,
+          });
+
+          cookies.set("sb-refresh-token", data.session!.refresh_token, {
+            path: "/",
+            httpOnly: true,
+            sameSite: "strict",
+            secure: true,
+          });
+        } else {
+          cookies.delete("sb-access-token", { path: "/" });
+          cookies.delete("sb-refresh-token", { path: "/" });
+        }
+      }
+    } catch {
+      cookies.delete("sb-access-token", { path: "/" });
+      cookies.delete("sb-refresh-token", { path: "/" });
+    }
+  }
+
+  /* -------------------- HARD ACTION GATE -------------------- */
+  if (isAction && !locals.user_id) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized Action" }),
+      { status: 401 }
+    );
+  }
+
+  /* -------------------- UI Guards -------------------- */
+  if (micromatch.isMatch(pathname, protectedRoutes) && !locals.user_id) {
+    return redirect("/signin");
+  }
+
+  if (
+    micromatch.isMatch(pathname, protectedAPIRoutes) &&
+
+    !locals.user_id &&
+    !micromatch.isMatch(pathname, "/api/auth/**")
+  ) {
+    console.log("Unauthorized");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
+  }
+
+  if (micromatch.isMatch(pathname, guestOnlyRoutes) && locals.user_id) {
+    return redirect("/feeds");
+  }
+
+  return next();
+});

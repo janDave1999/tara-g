@@ -149,7 +149,7 @@ const elements = {
 async function getMapboxToken(): Promise<string> {
   try {
     const res = await fetch("/api/mapbox-token");
-    const data = await res.json();
+    const data = await res.json() as any;
     if (!data.token) throw new Error();
     return data.token;
   } catch (e) {
@@ -260,7 +260,7 @@ async function handleProvinceSelect(province: any) {
   try {
     const slug = await slugify(province.name.toLowerCase());
     const res = await fetch(`/geojson/${slug}.geojson`);
-    const geojsonData = await res.json();
+    const geojsonData = await res.json() as any;
 
     map.addSource("province", { type: "geojson", data: geojsonData.geometry });
     map.addLayer({

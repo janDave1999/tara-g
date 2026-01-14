@@ -298,7 +298,7 @@ uploadToR2: defineAction({
           f.name, 
           f.type, 
           keyname, 
-          locals.runtime.env.MY_R2_BUCKET
+          locals.runtime.env.TRIP_HERO
         );
         
         if (!url) {
@@ -325,7 +325,7 @@ uploadToR2: defineAction({
           
           // Cleanup: delete uploaded file from R2 since DB insert failed
           try {
-            await locals.runtime.env.MY_R2_BUCKET.delete(keyname);
+            await locals.runtime.env.TRIP_HERO.delete(keyname);
           } catch (deleteErr) {
             console.error("[R2 DELETE ERROR]", deleteErr);
           }
@@ -350,7 +350,7 @@ uploadToR2: defineAction({
         console.log(`Cleaning up ${uploadedKeys.length} uploaded file(s)...`);
         for (const key of uploadedKeys) {
           try {
-            await locals.runtime.env.MY_R2_BUCKET.delete(key);
+            await locals.runtime.env.TRIP_HERO.delete(key);
           } catch (deleteErr) {
             console.error(`[R2 CLEANUP ERROR] Failed to delete ${key}:`, deleteErr);
           }

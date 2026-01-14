@@ -46,7 +46,7 @@ export async function forwardGeocode(options: GeocodeOptions): Promise<GeocodeRe
     throw new Error(`Geocoding API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   // According to docs, results are in `features` array. :contentReference[oaicite:5]{index=5}
   const features = data.features ?? [];
 

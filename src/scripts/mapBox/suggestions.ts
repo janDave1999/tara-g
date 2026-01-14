@@ -25,7 +25,7 @@ export async function mapboxSuggest({
   const response = await fetch(url);
 
   if (!response.ok) throw new Error("Mapbox Suggest API failed");
-  const data = await response.json();
+  const data = await response.json() as any;
 
   // Each suggestion includes a unique id for the next step
   return data.suggestions ?? [];

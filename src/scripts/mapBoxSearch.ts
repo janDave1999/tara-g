@@ -98,7 +98,7 @@ export function createMapboxSearchBox({
             input.value = item.name;
             suggestionBox.classList.add("hidden");
 
-            const place = await mapboxRetrieve({ suggestionId: item.mapbox_id, sessionToken });
+            const place: any = await mapboxRetrieve({ suggestionId: item.mapbox_id, sessionToken });
             const feature = place?.features?.[0];
             if (!feature) return;
 

@@ -233,7 +233,7 @@ export const trip = {
       }
     }),
 
-    uploadToR2: defineAction({
+uploadToR2: defineAction({
   accept: "json",
 
   input: z.object({
@@ -243,52 +243,95 @@ export const trip = {
         name: z.string(),
         type: z.string(),
       })
-    ),
-    trip_id: z.string(),
+    ).min(1, "At least one file is required").max(10, "Maximum 10 files allowed"),
+    trip_id: z.string().uuid("Invalid trip ID"),
   }),
 
-  async handler({ files, trip_id }) {
+  async handler({ files, trip_id }, { locals }) {
+    console.log("locals:", locals.runtime);
+    // Check if R2 binding exists
+    if (!locals.runtime?.env?.TRIP_HERO) {
+      throw new ActionError({
+        message: "R2 bucket not configured",
+        code: "INTERNAL_SERVER_ERROR",
+      });
+    }
+
+    const uploadedUrls: string[] = [];
+    const uploadedKeys: string[] = [];
+
     try {
       for (const f of files) {
-        // --- Proper base64 file size check (in bytes) ---
+        // Validate file type (optional - adjust allowed types as needed)
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(f.type)) {
+          throw new ActionError({
+            message: `Invalid file type: ${f.type}. Allowed types: ${allowedTypes.join(', ')}`,
+            code: "BAD_REQUEST",
+          });
+        }
+
+        // Proper base64 file size check (in bytes)
         const base64 = f.file;
-        const sizeInBytes = (base64.length * 3) / 4 - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0);
+        const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+        const sizeInBytes = (base64.length * 3) / 4 - padding;
         
         if (sizeInBytes > 5 * 1024 * 1024) {
           throw new ActionError({
-            message: "File too large (max 5MB)",
+            message: `File "${f.name}" is too large (max 5MB)`,
             code: "BAD_REQUEST",
           });
         }
         
-        // decode
+        // Decode base64
         const buffer = Buffer.from(base64, "base64");
         
-        // unique filename
-        const keyname = `trip/hero/${Date.now()}-${crypto.randomUUID()}-${f.name}`;
+        // Sanitize filename to prevent path traversal
+        const sanitizedName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         
-        const url = await uploadToR2(buffer, f.name, f.type, keyname);
+        // Unique filename with timestamp and UUID
+        const keyname = `trip/hero/${trip_id}/${Date.now()}-${crypto.randomUUID()}-${sanitizedName}`;
+        
+        // Upload to R2
+        const url = await uploadToR2(
+          buffer, 
+          f.name, 
+          f.type, 
+          keyname, 
+          locals.runtime.env.MY_R2_BUCKET
+        );
         
         if (!url) {
           throw new ActionError({
-            message: "Upload failed",
+            message: `Failed to upload "${f.name}"`,
             code: "INTERNAL_SERVER_ERROR",
           });
         }
+
+        uploadedUrls.push(url);
+        uploadedKeys.push(keyname);
         
-        // save record in DB
+        // Save record in DB
         const { error } = await supabaseAdmin
-        .from("trip_images")
-        .insert({
-          trip_id,
-          key_name: keyname,
-          type: "hero",
-        });
+          .from("trip_images")
+          .insert({
+            trip_id,
+            key_name: keyname,
+            type: "hero",
+          });
         
         if (error) {
-          console.log("[DB ERROR]", error);
+          console.error("[DB ERROR]", error);
+          
+          // Cleanup: delete uploaded file from R2 since DB insert failed
+          try {
+            await locals.runtime.env.MY_R2_BUCKET.delete(keyname);
+          } catch (deleteErr) {
+            console.error("[R2 DELETE ERROR]", deleteErr);
+          }
+          
           throw new ActionError({
-            message: error.message,
+            message: `Database error: ${error.message}`,
             code: "INTERNAL_SERVER_ERROR",
           });
         }
@@ -296,17 +339,36 @@ export const trip = {
       
       return {
         success: true,
-        message: "Images uploaded successfully!",
+        message: `${files.length} image(s) uploaded successfully!`,
+        urls: uploadedUrls,
       };
     } catch (error: any) {
-      console.log("[ERROR]", error);
+      console.error("[UPLOAD ERROR]", error);
+      
+      // Cleanup: delete any successfully uploaded files if an error occurred
+      if (uploadedKeys.length > 0) {
+        console.log(`Cleaning up ${uploadedKeys.length} uploaded file(s)...`);
+        for (const key of uploadedKeys) {
+          try {
+            await locals.runtime.env.MY_R2_BUCKET.delete(key);
+          } catch (deleteErr) {
+            console.error(`[R2 CLEANUP ERROR] Failed to delete ${key}:`, deleteErr);
+          }
+        }
+      }
+      
+      // Re-throw ActionError as-is, wrap other errors
+      if (error instanceof ActionError) {
+        throw error;
+      }
+      
       throw new ActionError({
         message: error?.message || "Upload failed",
         code: "INTERNAL_SERVER_ERROR",
       });
     }
   },
-  }),
+}),
 
 
  getNearbyTrips: defineAction({

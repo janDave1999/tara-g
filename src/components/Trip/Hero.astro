@@ -19,8 +19,8 @@ interface Props {
 const { trip_images = [], userRole }: Props = Astro.props;
 
 let isOwner = userRole === 'owner' ? true : false;
-const heroImages = trip_images.filter((img) => img.type === "hero");
-const totalSlides = isOwner ? heroImages.length + 1 : heroImages.length;
+const heroImages = trip_images?.filter((img) => img.type === "hero");
+const totalSlides = isOwner ? heroImages?.length + 1 : heroImages?.length;
 
 // Helper functions for slide navigation
 const getPrevSlide = (current: number) => current - 1 <= 0 ? totalSlides : current - 1;
@@ -37,7 +37,7 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
   <!-- Main Carousel -->
   <div class="carousel w-full shadow-2xl rounded-2xl overflow-hidden bg-gray-100">
     <!-- IMAGE SLIDES -->
-    {heroImages.map((image, index) => {
+    {heroImages?.map((image, index) => {
       const slideNum = index + 1;
       const slideId = `slide${slideNum}`;
       const prevId = `slide${getPrevSlide(slideNum)}`;
@@ -50,23 +50,23 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
         >
           <!-- Image with lazy loading and optimized sizing -->
           <img 
-            src={`${PUBLIC_R2_URL}/${image.key_name}`}
+            src={`${PUBLIC_R2_URL}/${image?.key_name}`}
             alt={image.alt || "Adventure hero image"} 
             loading="lazy"
             class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] bg-gray-200"
           />
           
           <!-- Caption Overlay -->
-          {(image.location || image.description) && (
+          {(image?.location || image?.description) && (
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-6 pb-8">
-              {image.location && (
+              {image?.location && (
                 <h3 class="text-white text-xl md:text-2xl font-bold mb-1">
-                  {image.location}
+                  {image?.location}
                 </h3>
               )}
-              {image.description && (
+              {image?.description && (
                 <p class="text-white/90 text-sm md:text-base">
-                  {image.description}
+                  {image?.description}
                 </p>
               )}
             </div>
@@ -95,7 +95,7 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
 
     <!-- ENHANCED UPLOAD SLIDE (OWNER ONLY) -->
     {isOwner && (() => {
-      const slideNum = heroImages.length + 1;
+      const slideNum = heroImages?.length + 1;
       const slideId = `slide${slideNum}`;
       const prevId = `slide${getPrevSlide(slideNum)}`;
       const nextId = `slide${getNextSlide(slideNum)}`;

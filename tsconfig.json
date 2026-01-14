@@ -5,6 +5,7 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["@cloudflare/workers-types", "@astrojs/cloudflare"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,

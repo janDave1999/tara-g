@@ -329,7 +329,7 @@ const categoryStyles = {
 
     // Add New Stop to DOM
     addBtn?.addEventListener('click', () => {
-      const clone = template.content.cloneNode(true) as HTMLElement;
+      const clone = template.content.cloneNode(true) as any;
       const now = new Date().toISOString().slice(0, 16);
       clone.querySelectorAll('input[type="datetime-local"]').forEach((input: any) => input.value = now);
       

@@ -1,4 +1,20 @@
 /// <reference path="../.astro/types.d.ts" />
+
+/// <reference types="astro/client" />
+
+type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
+
+declare namespace App {
+  interface Locals extends Runtime {
+    runtime: {
+      env: {
+        TRIP_HERO: R2Bucket;
+      };
+    };
+  }
+}
+
+
 interface ImportMetaEnv {
   readonly SECRET_ENVIRONMENT_STATUS: "live"|"maintenance";
  

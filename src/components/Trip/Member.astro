@@ -6,7 +6,7 @@ const { member } = Astro.props;
 let currentUserId = Astro.locals.user_id || "";
 
 // 2. Transform data for secure client-side use
-const secureMembers = member.map((m: any) => ({
+const secureMembers = member?.map((m: any) => ({
   role: m.role,
   status: m.member_status,
   fullName: m.full_name,
@@ -18,7 +18,7 @@ const secureMembers = member.map((m: any) => ({
 }));
 
 // 3. Determine current user's role
-const currentUserMember = member.find((m: any) => m.user_id === currentUserId);
+const currentUserMember = member?.find((m: any) => m.user_id === currentUserId);
 const userRole = currentUserMember?.role || 'visitor';
 const isOwner = userRole === 'owner';
 ---

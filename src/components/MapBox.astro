@@ -1,129 +1,553 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro"
-import { Search, X } from "@lucide/astro";
 ---
 
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Tara G!</title>
+<title>Tara G! - Trip Map</title>
 <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
 <style>
-  /* Container for the tags */
-#tag-container {
+body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+#search-box {
   position: absolute;
-  top: 155px; /* Positioned below your search box */
-  left: 50%;
-  transform: translateX(-50%);
+  top: 70px;
+  left: 20px;
   z-index: 1000;
-  display: flex;
-  gap: 8px;
-  width: 90%;
-  max-width: 500px;
-  overflow-x: auto;
-  padding: 4px 2px;
-  scrollbar-width: none; /* Hide scrollbar for Firefox */
-}
-
-#tag-container::-webkit-scrollbar {
-  display: none; /* Hide scrollbar for Chrome/Safari */
-}
-
-/* Individual Tag Style */
-.search-tag {
-  white-space: nowrap;
   background: white;
-  padding: 6px 14px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  width: 90%;
+  max-width: 380px;
+  padding: 16px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+#search-area-input {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  font-weight: 500;
+  background: #f3f4f6;
+  border-radius: 12px;
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: #9ca3af;
+}
+
+#search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  padding: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+#search-results.hidden { display: none; }
+#search-results li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#search-results li:hover { background: #f3f4f6; }
+
+#filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #374151;
+  width: 100%;
+  justify-content: center;
+}
+
+#filter-btn.active {
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+}
+
+#filter-badge {
+  background: white;
+  color: #10b981;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#filter-btn.active #filter-badge {
+  background: rgba(255,255,255,0.3);
+  color: white;
+}
+
+#filter-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#filter-modal.open { display: flex; }
+
+.filter-modal-content {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.filter-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  border-radius: 24px 24px 0 0;
+}
+
+.filter-modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.close-modal-btn {
+  background: #f3f4f6;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.filter-section h3 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 16px 0;
+}
+
+.location-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.location-type-btn {
+  padding: 12px 8px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 2px solid transparent;
+}
+
+.location-type-btn.active {
+  background: #d1fae5;
+  color: #059669;
+  border-color: #10b981;
+}
+
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip {
+  padding: 10px 16px;
   border-radius: 20px;
   font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #374151;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.2s;
+  border: 2px solid transparent;
 }
 
-.search-tag:hover {
-  background: #f8f8f8;
+.tag-chip.active {
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+  border-color: #059669;
 }
 
-.active-tag-style {
-  background: #1a1a1a;
-  color: #ffffff;
-  border-color: #1a1a1a;
-  transform: translateY(-1px);
+.filter-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  background: white;
 }
 
-  #search-area-btn {
-    position: absolute;
-    top: 200px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 999;
-    background: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    box-shadow: 0 1px 4px rgba(66, 43, 43, 0.25);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: none;
+.filter-modal-footer button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.clear-filters-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.apply-filters-btn {
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+}
+
+#search-area-btn {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: none;
+  border: none;
+}
+
+.custom-marker {
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+}
+
+.marker-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.marker-image.full { border-color: #ef4444; }
+.marker-image.available { border-color: #10b981; }
+
+.cluster-marker {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+.mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 320px;
+  max-width: 360px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.trip-list-header {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 16px;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trip-count-badge {
+  background: rgba(255,255,255,0.3);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.trip-list-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+}
+
+.trip-list-item:hover { background: #f9fafb; }
+
+.trip-list-thumbnail {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.trip-list-info { flex: 1; }
+
+.trip-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.trip-list-location {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 6px 0;
+}
+
+.slots-badge {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.slots-badge.available {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.slots-badge.full {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+#trip-detail-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 3000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#trip-detail-modal.open { display: flex; }
+
+.trip-detail-content {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.trip-detail-image {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+}
+
+.trip-detail-body { padding: 24px; }
+
+.trip-detail-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.trip-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.trip-detail-row svg {
+  width: 20px;
+  height: 20px;
+}
+
+.trip-detail-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.trip-detail-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.close-detail-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.view-trip-btn {
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+}
+
+@media (max-width: 640px) {
+  #search-box {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
   }
-
-    #search-box {
-    position: absolute;
-    top: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    background: #ffffff;
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    font-weight: 600;
-    display: flex;
-    flex-wrap: wrap;
-    width: 90%;
-    max-width: 500px;
-    transition: all 0.2s ease;
-  }
-body { margin: 0; padding: 0; }
+}
 </style>
 </head>
 <body>
-<PagePlate title="Maps" noContainer >
-  <!-- search input -->
-   <div id="search-box" class="flex items-center">
-    <div class="flex-1 mr-2 relative">
-    <input type="text" class="border-0 outline-none text-sm w-full" id="search-area-input" placeholder="Search trips by province" />
-    <ul id="search-results" class="search-results absolute top-10 right-0 mt-2 bg-white hidden shadow-md rounded-md p-2 w-full max-h-[calc(50vh-120px)] overflow-y-auto">No results</ul>
+
+<PagePlate title="Maps" noContainer>
+  <div id="search-box">
+    <div class="search-input-wrapper">
+      <input type="text" id="search-area-input" placeholder="Search trips by province..." />
+      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <ul id="search-results" class="hidden"></ul>
     </div>
-    <button id="search-button">
-      <X class="w-5 h-5 text-black" />
+    
+    <button id="filter-btn">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+      </svg>
+      Filters
+      <span id="filter-badge" style="display: none;">0</span>
     </button>
-   </div>
-   <div id="tag-container">
-  <div class="search-tag" data-tag="hiking">🥾 Hiking</div>
-  <div class="search-tag" data-tag="nightlife">💃 Nightlife</div>
-  <div class="search-tag" data-tag="bar">🍸 Bars</div>
-  <div class="search-tag" data-tag="beach">🏖️ Beach</div>
-  <div class="search-tag" data-tag="culture">🏛️ Culture</div>
-</div>
-  <button id="search-area-btn">Search trips in this area</button>
+  </div>
+
+  <div id="filter-modal">
+    <div class="filter-modal-content">
+      <div class="filter-modal-header">
+        <h2>Filters</h2>
+        <button class="close-modal-btn" id="close-filter-modal">×</button>
+      </div>
+
+      <div class="filter-section">
+        <h3>📍 Location Type</h3>
+        <div class="location-type-grid">
+          <div class="location-type-btn active" data-type="destination">Destination</div>
+          <div class="location-type-btn" data-type="pickup">Pickup</div>
+          <div class="location-type-btn" data-type="dropoff">Drop-off</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <h3>🏃 Activities</h3>
+        <div class="tag-grid">
+          <div class="tag-chip" data-tag="hiking">🥾 Hiking</div>
+          <div class="tag-chip" data-tag="diving">🤿 Diving</div>
+          <div class="tag-chip" data-tag="surfing">🏄 Surfing</div>
+          <div class="tag-chip" data-tag="camping">⛺ Camping</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <h3>🌴 Nature</h3>
+        <div class="tag-grid">
+          <div class="tag-chip" data-tag="beach">🏖️ Beach</div>
+          <div class="tag-chip" data-tag="mountain">⛰️ Mountain</div>
+          <div class="tag-chip" data-tag="island">🏝️ Island</div>
+        </div>
+      </div>
+
+      <div class="filter-modal-footer">
+        <button class="clear-filters-btn" id="clear-filters">Clear All</button>
+        <button class="apply-filters-btn" id="apply-filters">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="trip-detail-modal">
+    <div class="trip-detail-content" id="trip-detail-content"></div>
+  </div>
+
+  <button id="search-area-btn">Search this area</button>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
+
 <script>
-import mapboxgl from "mapbox-gl";
+  import mapboxgl from "mapbox-gl";
 import { actions } from "astro:actions";
 import { PUBLIC_R2_URL } from "astro:env/client";
 import { PH_PROVINCES } from "@/data/phProvinces";
 import { slugify } from "@/scripts/Slugify";
 
-/** * CONFIG & STATE
- */
 const CONFIG = {
   DEFAULT_CENTER: [120.9842, 14.5995] as [number, number],
   DEFAULT_ZOOM: 14,
@@ -132,28 +556,32 @@ const CONFIG = {
 };
 
 let map: mapboxgl.Map;
-let markers: mapboxgl.Marker[] = [];
 let activeTags: string[] = [];
+let activeLocationType = 'destination';
+let markers: mapboxgl.Marker[] = [];
 
-// DOM Elements
-const elements = {
+const els = {
   searchBox: document.getElementById("search-area-input") as HTMLInputElement,
   resultsEl: document.getElementById("search-results") as HTMLUListElement,
   searchBtn: document.getElementById("search-area-btn") as HTMLButtonElement,
-  tags: document.querySelectorAll(".search-tag") as NodeListOf<HTMLDivElement>,
+  filterBtn: document.getElementById("filter-btn") as HTMLButtonElement,
+  filterBadge: document.getElementById("filter-badge") as HTMLSpanElement,
+  filterModal: document.getElementById("filter-modal") as HTMLDivElement,
+  closeFilterModal: document.getElementById("close-filter-modal") as HTMLButtonElement,
+  tagChips: document.querySelectorAll(".tag-chip") as NodeListOf<HTMLDivElement>,
+  locationBtns: document.querySelectorAll(".location-type-btn") as NodeListOf<HTMLDivElement>,
+  clearFilters: document.getElementById("clear-filters") as HTMLButtonElement,
+  applyFilters: document.getElementById("apply-filters") as HTMLButtonElement,
+  tripModal: document.getElementById("trip-detail-modal") as HTMLDivElement,
+  tripContent: document.getElementById("trip-detail-content") as HTMLDivElement,
 };
 
-/**
- * API & DATA FETCHING
- */
 async function getMapboxToken(): Promise<string> {
   try {
     const res = await fetch("/api/mapbox-token");
     const data = await res.json() as any;
-    if (!data.token) throw new Error();
-    return data.token;
-  } catch (e) {
-    console.error("Mapbox token missing");
+    return data.token || "";
+  } catch {
     return "";
   }
 }
@@ -174,6 +602,7 @@ async function fetchNearbyTrips(lng: number, lat: number) {
   while (true) {
     const { data: trips, error } = await actions.trip.getNearbyTrips({
       lng, lat, radius, page,
+      location_filter: activeLocationType,
       tag_filter: activeTags.length > 0 ? activeTags : undefined,
     });
 
@@ -184,123 +613,315 @@ async function fetchNearbyTrips(lng: number, lat: number) {
   return allTrips;
 }
 
-/**
- * MAP OPERATIONS
- */
-function clearMarkers() {
-  markers.forEach(m => m.remove());
-  markers = [];
-}
-
 function clearLayers() {
   if (map.getLayer("province")) map.removeLayer("province");
   if (map.getSource("province")) map.removeSource("province");
 }
 
-function createMarkerElement(trip: any) {
-  const el = document.createElement("div");
-  el.className = "trip-marker";
-  Object.assign(el.style, {
-    width: "40px", height: "40px", borderRadius: "50%",
-    overflow: "hidden", border: trip.current_participants < trip.max_participants ? "2px solid #ff5733" : "2px solid #3bb2d0"
-  });
-
-  const img = document.createElement("img");
-  img.src = `${PUBLIC_R2_URL}/${trip.images?.[0] || CONFIG.FALLBACK_IMAGE}`;
-  img.style.cssText = "width:100%; height:100%; object-fit:cover;";
-  el.appendChild(img);
-  return el;
+function clearMarkers() {
+  markers.forEach(m => m.remove());
+  markers = [];
 }
 
-function renderMarkers(trips: any[]) {
-  clearMarkers();
+function groupTripsByLocation(trips: any[]) {
+  const groups = new Map<string, any[]>();
   trips.forEach(trip => {
-    const popupHtml = `
-      <div class="w-full h-32 bg-gray-200">
-        <img src="${trip.images?.length ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg'}" class="w-full h-full object-cover" />
+    const lat = Number(trip.lat);
+    const lng = Number(trip.lng);
+    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(trip);
+  });
+  return groups;
+}
+
+function showTripDetail(trip: any) {
+  const hasSlots = trip.current_participants < trip.max_participants;
+  const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
+  
+  els.tripContent.innerHTML = `
+    <img src="${img}" class="trip-detail-image" />
+    <div class="trip-detail-body">
+      <h2 class="trip-detail-title">${trip.title}</h2>
+      <div class="trip-detail-row">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span>${trip.location_name}</span>
       </div>
-      <div class="p-3 text-gray-800 space-y-2">
-        <h3 class="text-lg font-bold leading-tight">${trip.title}</h3>
-        <div class="grid grid-rows-1 items-center gap-1">
-          <span class="font-bold">Location: </span>
-          <p class="text-sm text-gray-600">${trip.location_name}</p>
-        </div>
-        <div class="text-xs text-gray-500">
-          <div class="grid grid-rows-1 items-center gap-1">
-            <span class="font-bold"> Trip Dates: </span>
-            <span>${trip.start_date} to ${trip.end_date}</span>
-            <span class="font-bold"> Join by: </span>
-            <span>${trip.join_by}</span>
+      <div class="trip-detail-row">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <span>${trip.start_date} - ${trip.end_date}</span>
+      </div>
+      <div class="trip-detail-row">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        <span>${trip.current_participants}/${trip.max_participants} joiners</span>
+        <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
+          ${hasSlots ? '✓ Available' : '✕ Full'}
+        </span>
+      </div>
+      <div class="trip-detail-actions">
+        <button class="close-detail-btn" onclick="document.getElementById('trip-detail-modal').classList.remove('open')">Close</button>
+        <button class="view-trip-btn" onclick="window.location.href='/trips/${trip.trip_id}'">View Details</button>
+      </div>
+    </div>
+  `;
+  
+  els.tripModal.classList.add('open');
+}
+
+function showTripList(trips: any[], coordinates: [number, number]) {
+  console.log("trips", trips);
+  const html = `
+    <div class="trip-list-header">
+      <div>
+        <div style="font-size: 16px; font-weight: 700;">Trips at this location</div>
+        <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">Click a trip to view details</div>
+      </div>
+      <span class="trip-count-badge">${trips.length}</span>
+    </div>
+    <div class="trip-list-items">
+      ${trips.map((trip, index) => {
+        const hasSlots = trip.current_participants < trip.max_participants;
+        const slotsRemaining = trip.max_participants - trip.current_participants;
+        
+        return `
+          <div class="trip-list-item" data-trip-id="${trip.trip_id}" style="animation: slideIn 0.2s ease ${index * 0.05}s both;">
+            <div class="trip-list-info">
+              <h4 class="trip-list-title">${trip.title}</h4>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
+                  ${hasSlots ? `${slotsRemaining} slot${slotsRemaining !== 1 ? 's' : ''} left` : 'Fully booked'}
+                </span>
+              </div>
+            </div>
+            <svg style="width: 20px; height: 20px; color: #d1d5db; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
           </div>
-          <span>👥 ${trip.current_participants}/${trip.max_participants}</span>
-          <span class="badge badge-sm badge-primary mx-1">${trip.location_type}</span>
+        `;
+      }).join('')}
+    </div>
+  `;
+  
+  const popup = new mapboxgl.Popup({
+    closeButton: true,
+    maxWidth: 'none',
+    className: 'trip-list-popup'
+  })
+    .setLngLat(coordinates)
+    .setHTML(html)
+    .addTo(map);
+  
+  setTimeout(() => {
+    document.querySelectorAll('.trip-list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const tripId = item.getAttribute('data-trip-id');
+        const trip = trips.find(t => t.trip_id === tripId);
+        if (trip) {
+          popup.remove();
+          showTripDetail(trip);
+        }
+      });
+    });
+  }, 100);
+}
+
+function updateMap(trips: any[]) {
+  clearMarkers();
+  const groups = groupTripsByLocation(trips);
+  
+  groups.forEach((tripGroup, key) => {
+    const [lat, lng] = key.split(',').map(Number);
+    const coordinates: [number, number] = [lng, lat];
+    
+    if (tripGroup.length === 1) {
+      const trip = tripGroup[0];
+      const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
+      const hasSlots = trip.current_participants < trip.max_participants;
+      const statusColor = hasSlots ? '#10b981' : '#ef4444';
+      
+      const el = document.createElement('div');
+      el.className = 'custom-marker';
+      el.innerHTML = `
+        <div style="position: relative; cursor: pointer;">
+          <div style="
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid ${statusColor};
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+          " class="marker-container">
+            <img src="${img}" style="
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            " alt="${trip.title}" />
+          </div>
+          <div style="
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 12px solid ${statusColor};
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          "></div>
+          </div>
         </div>
-        <button onclick="window.location.href='/trips/${trip.trip_id}'" class="w-full mt-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md">View Trip</button>
-      </div>`;
-
-    const marker = new mapboxgl.Marker({ element: createMarkerElement(trip) })
-      .setLngLat([trip.lng, trip.lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
-      .addTo(map);
-
-    markers.push(marker);
+      `;
+      
+      const container = el.querySelector('.marker-container') as HTMLElement;
+      el.addEventListener('mouseenter', () => {
+        container.style.transform = 'scale(1.15)';
+        container.style.boxShadow = '0 8px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.05)';
+      });
+      el.addEventListener('mouseleave', () => {
+        container.style.transform = 'scale(1)';
+        container.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)';
+      });
+      el.addEventListener('click', () => showTripDetail(trip));
+      
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat(coordinates)
+        .addTo(map);
+      markers.push(marker);
+    } else {
+      const el = document.createElement('div');
+      el.className = 'cluster-marker';
+      el.innerHTML = `
+        <div style="
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          border: 4px solid white;
+          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(0,0,0,0.05);
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+        " class="cluster-container">
+          <div style="font-size: 22px; line-height: 1;">${tripGroup.length}</div>
+          <div style="font-size: 9px; opacity: 0.9; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px;">trips</div>
+          <div style="
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            border: 2px solid #10b981;
+            opacity: 0.3;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          "></div>
+        </div>
+        <style>
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.3;
+            }
+            50% {
+              transform: scale(1.1);
+              opacity: 0.1;
+            }
+          }
+        </style>
+      `;
+      
+      const container = el.querySelector('.cluster-container') as HTMLElement;
+      el.addEventListener('mouseenter', () => {
+        container.style.transform = 'scale(1.15)';
+        container.style.boxShadow = '0 8px 30px rgba(16, 185, 129, 0.5), 0 0 0 1px rgba(0,0,0,0.05)';
+      });
+      el.addEventListener('mouseleave', () => {
+        container.style.transform = 'scale(1)';
+        container.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(0,0,0,0.05)';
+      });
+      // el.addEventListener('click', () => showTripList(tripGroup, coordinates));
+      el.addEventListener('click', () => {
+        console.log("tripGroup", tripGroup);
+        showTripList(tripGroup, coordinates);
+      });
+      
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat(coordinates)
+        .addTo(map);
+      markers.push(marker);
+    }
   });
 }
 
-/**
- * UI EVENT HANDLERS
- */
 async function handleProvinceSelect(province: any) {
   clearLayers();
-  elements.resultsEl.classList.add("hidden");
-  elements.searchBox.value = province.name;
+  els.resultsEl.classList.add("hidden");
+  els.searchBox.value = province.name;
 
   map.flyTo({ center: [province.lng, province.lat], zoom: CONFIG.PROVINCE_ZOOM, essential: true });
 
   try {
     const slug = await slugify(province.name.toLowerCase());
     const res = await fetch(`/geojson/${slug}.geojson`);
-    const geojsonData = await res.json() as any;
-
-    map.addSource("province", { type: "geojson", data: geojsonData.geometry });
+    const data = await res.json() as any;
+    map.addSource("province", { type: "geojson", data: data.geometry });
     map.addLayer({
       id: "province", type: "fill", source: "province",
-      paint: { "fill-color": "#0000ff", "fill-opacity": 0.1 }
+      paint: { "fill-color": "#10b981", "fill-opacity": 0.1 }
     });
-  } catch (e) {
-    console.error("Could not load province boundary");
-  }
+  } catch {}
 
   const trips = await fetchNearbyTrips(province.lng, province.lat);
-  renderMarkers(trips);
-  elements.tags.forEach(t => t.classList.remove("hidden"));
+  updateMap(trips);
 }
 
-function initEventListeners() {
-  // Search button
-  elements.searchBtn.addEventListener("click", async () => {
-    elements.searchBtn.textContent = "Searching...";
-    elements.searchBtn.disabled = true;
-    
+function updateFilterBadge() {
+  const count = activeTags.length + (activeLocationType !== 'destination' ? 1 : 0);
+  if (count > 0) {
+    els.filterBadge.textContent = count.toString();
+    els.filterBadge.style.display = '';
+    els.filterBtn.classList.add('active');
+  } else {
+    els.filterBadge.style.display = 'none';
+    els.filterBtn.classList.remove('active');
+  }
+}
+
+function initEvents() {
+  // Search area button
+  els.searchBtn.addEventListener("click", async () => {
+    els.searchBtn.textContent = "Searching...";
     const center = map.getCenter();
     const trips = await fetchNearbyTrips(center.lng, center.lat);
-    
-    renderMarkers(trips);
-    elements.searchBtn.textContent = "Search this area";
-    elements.searchBtn.disabled = false;
-    elements.searchBtn.style.display = "none";
+    updateMap(trips);
+    els.searchBtn.textContent = "Search this area";
+    els.searchBtn.style.display = "none";
   });
 
-  // Province Search Input (with simple debounce)
-  let debounceTimer: ReturnType<typeof setTimeout>;
-  elements.searchBox.addEventListener("input", () => {
-    elements.tags.forEach(t => t.classList.add("hidden"));
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      const query = elements.searchBox.value.trim().toLowerCase();
-      elements.resultsEl.innerHTML = "";
+  // Province search
+  let debounce: ReturnType<typeof setTimeout>;
+  els.searchBox.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      const query = els.searchBox.value.trim().toLowerCase();
+      els.resultsEl.innerHTML = "";
       
-      if (query.length < 2) return;
+      if (query.length < 2) {
+        els.resultsEl.classList.add("hidden");
+        return;
+      }
 
       const matches = PH_PROVINCES.filter(p => 
         p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
@@ -309,39 +930,80 @@ function initEventListeners() {
       matches.forEach(province => {
         const li = document.createElement("li");
         li.textContent = province.name;
-        li.className = "cursor-pointer hover:bg-gray-100 p-2"; // Add styles via class
         li.onclick = () => handleProvinceSelect(province);
-        elements.resultsEl.appendChild(li);
+        els.resultsEl.appendChild(li);
       });
       
-      elements.resultsEl.classList.remove("hidden");
+      els.resultsEl.classList.remove("hidden");
     }, 300);
   });
 
-  // Tag Filtering
-  elements.tags.forEach(tagEl => {
-    tagEl.addEventListener("click", async () => {
-      const tag = tagEl.dataset.tag; // Ensure your HTML has data-tag="hiking"
-      if (!tag) return;
+  // Filter modal
+  els.filterBtn.addEventListener("click", () => {
+    els.filterModal.classList.add('open');
+  });
 
-      tagEl.classList.toggle("active-tag-style"); // Visual feedback
+  els.closeFilterModal.addEventListener("click", () => {
+    els.filterModal.classList.remove('open');
+  });
+
+  els.filterModal.addEventListener("click", (e) => {
+    if (e.target === els.filterModal) {
+      els.filterModal.classList.remove('open');
+    }
+  });
+
+  // Location type buttons
+  els.locationBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      els.locationBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeLocationType = btn.dataset.type || 'destination';
+    });
+  });
+
+  // Tag chips
+  els.tagChips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      const tag = chip.dataset.tag || "";
+      chip.classList.toggle('active');
+      
       if (activeTags.includes(tag)) {
         activeTags = activeTags.filter(t => t !== tag);
       } else {
         activeTags.push(tag);
       }
-
-      const center = map.getCenter();
-      const trips = await fetchNearbyTrips(center.lng, center.lat);
-      elements.tags.forEach(t => t.classList.remove("hidden"));
-      renderMarkers(trips);
     });
+  });
+
+  // Clear filters
+  els.clearFilters.addEventListener("click", () => {
+    activeTags = [];
+    activeLocationType = 'destination';
+    els.tagChips.forEach(chip => chip.classList.remove('active'));
+    els.locationBtns.forEach(btn => btn.classList.remove('active'));
+    els.locationBtns[0].classList.add('active');
+    updateFilterBadge();
+  });
+
+  // Apply filters
+  els.applyFilters.addEventListener("click", async () => {
+    updateFilterBadge();
+    els.filterModal.classList.remove('open');
+    
+    const center = map.getCenter();
+    const trips = await fetchNearbyTrips(center.lng, center.lat);
+    updateMap(trips);
+  });
+
+  // Close trip detail modal
+  els.tripModal.addEventListener("click", (e) => {
+    if (e.target === els.tripModal) {
+      els.tripModal.classList.remove('open');
+    }
   });
 }
 
-/**
- * INITIALIZATION
- */
 async function initMap() {
   const token = await getMapboxToken();
   if (!token) return;
@@ -366,22 +1028,21 @@ async function initMap() {
   });
 
   map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
-  map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'bottom-left');
+  map.addControl(new mapboxgl.GeolocateControl({ 
+    positionOptions: { enableHighAccuracy: true }, 
+    trackUserLocation: true 
+  }), 'bottom-left');
 
   map.on("load", async () => {
-    const initialTrips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
-    renderMarkers(initialTrips);
-    initEventListeners();
+    const trips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
+    updateMap(trips);
+    initEvents();
   });
 
   map.on("moveend", () => {
-    console.log("moveend");
-    elements.searchBtn.style.display = "block";
+    els.searchBtn.style.display = "block";
   });
 }
 
 window.addEventListener("DOMContentLoaded", initMap);
 </script>
-
-</body>
-</html>

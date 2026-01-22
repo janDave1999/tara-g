@@ -1,49 +1,22 @@
 ---
-import { obfuscate } from "@/lib/obfuscate";
-
-// 1. Get real data from Props
-const { member } = Astro.props;
-let currentUserId = Astro.locals.user_id || "";
-
-// 2. Transform data for secure client-side use
-const secureMembers = member?.map((m: any) => ({
-  role: m.role,
-  status: m.member_status,
-  fullName: m.full_name,
-  displayId: m.user_id.slice(0, 8),
-  // Obfuscated ID for secure operations
-  secureId: obfuscate(m.user_id),
-  // Flag to identify current user without exposing full ID
-  isCurrentUser: m.user_id === currentUserId
-}));
-
-// 3. Determine current user's role
-const currentUserMember = member?.find((m: any) => m.user_id === currentUserId);
-const userRole = currentUserMember?.role || 'visitor';
-const isOwner = userRole === 'owner';
+// Clean and simple - just pass the trip ID
+const tripId = Astro.props.tripId || Astro.params.tripId;
 ---
 
-<div 
-  id="members-data-container" 
-  data-members={JSON.stringify(secureMembers)}
-  data-user-role={userRole}
->
-  <!-- <button class="btn btn-sm" id="member-btn">
-    Members
-  </button> -->
-</div>
+<div id="members-data-container" data-trip-id={tripId}></div>
 
+<!-- Members Modal -->
 <div 
   id="members-modal" 
   class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
 >
-  <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+  <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
     
     <!-- Header -->
     <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
       <div>
         <h3 class="text-lg font-bold text-slate-800">Trip Members</h3>
-        <p id="role-indicator" class="text-xs text-slate-500 italic"></p>
+        <p id="members-summary" class="text-xs text-slate-500"></p>
       </div>
       <button 
         id="close-modal" 
@@ -56,59 +29,103 @@ const isOwner = userRole === 'owner';
       </button>
     </div>
 
-    <!-- Table -->
-    <div class="overflow-y-auto max-h-[400px]">
-      <table class="w-full text-left border-separate border-spacing-0">
-        <thead class="sticky top-0 bg-white shadow-[0_1px_0_rgba(0,0,0,0.05)] z-10">
-          <tr id="table-headers">
-            <!-- Headers will be dynamically populated -->
-          </tr>
-        </thead>
-        <tbody id="members-list" class="divide-y divide-slate-100"></tbody>
-      </table>
+    <!-- Loading State -->
+    <div id="members-loading" class="p-8 text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p class="text-sm text-slate-500 mt-3">Loading members...</p>
+    </div>
+
+    <!-- Tabs -->
+    <div id="members-tabs" class="hidden border-b border-slate-200 px-6">
+      <div class="flex gap-4">
+        <button class="tab-btn active" data-tab="members">
+          Members <span id="members-count" class="ml-1 text-xs"></span>
+        </button>
+        <button class="tab-btn hidden" data-tab="requests" id="requests-tab">
+          Requests <span id="requests-count" class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"></span>
+        </button>
+        <button class="tab-btn hidden" data-tab="invitations" id="invitations-tab">
+          Invited <span id="invitations-count" class="ml-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="overflow-y-auto max-h-[500px]">
+      <!-- Members Tab -->
+      <div id="tab-members" class="tab-content">
+        <table class="w-full text-left">
+          <thead class="sticky top-0 bg-white border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Member</th>
+              <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Role</th>
+              <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+              <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="members-list" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+      <!-- Requests Tab -->
+      <div id="tab-requests" class="tab-content hidden">
+        <div id="requests-list" class="divide-y divide-slate-100"></div>
+        <div id="requests-empty" class="p-8 text-center text-slate-500 hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="text-sm">No pending requests</p>
+        </div>
+      </div>
+
+      <!-- Invitations Tab -->
+      <div id="tab-invitations" class="tab-content hidden">
+        <div id="invitations-list" class="divide-y divide-slate-100"></div>
+        <div id="invitations-empty" class="p-8 text-center text-slate-500 hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <p class="text-sm">No pending invitations</p>
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
-    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 text-right">
-      <!-- Invite button -->
-      <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 rounded-lg transition-colors">
-        Invite Members
-      </button>
-      <button 
-        id="close-modal-btn" 
-        class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
-      >
-        Close
-      </button>
+    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+      <div id="available-spots" class="text-xs text-slate-600"></div>
+      <div class="flex gap-2">
+        <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 rounded-lg transition-colors hidden">
+          Invite Members
+        </button>
+        <button 
+          id="close-modal-btn" 
+          class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+        >
+          Close
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Invite Modal (Messenger-style) -->
+<!-- Invite Modal -->
 <div 
   id="invite-modal" 
   class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
 >
-  <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-    
-    <!-- Header -->
+  <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
     <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
       <div>
         <h3 class="text-lg font-bold text-slate-800">Invite to Trip</h3>
         <p class="text-xs text-slate-500">Search by name or email</p>
       </div>
-      <button 
-        id="close-invite-modal" 
-        class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full"
-        aria-label="Close"
-      >
+      <button id="close-invite-modal" class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
 
-    <!-- Search Input -->
     <div class="px-6 py-4 border-b border-slate-100">
       <div class="relative">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,23 +138,23 @@ const isOwner = userRole === 'owner';
           class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
         />
       </div>
-
-      <!-- Selected Users Pills -->
       <div id="selected-users" class="mt-3 flex flex-wrap gap-2 empty:hidden"></div>
     </div>
 
-    <!-- Suggestions List -->
     <div class="px-6 py-3 bg-slate-50/50">
       <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Suggestions</h4>
     </div>
 
-    <!-- Scrollable User List -->
     <div class="overflow-y-auto max-h-[300px] px-2">
-      <div id="invite-suggestions" class="divide-y divide-slate-100"></div>
-      <div id="invite-search-results" class="divide-y divide-slate-100"></div>
+      <div id="invite-suggestions" class="divide-y divide-slate-100">
+        <div id="suggestions-loading" class="p-8 text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p class="text-sm text-slate-500 mt-2">Loading suggestions...</p>
+        </div>
+      </div>
+      <div id="invite-search-results" class="divide-y divide-slate-100 hidden"></div>
     </div>
 
-    <!-- Footer -->
     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
       <div class="text-sm text-slate-600">
         <span id="selected-count">0</span> selected
@@ -161,25 +178,30 @@ const isOwner = userRole === 'owner';
   </div>
 </div>
 
+<style>
+  .tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(71 85 105);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover {
+    color: rgb(30 41 59);
+    border-bottom-color: rgb(203 213 225);
+  }
+  .tab-btn.active {
+    color: rgb(37 99 235);
+    border-bottom-color: rgb(37 99 235);
+  }
+</style>
+
 <script>
-  import { deobfuscate } from "@/lib/obfuscate";
+  import { actions } from "astro:actions";
 
-  // ===== Mock Data for Suggestions =====
-  const MOCK_SUGGESTIONS = [
-    { id: 'user_001', name: 'Sarah Johnson', email: 'sarah.j@email.com', avatar: 'SJ', relation: 'From previous trip to Bali' },
-    { id: 'user_002', name: 'Michael Chen', email: 'mchen@email.com', avatar: 'MC', relation: 'From previous trip to Tokyo' },
-    { id: 'user_003', name: 'Emma Wilson', email: 'emma.w@email.com', avatar: 'EW', relation: 'From previous trip to Paris' },
-    { id: 'user_004', name: 'James Rodriguez', email: 'jrod@email.com', avatar: 'JR', relation: 'Suggested based on interests' },
-  ];
-
-  // Mock searchable users (simulating API search)
-  const MOCK_SEARCHABLE_USERS = [
-    { id: 'user_005', name: 'Olivia Brown', email: 'olivia.b@email.com', avatar: 'OB' },
-    { id: 'user_006', name: 'Daniel Kim', email: 'daniel.kim@email.com', avatar: 'DK' },
-    { id: 'user_007', name: 'Sophia Martinez', email: 'sophia.m@email.com', avatar: 'SM' },
-    { id: 'user_008', name: 'Alex Turner', email: 'alex.t@email.com', avatar: 'AT' },
-  ];
-
+  let url = window.location.href;
+  let tripId = url.substring(url.lastIndexOf('/') + 1);
   // ===== Configuration =====
   const STATUS_CONFIG: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-700 ring-amber-600/20',
@@ -188,73 +210,128 @@ const isOwner = userRole === 'owner';
     left: 'bg-slate-100 text-slate-700 ring-slate-600/20'
   };
 
-  // ===== Data Initialization =====
+  // ===== State =====
   const container = document.getElementById('members-data-container');
-  const rawMembers = container?.getAttribute('data-members');
-  const userRole = container?.getAttribute('data-user-role') || 'visitor';
-
-  let tripMembers = rawMembers ? JSON.parse(rawMembers) : [];
-  const isOwner = userRole === 'owner';
-
-  // Invite modal state
+  // const tripId = container?.getAttribute('data-trip-id') || '';in
+  
+  let membersData: any = null;
   let selectedUsers: Set<string> = new Set();
+  let allSuggestions: any[] = [];
+  let allSearchResults: any[] = [];
 
   // ===== DOM Elements =====
   const modal = document.getElementById('members-modal') as HTMLDivElement;
+  const inviteModal = document.getElementById('invite-modal') as HTMLDivElement;
+  const membersLoading = document.getElementById('members-loading') as HTMLDivElement;
+  const membersTabs = document.getElementById('members-tabs') as HTMLDivElement;
   const membersList = document.getElementById('members-list') as HTMLTableSectionElement;
-  const tableHeaders = document.getElementById('table-headers') as HTMLTableRowElement;
-  const roleIndicator = document.getElementById('role-indicator') as HTMLParagraphElement;
+  const requestsList = document.getElementById('requests-list') as HTMLDivElement;
+  const requestsEmpty = document.getElementById('requests-empty') as HTMLDivElement;
+  const invitationsList = document.getElementById('invitations-list') as HTMLDivElement;
+  const invitationsEmpty = document.getElementById('invitations-empty') as HTMLDivElement;
+  const membersSummary = document.getElementById('members-summary') as HTMLParagraphElement;
+  const availableSpots = document.getElementById('available-spots') as HTMLDivElement;
+  const inviteBtn = document.getElementById('invite-btn') as HTMLButtonElement;
+  const membersCount = document.getElementById('members-count') as HTMLSpanElement;
+  const requestsCount = document.getElementById('requests-count') as HTMLSpanElement;
+  const invitationsCount = document.getElementById('invitations-count') as HTMLSpanElement;
+  const requestsTab = document.getElementById('requests-tab') as HTMLButtonElement;
+  const invitationsTab = document.getElementById('invitations-tab') as HTMLButtonElement;
 
   // Invite modal elements
-  const inviteModal = document.getElementById('invite-modal') as HTMLDivElement;
   const inviteSearch = document.getElementById('invite-search') as HTMLInputElement;
   const inviteSuggestions = document.getElementById('invite-suggestions') as HTMLDivElement;
   const inviteSearchResults = document.getElementById('invite-search-results') as HTMLDivElement;
   const selectedUsersContainer = document.getElementById('selected-users') as HTMLDivElement;
   const selectedCountSpan = document.getElementById('selected-count') as HTMLSpanElement;
   const sendInviteBtn = document.getElementById('send-invite-btn') as HTMLButtonElement;
+  const suggestionsLoading = document.getElementById('suggestions-loading') as HTMLDivElement;
 
-  // ===== Table Setup =====
-  function setupTableStructure() {
-    const roleText = isOwner 
-      ? "You are the Owner (Full Access)" 
-      : userRole === 'member' 
-        ? "Viewing as Member" 
-        : "Viewing as Visitor";
+  // ===== Load Complete Data =====
+  async function loadMembersData() {
+    try {
+      membersLoading.classList.remove('hidden');
+      membersTabs.classList.add('hidden');
+      
+      const result = await actions.trip.getTripMembersComplete({ tripId });
+      
+      if (result.data) {
+        membersData = result.data.data;
+        renderAllData();
+      }
+    } catch (error: any) {
+      console.error('Failed to load members:', error);
+      alert('Failed to load trip members: ' + error.message);
+    } finally {
+      membersLoading.classList.add('hidden');
+      membersTabs.classList.remove('hidden');
+    }
+  }
+
+  // ===== Render All Data =====
+  function renderAllData() {
+    if (!membersData) return;
+
+    const { members, pending_requests, pending_invitations, summary } = membersData;
+
+    // Update summary
+    membersSummary.textContent = `${summary.joined_members} of ${summary.max_participants} members • ${summary.user_role}`;
+    availableSpots.textContent = `${summary.available_spots} spots available`;
     
-    roleIndicator.textContent = roleText;
-
-    // Build headers based on role
-    let headersHTML = `
-      <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Member</th>
-      <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Role</th>
-    `;
-
-    if (isOwner) {
-      headersHTML += `
-        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-        <th class="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">Actions</th>
-      `;
+    // Update counts
+    membersCount.textContent = `(${members.length})`;
+    
+    // Show/hide invite button based on permissions
+    if (summary.can_invite) {
+      inviteBtn.classList.remove('hidden');
     }
 
-    tableHeaders.innerHTML = headersHTML;
+    // Render members
+    renderMembers(members, summary.user_role);
+
+    // Show/hide tabs based on permissions and data
+    if (pending_requests.length > 0 && (summary.user_role === 'owner' || summary.user_role === 'admin')) {
+      requestsTab.classList.remove('hidden');
+      requestsCount.textContent = pending_requests.length.toString();
+      requestsCount.classList.remove('hidden');
+      renderRequests(pending_requests);
+    }
+
+    if (pending_invitations.length > 0) {
+      invitationsTab.classList.remove('hidden');
+      invitationsCount.textContent = pending_invitations.length.toString();
+      invitationsCount.classList.remove('hidden');
+      renderInvitations(pending_invitations);
+    }
   }
 
   // ===== Render Members =====
-  function renderMembers() {
+  function renderMembers(members: any[], userRole: string) {
     membersList.innerHTML = '';
 
-    tripMembers.forEach((member: any) => {
+    members.forEach((member: any) => {
       const row = document.createElement('tr');
       row.className = 'hover:bg-slate-50/80 transition-colors';
 
-      // User column
-      let rowHTML = `
+      const initials = member.full_name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      row.innerHTML = `
         <td class="px-6 py-4">
-          <div class="flex flex-col">
-            <span class="text-sm font-medium text-slate-800">
-              ${member.isCurrentUser ? 'You' : member.fullName}
-            </span>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+              ${member.avatar_url ? `<img src="${member.avatar_url}" alt="${member.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+            </div>
+            <div>
+              <div class="text-sm font-medium text-slate-800">
+                ${member.full_name}${member.is_current_user ? ' (You)' : ''}
+              </div>
+              <div class="text-xs text-slate-500">@${member.username}</div>
+            </div>
           </div>
         </td>
         <td class="px-6 py-4">
@@ -262,41 +339,24 @@ const isOwner = userRole === 'owner';
             ${member.role}
           </span>
         </td>
+        <td class="px-6 py-4">
+          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${STATUS_CONFIG[member.member_status] || STATUS_CONFIG.pending} capitalize">
+            ${member.member_status}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex justify-end gap-2 action-container"></div>
+        </td>
       `;
 
-      // Owner-only columns
-      if (isOwner) {
-        rowHTML += `
-          <td class="px-6 py-4">
-            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${STATUS_CONFIG[member.status] || STATUS_CONFIG.pending} capitalize">
-              ${member.status}
-            </span>
-          </td>
-          <td class="px-6 py-4 text-right">
-            <div class="flex justify-end gap-2 action-container"></div>
-          </td>
-        `;
-      }
-
-      row.innerHTML = rowHTML;
-
-      // Add action buttons for owners (excluding current user)
-      if (isOwner && !member.isCurrentUser) {
+      // Add actions for owners/admins (excluding current user and other owners)
+      if ((userRole === 'owner' || userRole === 'admin') && !member.is_current_user && member.role !== 'owner') {
         const actionContainer = row.querySelector('.action-container') as HTMLDivElement;
         
-        if (member.status === 'pending') {
+        if (member.member_status === 'joined') {
           actionContainer.appendChild(
-            createButton('Accept', 'bg-emerald-600 hover:bg-emerald-700 text-white', 
-              () => handleUpdateStatus(member.secureId, 'joined'))
-          );
-          actionContainer.appendChild(
-            createButton('Reject', 'border border-slate-300 hover:bg-slate-100 text-slate-700', 
-              () => handleUpdateStatus(member.secureId, 'left'))
-          );
-        } else if (member.status === 'joined') {
-          actionContainer.appendChild(
-            createButton('Kick', 'text-red-600 hover:bg-red-50 border border-red-200', 
-              () => handleKick(member.secureId))
+            createButton('Remove', 'text-red-600 hover:bg-red-50 border border-red-200', 
+              () => handleRemoveMember(member.member_id))
           );
         }
       }
@@ -305,35 +365,230 @@ const isOwner = userRole === 'owner';
     });
   }
 
-  // ===== Invite Modal Functions =====
-  function renderSuggestions() {
-    inviteSuggestions.innerHTML = '';
-    
-    // Filter out already invited/joined members
-    const existingMemberEmails = tripMembers.map((m: any) => m.email);
-    const availableSuggestions = MOCK_SUGGESTIONS.filter(
-      user => !existingMemberEmails.includes(user.email)
-    );
+  // ===== Render Requests =====
+  function renderRequests(requests: any[]) {
+    if (requests.length === 0) {
+      requestsEmpty.classList.remove('hidden');
+      return;
+    }
 
-    availableSuggestions.forEach(user => {
-      inviteSuggestions.appendChild(createUserItem(user, true));
+    requestsEmpty.classList.add('hidden');
+    requestsList.innerHTML = '';
+
+    requests.forEach((request: any) => {
+      const div = document.createElement('div');
+      div.className = 'p-4 hover:bg-slate-50 transition-colors';
+
+      const initials = request.full_name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      div.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+              ${request.avatar_url ? `<img src="${request.avatar_url}" alt="${request.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+            </div>
+            <div>
+              <div class="text-sm font-medium text-slate-800">${request.full_name}</div>
+              <div class="text-xs text-slate-500">@${request.username}</div>
+              ${request.is_friend ? '<div class="text-xs text-blue-600 mt-0.5">👥 Your friend</div>' : ''}
+            </div>
+          </div>
+          <div class="flex gap-2 action-buttons"></div>
+        </div>
+      `;
+
+      const actionButtons = div.querySelector('.action-buttons') as HTMLDivElement;
+      actionButtons.appendChild(
+        createButton('Approve', 'bg-emerald-600 hover:bg-emerald-700 text-white', 
+          () => handleApproveRequest(request.member_id))
+      );
+      actionButtons.appendChild(
+        createButton('Reject', 'border border-slate-300 hover:bg-slate-100 text-slate-700', 
+          () => handleRejectRequest(request.member_id))
+      );
+
+      requestsList.appendChild(div);
+    });
+  }
+
+  // ===== Render Invitations =====
+  function renderInvitations(invitations: any[]) {
+    if (invitations.length === 0) {
+      invitationsEmpty.classList.remove('hidden');
+      return;
+    }
+
+    invitationsEmpty.classList.add('hidden');
+    invitationsList.innerHTML = '';
+
+    invitations.forEach((invitation: any) => {
+      const div = document.createElement('div');
+      div.className = 'p-4 hover:bg-slate-50 transition-colors';
+
+      const initials = invitation.invitee_name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      const daysLeft = invitation.days_until_expiry;
+      const expiryText = daysLeft > 1 ? `${daysLeft} days left` : daysLeft === 1 ? '1 day left' : 'Expires today';
+
+      div.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-semibold">
+              ${invitation.invitee_avatar ? `<img src="${invitation.invitee_avatar}" alt="${invitation.invitee_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+            </div>
+            <div>
+              <div class="text-sm font-medium text-slate-800">${invitation.invitee_name}</div>
+              ${invitation.invitee_username ? `<div class="text-xs text-slate-500">@${invitation.invitee_username}</div>` : ''}
+              <div class="text-xs text-slate-400 mt-0.5">Invited by ${invitation.inviter_name} • ${expiryText}</div>
+            </div>
+          </div>
+          <div class="action-buttons"></div>
+        </div>
+      `;
+
+      const actionButtons = div.querySelector('.action-buttons') as HTMLDivElement;
+      actionButtons.appendChild(
+        createButton('Cancel', 'text-slate-600 hover:bg-slate-100 border border-slate-300 text-xs', 
+          () => handleCancelInvitation(invitation.invitation_id))
+      );
+
+      invitationsList.appendChild(div);
+    });
+  }
+
+  // ===== Action Handlers =====
+  async function handleApproveRequest(memberId: string) {
+    try {
+      const result = await actions.trip.approveJoinRequest({ memberId, tripId });
+      
+      if (result.data) {
+        alert(result.data.message);
+        await loadMembersData(); // Reload all data
+      }
+    } catch (error: any) {
+      alert('Failed to approve: ' + error.message);
+    }
+  }
+
+  async function handleRejectRequest(memberId: string) {
+    if (!confirm('Are you sure you want to reject this request?')) return;
+    
+    try {
+      const result = await actions.trip.rejectJoinRequest({ memberId, tripId });
+      
+      if (result.data) {
+        await loadMembersData(); // Reload all data
+      }
+    } catch (error: any) {
+      alert('Failed to reject: ' + error.message);
+    }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!confirm('Are you sure you want to remove this member from the trip?')) return;
+    
+    try {
+      const result = await actions.trip.removeTripMember({ memberId, tripId });
+      
+      if (result.data) {
+        alert(result.data.message);
+        await loadMembersData(); // Reload all data
+      }
+    } catch (error: any) {
+      alert('Failed to remove member: ' + error.message);
+    }
+  }
+
+  async function handleCancelInvitation(invitationId: string) {
+    if (!confirm('Are you sure you want to cancel this invitation?')) return;
+    
+    try {
+      const result = await actions.trip.cancelTripInvitation({ invitationId });
+      
+      if (result.data) {
+        await loadMembersData(); // Reload all data
+      }
+    } catch (error: any) {
+      alert('Failed to cancel invitation: ' + error.message);
+    }
+  }
+
+  // ===== Invite Modal Functions =====
+  async function loadSuggestions() {
+    try {
+      suggestionsLoading?.classList.remove('hidden');
+      
+      const result = await actions.trip.getTripSuggestions({ tripId, limit: 10 });
+
+      if (result.data) {
+        allSuggestions = result.data.suggestions;
+        renderSuggestions();
+      }
+    } catch (error) {
+      console.error('Failed to load suggestions:', error);
+      inviteSuggestions.innerHTML = `
+        <div class="p-8 text-center text-slate-500">
+          <p class="text-sm">Failed to load suggestions</p>
+        </div>
+      `;
+    } finally {
+      suggestionsLoading?.classList.add('hidden');
+    }
+  }
+
+  function renderSuggestions() {
+    const container = inviteSuggestions;
+    container.innerHTML = '';
+    
+    if (allSuggestions.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center text-slate-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <p class="text-sm">No suggestions available</p>
+          <p class="text-xs mt-1">Try searching for users</p>
+        </div>
+      `;
+      return;
+    }
+
+    allSuggestions.forEach(user => {
+      container.appendChild(createUserItem(user, true));
     });
   }
 
   function createUserItem(user: any, showRelation = false) {
     const div = document.createElement('div');
-    const isSelected = selectedUsers.has(user.id);
+    const isSelected = selectedUsers.has(user.user_id);
+    
+    const initials = user.full_name
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
     
     div.className = `flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`;
     div.innerHTML = `
       <div class="flex items-center gap-3 flex-1">
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-          ${user.avatar}
+          ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium text-slate-800 truncate">${user.name}</div>
-          <div class="text-xs text-slate-500 truncate">${user.email}</div>
-          ${showRelation && user.relation ? `<div class="text-xs text-slate-400 mt-0.5 truncate">${user.relation}</div>` : ''}
+          <div class="text-sm font-medium text-slate-800 truncate">${user.full_name}</div>
+          <div class="text-xs text-slate-500 truncate">@${user.username || user.email}</div>
+          ${showRelation && user.relation_reason ? `<div class="text-xs text-slate-400 mt-0.5 truncate">${user.relation_reason}</div>` : ''}
         </div>
       </div>
       <div class="checkbox-container flex-shrink-0">
@@ -341,19 +596,19 @@ const isOwner = userRole === 'owner';
       </div>
     `;
 
-    div.addEventListener('click', () => toggleUserSelection(user, div));
+    div.addEventListener('click', () => toggleUserSelection(user.user_id, div));
     return div;
   }
 
-  function toggleUserSelection(user: any, element: HTMLDivElement) {
+  function toggleUserSelection(userId: string, element: HTMLDivElement) {
     const checkbox = element.querySelector('input[type="checkbox"]') as HTMLInputElement;
     
-    if (selectedUsers.has(user.id)) {
-      selectedUsers.delete(user.id);
+    if (selectedUsers.has(userId)) {
+      selectedUsers.delete(userId);
       checkbox.checked = false;
       element.classList.remove('bg-blue-50');
     } else {
-      selectedUsers.add(user.id);
+      selectedUsers.add(userId);
       checkbox.checked = true;
       element.classList.add('bg-blue-50');
     }
@@ -367,14 +622,14 @@ const isOwner = userRole === 'owner';
     sendInviteBtn.disabled = selectedUsers.size === 0;
 
     selectedUsers.forEach(userId => {
-      const user = [...MOCK_SUGGESTIONS, ...MOCK_SEARCHABLE_USERS].find(u => u.id === userId);
+      const user = [...allSuggestions, ...allSearchResults].find(u => u.user_id === userId);
       if (!user) return;
 
       const pill = document.createElement('div');
       pill.className = 'inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm';
       pill.innerHTML = `
-        <span class="font-medium">${user.name}</span>
-        <button class="hover:bg-blue-200 rounded-full p-0.5 transition-colors" data-user-id="${user.id}">
+        <span class="font-medium">${user.full_name}</span>
+        <button class="hover:bg-blue-200 rounded-full p-0.5 transition-colors" data-user-id="${user.user_id}">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -387,31 +642,42 @@ const isOwner = userRole === 'owner';
         selectedUsers.delete(userId);
         updateSelectedDisplay();
         renderSuggestions();
+        if (allSearchResults.length > 0) {
+          renderSearchResults();
+        }
       });
 
       selectedUsersContainer.appendChild(pill);
     });
   }
 
-  function handleSearch(query: string) {
+  async function handleSearch(query: string) {
     if (!query.trim()) {
       inviteSearchResults.innerHTML = '';
       inviteSearchResults.classList.add('hidden');
       inviteSuggestions.classList.remove('hidden');
+      allSearchResults = [];
       return;
     }
 
-    // Simulate search
-    const results = MOCK_SEARCHABLE_USERS.filter(user => 
-      user.name.toLowerCase().includes(query.toLowerCase()) ||
-      user.email.toLowerCase().includes(query.toLowerCase())
-    );
+    try {
+      const result = await actions.trip.searchUsersForInvitation({ query, tripId, limit: 10 });
 
+      if (result.data) {
+        allSearchResults = result.data.users;
+        renderSearchResults();
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  }
+
+  function renderSearchResults() {
     inviteSuggestions.classList.add('hidden');
     inviteSearchResults.classList.remove('hidden');
     inviteSearchResults.innerHTML = '';
 
-    if (results.length === 0) {
+    if (allSearchResults.length === 0) {
       inviteSearchResults.innerHTML = `
         <div class="p-8 text-center text-slate-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,38 +688,40 @@ const isOwner = userRole === 'owner';
         </div>
       `;
     } else {
-      results.forEach(user => {
+      allSearchResults.forEach(user => {
         inviteSearchResults.appendChild(createUserItem(user, false));
       });
     }
   }
 
   async function sendInvitations() {
-    const selectedUsersList = Array.from(selectedUsers).map(userId => {
-      return [...MOCK_SUGGESTIONS, ...MOCK_SEARCHABLE_USERS].find(u => u.id === userId);
-    }).filter(Boolean);
+    const selectedUsersList = Array.from(selectedUsers).map(userId => ({ userId }));
 
-    console.log('Sending invitations to:', selectedUsersList);
+    try {
+      sendInviteBtn.disabled = true;
+      sendInviteBtn.textContent = 'Sending...';
 
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/trip/send-invitations', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ 
-    //     tripId: 'current-trip-id',
-    //     invitees: selectedUsersList.map(u => ({ id: u.id, email: u.email }))
-    //   })
-    // });
+      const result = await actions.trip.sendTripInvitations({
+        tripId,
+        invitees: selectedUsersList,
+        message: undefined,
+      });
 
-    // Simulate success
-    alert(`Invitations sent to ${selectedUsersList.length} people!`);
-    
-    // Reset and close
-    selectedUsers.clear();
-    updateSelectedDisplay();
-    inviteSearch.value = '';
-    handleSearch('');
-    closeInviteModal();
+      if (result.data) {
+        alert(result.data.message);
+        selectedUsers.clear();
+        updateSelectedDisplay();
+        inviteSearch.value = '';
+        handleSearch('');
+        closeInviteModal();
+        await loadMembersData(); // Reload members data
+      }
+    } catch (error: any) {
+      alert('Failed to send invitations: ' + error.message);
+    } finally {
+      sendInviteBtn.disabled = false;
+      sendInviteBtn.textContent = 'Send Invitations';
+    }
   }
 
   function openInviteModal() {
@@ -461,7 +729,7 @@ const isOwner = userRole === 'owner';
     inviteModal.classList.add('flex');
     selectedUsers.clear();
     updateSelectedDisplay();
-    renderSuggestions();
+    loadSuggestions();
     inviteSearch.focus();
   }
 
@@ -470,38 +738,8 @@ const isOwner = userRole === 'owner';
     inviteModal.classList.remove('flex');
     inviteSearch.value = '';
     handleSearch('');
-  }
-
-  // ===== Action Handlers =====
-  async function handleUpdateStatus(secureId: string, status: string) {
-    try {
-      const userId = deobfuscate(secureId);
-      
-      // TODO: Replace with actual API call
-      const member = tripMembers.find((m: any) => m.secureId === secureId);
-      if (member) {
-        member.status = status;
-        renderMembers();
-      }
-    } catch (error) {
-      console.error('Failed to update member status:', error);
-      alert('Failed to update member status. Please try again.');
-    }
-  }
-
-  async function handleKick(secureId: string) {
-    if (!confirm("Are you sure you want to remove this member from the trip?")) return;
-    
-    try {
-      const userId = deobfuscate(secureId);
-      
-      // TODO: Replace with actual API call
-      tripMembers = tripMembers.filter((m: any) => m.secureId !== secureId);
-      renderMembers();
-    } catch (error) {
-      console.error('Failed to remove member:', error);
-      alert('Failed to remove member. Please try again.');
-    }
+    allSearchResults = [];
+    allSuggestions = [];
   }
 
   // ===== Utility Functions =====
@@ -513,14 +751,32 @@ const isOwner = userRole === 'owner';
     return btn;
   }
 
+  // ===== Tab Switching =====
+  function switchTab(tabName: string) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.add('hidden');
+    });
+
+    // Remove active from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`)?.classList.remove('hidden');
+
+    // Add active to clicked button
+    document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
+  }
+
   // ===== Event Listeners =====
   
   // Members modal
   document.getElementById('member-btn')?.addEventListener('click', () => {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    setupTableStructure();
-    renderMembers();
+    loadMembersData();
   });
 
   [document.getElementById('close-modal'), document.getElementById('close-modal-btn')].forEach(btn => {
@@ -537,8 +793,17 @@ const isOwner = userRole === 'owner';
     }
   });
 
-  // Invite modal triggers
-  document.getElementById('invite-btn')?.addEventListener('click', openInviteModal);
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const tabName = target.getAttribute('data-tab');
+      if (tabName) switchTab(tabName);
+    });
+  });
+
+  // Invite modal
+  inviteBtn?.addEventListener('click', openInviteModal);
 
   [document.getElementById('close-invite-modal'), document.getElementById('cancel-invite-btn')].forEach(btn => {
     btn?.addEventListener('click', closeInviteModal);
@@ -548,7 +813,7 @@ const isOwner = userRole === 'owner';
     if (e.target === inviteModal) closeInviteModal();
   });
 
-  // Search functionality
+  // Search
   let searchTimeout: any;
   inviteSearch?.addEventListener('input', (e) => {
     clearTimeout(searchTimeout);
@@ -560,7 +825,7 @@ const isOwner = userRole === 'owner';
   // Send invitations
   sendInviteBtn?.addEventListener('click', sendInvitations);
 
-  // Close modals on Escape key
+  // Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!inviteModal.classList.contains('hidden')) {

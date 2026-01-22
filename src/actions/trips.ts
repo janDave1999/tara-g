@@ -8,6 +8,68 @@ import { defineProtectedAction } from "./utils";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "astro:env/server";
 import { createClient } from '@supabase/supabase-js';
 
+
+type TripMember = {
+  member_id: string;
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string;
+  email: string;
+  role: string;
+  member_status: string;
+  join_method: string;
+  joined_at: string;
+  initial_contribution: number;
+  is_current_user: boolean;
+};
+
+type JoinRequest = {
+  member_id: string;
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string;
+  bio: string;
+  role: string;
+  requested_at: string;
+  is_friend: boolean;
+};
+
+type PendingInvitation = {
+  invitation_id: string;
+  invitee_id: string;
+  invitee_name: string;
+  invitee_username: string;
+  invitee_email: string;
+  invitee_avatar: string;
+  inviter_name: string;
+  message: string;
+  created_at: string;
+  expires_at: string;
+  days_until_expiry: number;
+};
+
+type MembersSummary = {
+  total_members: number;
+  joined_members: number;
+  pending_requests: number;
+  pending_invitations: number;
+  max_participants: number;
+  current_participants: number;
+  available_spots: number;
+  user_role: string;
+  user_status: string;
+  can_invite: boolean;
+};
+
+type CompleteMembersData = {
+  members: TripMember[];
+  pending_requests: JoinRequest[];
+  pending_invitations: PendingInvitation[];
+  summary: MembersSummary;
+};
+
 // Initialize Supabase client (adjust based on your setup)
 const getSupabaseClient = (cookies: any) => {
   const supabaseUrl = SUPABASE_URL;
@@ -447,44 +509,51 @@ export const trip = {
     },
   }),
   
-  sendTripInvitations: defineAction({
-    input: z.object({
-      tripId: z.string().uuid(),
-      invitees: z.array(z.object({
-        userId: z.string().uuid().optional(),
-        email: z.string().email().optional(),
-        name: z.string().optional(),
-      })).min(1, "At least one invitee is required"),
-      message: z.string().max(500).optional(),
-    }),
-    handler: async (input, context) => {
-      const supabase = await getSupabaseClient(context.cookies);
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('You must be logged in to send invitations');
-      }
-  
-      // Call RPC function
-      const { data, error } = await supabase.rpc('send_trip_invitations', {
-        p_trip_id: input.tripId,
-        p_inviter_id: user.id,
-        p_invitees: input.invitees,
-        p_message: input.message || null,
-      });
-  
-      if (error) {
-        throw new Error(error.message || 'Failed to send invitations');
-      }
-  
-      return {
-        success: true,
-        invitations: data.invitations,
-        message: `Successfully sent ${data.invitations.length} invitation(s)`,
-      };
-    },
+  sendTripInvitations : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+    invitees: z.array(z.object({
+      userId: z.string().uuid().optional(),
+      email: z.string().email().optional(),
+      name: z.string().optional(),
+    })).min(1, "At least one invitee is required"),
+    message: z.string().max(500).optional(),
   }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in to send invitations');
+    }
+
+    // Transform invitees to ensure proper format for RPC
+    const formattedInvitees = input.invitees.map(invitee => ({
+      user_id: invitee.userId || null,
+      email: invitee.email || null,
+      name: invitee.name || null,
+    }));
+
+    // Call RPC function
+    const { data, error } = await supabase.rpc('send_trip_invitations', {
+      p_trip_id: input.tripId,
+      p_inviter_id: user.id,
+      p_invitees: formattedInvitees,
+      p_message: input.message || null,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to send invitations');
+    }
+
+    return {
+      success: true,
+      invitations: data.invitations,
+      message: `Successfully sent ${data.invitations.length} invitation(s)`,
+    };
+  },
+}),
 
   getTripSuggestions : defineAction({
     input: z.object({
@@ -721,6 +790,269 @@ export const trip = {
       };
     },
   }),
+
+
+// ============================================================================
+// TypeScript Types
+// ============================================================================
+
+// ============================================================================
+// ACTION: Get Trip Members
+// ============================================================================
+getTripMembers : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('get_trip_members', {
+      p_trip_id: input.tripId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to get trip members');
+    }
+
+    return {
+      success: true,
+      members: data as TripMember[],
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Get Trip Join Requests
+// ============================================================================
+getTripJoinRequests : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('get_trip_join_requests', {
+      p_trip_id: input.tripId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to get join requests');
+    }
+
+    return {
+      success: true,
+      requests: data as JoinRequest[],
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Get Trip Pending Invitations
+// ============================================================================
+getTripPendingInvitations : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('get_trip_pending_invitations', {
+      p_trip_id: input.tripId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to get pending invitations');
+    }
+
+    return {
+      success: true,
+      invitations: data as PendingInvitation[],
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Get Trip Members Summary
+// ============================================================================
+getTripMembersSummary : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('get_trip_members_summary', {
+      p_trip_id: input.tripId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to get members summary');
+    }
+
+    return {
+      success: true,
+      summary: data?.[0] as MembersSummary,
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Get Complete Trip Members Data (All-in-One)
+// ============================================================================
+getTripMembersComplete : defineAction({
+  input: z.object({
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    console.log("input", input);
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.log(userError);
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('get_trip_members_complete', {
+      p_trip_id: input.tripId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      console.log(error);
+      throw new Error(error.message || 'Failed to get trip data');
+    }
+
+    return {
+      success: true,
+      data: data as CompleteMembersData,
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Approve Join Request
+// ============================================================================
+approveJoinRequest : defineAction({
+  input: z.object({
+    memberId: z.string().uuid(),
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('approve_join_request', {
+      p_member_id: input.memberId,
+      p_trip_id: input.tripId,
+      p_approver_id: user.id,
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.message || error?.message || 'Failed to approve request');
+    }
+
+    return {
+      success: true,
+      message: data.message,
+      userId: data.user_id,
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Reject Join Request
+// ============================================================================
+rejectJoinRequest : defineAction({
+  input: z.object({
+    memberId: z.string().uuid(),
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('reject_join_request', {
+      p_member_id: input.memberId,
+      p_trip_id: input.tripId,
+      p_rejector_id: user.id,
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.message || error?.message || 'Failed to reject request');
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    };
+  },
+}),
+
+// ============================================================================
+// ACTION: Remove Trip Member
+// ============================================================================
+removeTripMember : defineAction({
+  input: z.object({
+    memberId: z.string().uuid(),
+    tripId: z.string().uuid(),
+  }),
+  handler: async (input, context) => {
+    const supabase = getSupabaseClient(context.cookies);
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('You must be logged in');
+    }
+
+    const { data, error } = await supabase.rpc('remove_trip_member', {
+      p_member_id: input.memberId,
+      p_trip_id: input.tripId,
+      p_remover_id: user.id,
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.message || error?.message || 'Failed to remove member');
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    };
+  },
+}),
 }
 
   type tripDetailsSchema = ActionInputSchema<typeof trip.getTripDetails>;

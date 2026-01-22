@@ -1,5 +1,4 @@
 ---
-// Clean and simple - just pass the trip ID
 const tripId = Astro.props.tripId || Astro.params.tripId;
 ---
 
@@ -42,10 +41,10 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
           Members <span id="members-count" class="ml-1 text-xs"></span>
         </button>
         <button class="tab-btn hidden" data-tab="requests" id="requests-tab">
-          Requests <span id="requests-count" class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"></span>
+          Requests <span id="requests-count" class="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full hidden"></span>
         </button>
         <button class="tab-btn hidden" data-tab="invitations" id="invitations-tab">
-          Invited <span id="invitations-count" class="ml-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"></span>
+          Invited <span id="invitations-count" class="ml-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full hidden"></span>
         </button>
       </div>
     </div>
@@ -94,7 +93,7 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
       <div id="available-spots" class="text-xs text-slate-600"></div>
       <div class="flex gap-2">
-        <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 rounded-lg transition-colors hidden">
+        <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors hidden">
           Invite Members
         </button>
         <button 
@@ -195,13 +194,17 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
     color: rgb(37 99 235);
     border-bottom-color: rgb(37 99 235);
   }
+  .tab-content {
+    display: block;
+  }
+  .tab-content.hidden {
+    display: none;
+  }
 </style>
 
 <script>
   import { actions } from "astro:actions";
 
-  let url = window.location.href;
-  let tripId = url.substring(url.lastIndexOf('/') + 1);
   // ===== Configuration =====
   const STATUS_CONFIG: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-700 ring-amber-600/20',
@@ -210,127 +213,205 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
     left: 'bg-slate-100 text-slate-700 ring-slate-600/20'
   };
 
+  // ===== Get Trip ID =====
+  const getTripId = (): string => {
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    return pathParts[pathParts.length - 1] || '';
+  };
+
   // ===== State =====
-  const container = document.getElementById('members-data-container');
-  // const tripId = container?.getAttribute('data-trip-id') || '';in
-  
+  let tripId = getTripId();
   let membersData: any = null;
   let selectedUsers: Set<string> = new Set();
   let allSuggestions: any[] = [];
   let allSearchResults: any[] = [];
+  let searchTimeout: any;
 
   // ===== DOM Elements =====
-  const modal = document.getElementById('members-modal') as HTMLDivElement;
-  const inviteModal = document.getElementById('invite-modal') as HTMLDivElement;
-  const membersLoading = document.getElementById('members-loading') as HTMLDivElement;
-  const membersTabs = document.getElementById('members-tabs') as HTMLDivElement;
-  const membersList = document.getElementById('members-list') as HTMLTableSectionElement;
-  const requestsList = document.getElementById('requests-list') as HTMLDivElement;
-  const requestsEmpty = document.getElementById('requests-empty') as HTMLDivElement;
-  const invitationsList = document.getElementById('invitations-list') as HTMLDivElement;
-  const invitationsEmpty = document.getElementById('invitations-empty') as HTMLDivElement;
-  const membersSummary = document.getElementById('members-summary') as HTMLParagraphElement;
-  const availableSpots = document.getElementById('available-spots') as HTMLDivElement;
-  const inviteBtn = document.getElementById('invite-btn') as HTMLButtonElement;
-  const membersCount = document.getElementById('members-count') as HTMLSpanElement;
-  const requestsCount = document.getElementById('requests-count') as HTMLSpanElement;
-  const invitationsCount = document.getElementById('invitations-count') as HTMLSpanElement;
-  const requestsTab = document.getElementById('requests-tab') as HTMLButtonElement;
-  const invitationsTab = document.getElementById('invitations-tab') as HTMLButtonElement;
+  const getElement = <T extends HTMLElement>(id: string): T | null => {
+    return document.getElementById(id) as T | null;
+  };
 
-  // Invite modal elements
-  const inviteSearch = document.getElementById('invite-search') as HTMLInputElement;
-  const inviteSuggestions = document.getElementById('invite-suggestions') as HTMLDivElement;
-  const inviteSearchResults = document.getElementById('invite-search-results') as HTMLDivElement;
-  const selectedUsersContainer = document.getElementById('selected-users') as HTMLDivElement;
-  const selectedCountSpan = document.getElementById('selected-count') as HTMLSpanElement;
-  const sendInviteBtn = document.getElementById('send-invite-btn') as HTMLButtonElement;
-  const suggestionsLoading = document.getElementById('suggestions-loading') as HTMLDivElement;
+  const modal = getElement<HTMLDivElement>('members-modal');
+  const inviteModal = getElement<HTMLDivElement>('invite-modal');
+  const membersLoading = getElement<HTMLDivElement>('members-loading');
+  const membersTabs = getElement<HTMLDivElement>('members-tabs');
+  const membersList = getElement<HTMLTableSectionElement>('members-list');
+  const requestsList = getElement<HTMLDivElement>('requests-list');
+  const requestsEmpty = getElement<HTMLDivElement>('requests-empty');
+  const invitationsList = getElement<HTMLDivElement>('invitations-list');
+  const invitationsEmpty = getElement<HTMLDivElement>('invitations-empty');
+  const membersSummary = getElement<HTMLParagraphElement>('members-summary');
+  const availableSpots = getElement<HTMLDivElement>('available-spots');
+  const inviteBtn = getElement<HTMLButtonElement>('invite-btn');
+  const membersCount = getElement<HTMLSpanElement>('members-count');
+  const requestsCount = getElement<HTMLSpanElement>('requests-count');
+  const invitationsCount = getElement<HTMLSpanElement>('invitations-count');
+  const requestsTab = getElement<HTMLButtonElement>('requests-tab');
+  const invitationsTab = getElement<HTMLButtonElement>('invitations-tab');
+  const inviteSearch = getElement<HTMLInputElement>('invite-search');
+  const inviteSuggestions = getElement<HTMLDivElement>('invite-suggestions');
+  const inviteSearchResults = getElement<HTMLDivElement>('invite-search-results');
+  const selectedUsersContainer = getElement<HTMLDivElement>('selected-users');
+  const selectedCountSpan = getElement<HTMLSpanElement>('selected-count');
+  const sendInviteBtn = getElement<HTMLButtonElement>('send-invite-btn');
+  const suggestionsLoading = getElement<HTMLDivElement>('suggestions-loading');
 
-  // ===== Load Complete Data =====
-  async function loadMembersData() {
+  // ===== Utility Functions =====
+  const getInitials = (name: string): string => {
+    return (name || '')
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const createButton = (text: string, classes: string, onClick: () => void): HTMLButtonElement => {
+    const btn = document.createElement('button');
+    btn.className = `text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${classes}`;
+    btn.textContent = text;
+    btn.onclick = onClick;
+    return btn;
+  };
+
+  const showElement = (el: HTMLElement | null) => {
+    if (el) el.classList.remove('hidden');
+  };
+
+  const hideElement = (el: HTMLElement | null) => {
+    if (el) el.classList.add('hidden');
+  };
+
+  // ===== Tab Management =====
+  const switchTab = (tabName: string) => {
+    // Hide all tab contents
+    const allTabs = document.querySelectorAll('.tab-content');
+    allTabs.forEach(tab => tab.classList.add('hidden'));
+
+    // Remove active from all tab buttons
+    const allButtons = document.querySelectorAll('.tab-btn');
+    allButtons.forEach(btn => btn.classList.remove('active'));
+
+    // Show selected tab
+    const selectedTab = getElement(`tab-${tabName}`);
+    if (selectedTab) {
+      selectedTab.classList.remove('hidden');
+    }
+
+    // Activate selected button
+    const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+    if (selectedButton) {
+      selectedButton.classList.add('active');
+    }
+  };
+
+  // ===== Load Members Data =====
+  const loadMembersData = async () => {
+    if (!tripId) {
+      console.error('No trip ID found');
+      return;
+    }
+
     try {
-      membersLoading.classList.remove('hidden');
-      membersTabs.classList.add('hidden');
-      
+      showElement(membersLoading);
+      hideElement(membersTabs);
+
       const result = await actions.trip.getTripMembersComplete({ tripId });
-      
-      if (result.data) {
+
+      if (result.data?.data) {
         membersData = result.data.data;
         renderAllData();
+      } else {
+        console.error('Invalid data structure:', result);
+        alert('Failed to load members data');
       }
     } catch (error: any) {
       console.error('Failed to load members:', error);
       alert('Failed to load trip members: ' + error.message);
     } finally {
-      membersLoading.classList.add('hidden');
-      membersTabs.classList.remove('hidden');
+      hideElement(membersLoading);
+      showElement(membersTabs);
     }
-  }
+  };
 
   // ===== Render All Data =====
-  function renderAllData() {
+  const renderAllData = () => {
     if (!membersData) return;
 
     const { members, pending_requests, pending_invitations, summary } = membersData;
 
     // Update summary
-    membersSummary.textContent = `${summary.joined_members} of ${summary.max_participants} members • ${summary.user_role}`;
-    availableSpots.textContent = `${summary.available_spots} spots available`;
-    
+    if (membersSummary) {
+      membersSummary.textContent = `${summary.joined_members} of ${summary.max_participants} members • ${summary.user_role}`;
+    }
+    if (availableSpots) {
+      availableSpots.textContent = `${summary.available_spots} spots available`;
+    }
+
     // Update counts
-    membersCount.textContent = `(${members.length})`;
-    
-    // Show/hide invite button based on permissions
+    if (membersCount) {
+      membersCount.textContent = `(${members.length})`;
+    }
+
+    // Show invite button if permitted
     if (summary.can_invite) {
-      inviteBtn.classList.remove('hidden');
+      showElement(inviteBtn);
     }
 
     // Render members
     renderMembers(members, summary.user_role);
 
-    // Show/hide tabs based on permissions and data
+    // Handle requests tab
     if (pending_requests.length > 0 && (summary.user_role === 'owner' || summary.user_role === 'admin')) {
-      requestsTab.classList.remove('hidden');
-      requestsCount.textContent = pending_requests.length.toString();
-      requestsCount.classList.remove('hidden');
+      showElement(requestsTab);
+      if (requestsCount) {
+        requestsCount.textContent = pending_requests.length.toString();
+        showElement(requestsCount);
+      }
       renderRequests(pending_requests);
     }
 
+    // Handle invitations tab
     if (pending_invitations.length > 0) {
-      invitationsTab.classList.remove('hidden');
-      invitationsCount.textContent = pending_invitations.length.toString();
-      invitationsCount.classList.remove('hidden');
+      showElement(invitationsTab);
+      if (invitationsCount) {
+        invitationsCount.textContent = pending_invitations.length.toString();
+        showElement(invitationsCount);
+      }
       renderInvitations(pending_invitations);
     }
-  }
+
+    // Default to members tab
+    switchTab('members');
+  };
 
   // ===== Render Members =====
-  function renderMembers(members: any[], userRole: string) {
+  const renderMembers = (members: any[], userRole: string) => {
+    if (!membersList) return;
+
     membersList.innerHTML = '';
 
     members.forEach((member: any) => {
       const row = document.createElement('tr');
       row.className = 'hover:bg-slate-50/80 transition-colors';
 
-      const initials = member.full_name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+      const initials = getInitials(member.full_name);
+      const avatarHtml = member.avatar_url
+        ? `<img src="${member.avatar_url}" alt="${member.full_name}" class="w-full h-full rounded-full object-cover" />`
+        : initials;
 
       row.innerHTML = `
         <td class="px-6 py-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-              ${member.avatar_url ? `<img src="${member.avatar_url}" alt="${member.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+              ${avatarHtml}
             </div>
             <div>
               <div class="text-sm font-medium text-slate-800">
                 ${member.full_name}${member.is_current_user ? ' (You)' : ''}
               </div>
-              <div class="text-xs text-slate-500">@${member.username}</div>
+              <div class="text-xs text-slate-500">@${member.username || 'N/A'}</div>
             </div>
           </div>
         </td>
@@ -349,13 +430,13 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
         </td>
       `;
 
-      // Add actions for owners/admins (excluding current user and other owners)
+      // Add action buttons
       if ((userRole === 'owner' || userRole === 'admin') && !member.is_current_user && member.role !== 'owner') {
         const actionContainer = row.querySelector('.action-container') as HTMLDivElement;
-        
-        if (member.member_status === 'joined') {
+
+        if (member.member_status === 'joined' && actionContainer) {
           actionContainer.appendChild(
-            createButton('Remove', 'text-red-600 hover:bg-red-50 border border-red-200', 
+            createButton('Remove', 'text-red-600 hover:bg-red-50 border border-red-200',
               () => handleRemoveMember(member.member_id))
           );
         }
@@ -363,38 +444,38 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
 
       membersList.appendChild(row);
     });
-  }
+  };
 
   // ===== Render Requests =====
-  function renderRequests(requests: any[]) {
+  const renderRequests = (requests: any[]) => {
+    if (!requestsList || !requestsEmpty) return;
+
     if (requests.length === 0) {
-      requestsEmpty.classList.remove('hidden');
+      showElement(requestsEmpty);
       return;
     }
 
-    requestsEmpty.classList.add('hidden');
+    hideElement(requestsEmpty);
     requestsList.innerHTML = '';
 
     requests.forEach((request: any) => {
       const div = document.createElement('div');
       div.className = 'p-4 hover:bg-slate-50 transition-colors';
 
-      const initials = request.full_name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+      const initials = getInitials(request.full_name);
+      const avatarHtml = request.avatar_url
+        ? `<img src="${request.avatar_url}" alt="${request.full_name}" class="w-full h-full rounded-full object-cover" />`
+        : initials;
 
       div.innerHTML = `
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-              ${request.avatar_url ? `<img src="${request.avatar_url}" alt="${request.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+              ${avatarHtml}
             </div>
             <div>
               <div class="text-sm font-medium text-slate-800">${request.full_name}</div>
-              <div class="text-xs text-slate-500">@${request.username}</div>
+              <div class="text-xs text-slate-500">@${request.username || 'N/A'}</div>
               ${request.is_friend ? '<div class="text-xs text-blue-600 mt-0.5">👥 Your friend</div>' : ''}
             </div>
           </div>
@@ -403,39 +484,41 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
       `;
 
       const actionButtons = div.querySelector('.action-buttons') as HTMLDivElement;
-      actionButtons.appendChild(
-        createButton('Approve', 'bg-emerald-600 hover:bg-emerald-700 text-white', 
-          () => handleApproveRequest(request.member_id))
-      );
-      actionButtons.appendChild(
-        createButton('Reject', 'border border-slate-300 hover:bg-slate-100 text-slate-700', 
-          () => handleRejectRequest(request.member_id))
-      );
+      if (actionButtons) {
+        actionButtons.appendChild(
+          createButton('Approve', 'bg-emerald-600 hover:bg-emerald-700 text-white',
+            () => handleApproveRequest(request.member_id))
+        );
+        actionButtons.appendChild(
+          createButton('Reject', 'border border-slate-300 hover:bg-slate-100 text-slate-700',
+            () => handleRejectRequest(request.member_id))
+        );
+      }
 
       requestsList.appendChild(div);
     });
-  }
+  };
 
   // ===== Render Invitations =====
-  function renderInvitations(invitations: any[]) {
+  const renderInvitations = (invitations: any[]) => {
+    if (!invitationsList || !invitationsEmpty) return;
+
     if (invitations.length === 0) {
-      invitationsEmpty.classList.remove('hidden');
+      showElement(invitationsEmpty);
       return;
     }
 
-    invitationsEmpty.classList.add('hidden');
+    hideElement(invitationsEmpty);
     invitationsList.innerHTML = '';
 
     invitations.forEach((invitation: any) => {
       const div = document.createElement('div');
       div.className = 'p-4 hover:bg-slate-50 transition-colors';
 
-      const initials = invitation.invitee_name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+      const initials = getInitials(invitation.invitee_name);
+      const avatarHtml = invitation.invitee_avatar
+        ? `<img src="${invitation.invitee_avatar}" alt="${invitation.invitee_name}" class="w-full h-full rounded-full object-cover" />`
+        : initials;
 
       const daysLeft = invitation.days_until_expiry;
       const expiryText = daysLeft > 1 ? `${daysLeft} days left` : daysLeft === 1 ? '1 day left' : 'Expires today';
@@ -444,7 +527,7 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-semibold">
-              ${invitation.invitee_avatar ? `<img src="${invitation.invitee_avatar}" alt="${invitation.invitee_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+              ${avatarHtml}
             </div>
             <div>
               <div class="text-sm font-medium text-slate-800">${invitation.invitee_name}</div>
@@ -457,77 +540,75 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
       `;
 
       const actionButtons = div.querySelector('.action-buttons') as HTMLDivElement;
-      actionButtons.appendChild(
-        createButton('Cancel', 'text-slate-600 hover:bg-slate-100 border border-slate-300 text-xs', 
-          () => handleCancelInvitation(invitation.invitation_id))
-      );
+      if (actionButtons) {
+        actionButtons.appendChild(
+          createButton('Cancel', 'text-slate-600 hover:bg-slate-100 border border-slate-300 text-xs',
+            () => handleCancelInvitation(invitation.invitation_id))
+        );
+      }
 
       invitationsList.appendChild(div);
     });
-  }
+  };
 
   // ===== Action Handlers =====
-  async function handleApproveRequest(memberId: string) {
+  const handleApproveRequest = async (memberId: string) => {
     try {
       const result = await actions.trip.approveJoinRequest({ memberId, tripId });
-      
       if (result.data) {
         alert(result.data.message);
-        await loadMembersData(); // Reload all data
+        await loadMembersData();
       }
     } catch (error: any) {
       alert('Failed to approve: ' + error.message);
     }
-  }
+  };
 
-  async function handleRejectRequest(memberId: string) {
+  const handleRejectRequest = async (memberId: string) => {
     if (!confirm('Are you sure you want to reject this request?')) return;
-    
+
     try {
       const result = await actions.trip.rejectJoinRequest({ memberId, tripId });
-      
       if (result.data) {
-        await loadMembersData(); // Reload all data
+        await loadMembersData();
       }
     } catch (error: any) {
       alert('Failed to reject: ' + error.message);
     }
-  }
+  };
 
-  async function handleRemoveMember(memberId: string) {
+  const handleRemoveMember = async (memberId: string) => {
     if (!confirm('Are you sure you want to remove this member from the trip?')) return;
-    
+
     try {
       const result = await actions.trip.removeTripMember({ memberId, tripId });
-      
       if (result.data) {
         alert(result.data.message);
-        await loadMembersData(); // Reload all data
+        await loadMembersData();
       }
     } catch (error: any) {
       alert('Failed to remove member: ' + error.message);
     }
-  }
+  };
 
-  async function handleCancelInvitation(invitationId: string) {
+  const handleCancelInvitation = async (invitationId: string) => {
     if (!confirm('Are you sure you want to cancel this invitation?')) return;
-    
+
     try {
       const result = await actions.trip.cancelTripInvitation({ invitationId });
-      
       if (result.data) {
-        await loadMembersData(); // Reload all data
+        await loadMembersData();
       }
     } catch (error: any) {
       alert('Failed to cancel invitation: ' + error.message);
     }
-  }
+  };
 
   // ===== Invite Modal Functions =====
-  async function loadSuggestions() {
+  const loadSuggestions = async () => {
     try {
-      suggestionsLoading?.classList.remove('hidden');
-      
+      showElement(suggestionsLoading);
+
       const result = await actions.trip.getTripSuggestions({ tripId, limit: 10 });
 
       if (result.data) {
@@ -536,22 +617,25 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
       }
     } catch (error) {
       console.error('Failed to load suggestions:', error);
-      inviteSuggestions.innerHTML = `
-        <div class="p-8 text-center text-slate-500">
-          <p class="text-sm">Failed to load suggestions</p>
-        </div>
-      `;
+      if (inviteSuggestions) {
+        inviteSuggestions.innerHTML = `
+          <div class="p-8 text-center text-slate-500">
+            <p class="text-sm">Failed to load suggestions</p>
+          </div>
+        `;
+      }
     } finally {
-      suggestionsLoading?.classList.add('hidden');
+      hideElement(suggestionsLoading);
     }
-  }
+  };
 
-  function renderSuggestions() {
-    const container = inviteSuggestions;
-    container.innerHTML = '';
-    
+  const renderSuggestions = () => {
+    if (!inviteSuggestions) return;
+
+    inviteSuggestions.innerHTML = '';
+
     if (allSuggestions.length === 0) {
-      container.innerHTML = `
+      inviteSuggestions.innerHTML = `
         <div class="p-8 text-center text-slate-500">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -564,26 +648,24 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
     }
 
     allSuggestions.forEach(user => {
-      container.appendChild(createUserItem(user, true));
+      inviteSuggestions.appendChild(createUserItem(user, true));
     });
-  }
+  };
 
-  function createUserItem(user: any, showRelation = false) {
+  const createUserItem = (user: any, showRelation = false): HTMLDivElement => {
     const div = document.createElement('div');
     const isSelected = selectedUsers.has(user.user_id);
-    
-    const initials = user.full_name
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-    
+
+    const initials = getInitials(user.full_name);
+    const avatarHtml = user.avatar_url
+      ? `<img src="${user.avatar_url}" alt="${user.full_name}" class="w-full h-full rounded-full object-cover" />`
+      : initials;
+
     div.className = `flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`;
     div.innerHTML = `
       <div class="flex items-center gap-3 flex-1">
         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-          ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.full_name}" class="w-full h-full rounded-full object-cover" />` : initials}
+          ${avatarHtml}
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-slate-800 truncate">${user.full_name}</div>
@@ -598,11 +680,11 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
 
     div.addEventListener('click', () => toggleUserSelection(user.user_id, div));
     return div;
-  }
+  };
 
-  function toggleUserSelection(userId: string, element: HTMLDivElement) {
+  const toggleUserSelection = (userId: string, element: HTMLDivElement) => {
     const checkbox = element.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    
+
     if (selectedUsers.has(userId)) {
       selectedUsers.delete(userId);
       checkbox.checked = false;
@@ -612,11 +694,13 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
       checkbox.checked = true;
       element.classList.add('bg-blue-50');
     }
-    
-    updateSelectedDisplay();
-  }
 
-  function updateSelectedDisplay() {
+    updateSelectedDisplay();
+  };
+
+  const updateSelectedDisplay = () => {
+    if (!selectedUsersContainer || !selectedCountSpan || !sendInviteBtn) return;
+
     selectedUsersContainer.innerHTML = '';
     selectedCountSpan.textContent = selectedUsers.size.toString();
     sendInviteBtn.disabled = selectedUsers.size === 0;
@@ -649,13 +733,13 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
 
       selectedUsersContainer.appendChild(pill);
     });
-  }
+  };
 
-  async function handleSearch(query: string) {
+  const handleSearch = async (query: string) => {
     if (!query.trim()) {
-      inviteSearchResults.innerHTML = '';
-      inviteSearchResults.classList.add('hidden');
-      inviteSuggestions.classList.remove('hidden');
+      if (inviteSearchResults) inviteSearchResults.innerHTML = '';
+      hideElement(inviteSearchResults);
+      showElement(inviteSuggestions);
       allSearchResults = [];
       return;
     }
@@ -670,11 +754,13 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
     } catch (error) {
       console.error('Search error:', error);
     }
-  }
+  };
 
-  function renderSearchResults() {
-    inviteSuggestions.classList.add('hidden');
-    inviteSearchResults.classList.remove('hidden');
+  const renderSearchResults = () => {
+    if (!inviteSearchResults || !inviteSuggestions) return;
+
+    hideElement(inviteSuggestions);
+    showElement(inviteSearchResults);
     inviteSearchResults.innerHTML = '';
 
     if (allSearchResults.length === 0) {
@@ -692,9 +778,11 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
         inviteSearchResults.appendChild(createUserItem(user, false));
       });
     }
-  }
+  };
 
-  async function sendInvitations() {
+  const sendInvitations = async () => {
+    if (!sendInviteBtn) return;
+
     const selectedUsersList = Array.from(selectedUsers).map(userId => ({ userId }));
 
     try {
@@ -711,10 +799,10 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
         alert(result.data.message);
         selectedUsers.clear();
         updateSelectedDisplay();
-        inviteSearch.value = '';
+        if (inviteSearch) inviteSearch.value = '';
         handleSearch('');
         closeInviteModal();
-        await loadMembersData(); // Reload members data
+        await loadMembersData();
       }
     } catch (error: any) {
       alert('Failed to send invitations: ' + error.message);
@@ -722,118 +810,97 @@ const tripId = Astro.props.tripId || Astro.params.tripId;
       sendInviteBtn.disabled = false;
       sendInviteBtn.textContent = 'Send Invitations';
     }
-  }
+  };
 
-  function openInviteModal() {
-    inviteModal.classList.remove('hidden');
+  const openInviteModal = () => {
+    if (!inviteModal || !inviteSearch) return;
+
+    showElement(inviteModal);
     inviteModal.classList.add('flex');
     selectedUsers.clear();
     updateSelectedDisplay();
     loadSuggestions();
     inviteSearch.focus();
-  }
+  };
 
-  function closeInviteModal() {
-    inviteModal.classList.add('hidden');
+  const closeInviteModal = () => {
+    if (!inviteModal || !inviteSearch) return;
+
+    hideElement(inviteModal);
     inviteModal.classList.remove('flex');
     inviteSearch.value = '';
     handleSearch('');
     allSearchResults = [];
     allSuggestions = [];
-  }
+  };
 
-  // ===== Utility Functions =====
-  function createButton(text: string, classes: string, onClick: () => void) {
-    const btn = document.createElement('button');
-    btn.className = `text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${classes}`;
-    btn.textContent = text;
-    btn.onclick = onClick;
-    return btn;
-  }
-
-  // ===== Tab Switching =====
-  function switchTab(tabName: string) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-      tab.classList.add('hidden');
-    });
-
-    // Remove active from all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-
-    // Show selected tab
-    document.getElementById(`tab-${tabName}`)?.classList.remove('hidden');
-
-    // Add active to clicked button
-    document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
-  }
-
-  // ===== Event Listeners =====
-  
-  // Members modal
-  document.getElementById('member-btn')?.addEventListener('click', () => {
-    modal.classList.remove('hidden');
+  // ===== Modal Controls =====
+  const openMembersModal = () => {
+    if (!modal) return;
+    showElement(modal);
     modal.classList.add('flex');
     loadMembersData();
-  });
+  };
 
-  [document.getElementById('close-modal'), document.getElementById('close-modal-btn')].forEach(btn => {
-    btn?.addEventListener('click', () => {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
+  const closeMembersModal = () => {
+    if (!modal) return;
+    hideElement(modal);
+    modal.classList.remove('flex');
+  };
+
+  // ===== Event Listeners =====
+  const setupEventListeners = () => {
+    // Open members modal
+    const memberBtn = getElement('member-btn');
+    memberBtn?.addEventListener('click', openMembersModal);
+
+    // Close members modal
+    getElement('close-modal')?.addEventListener('click', closeMembersModal);
+    getElement('close-modal-btn')?.addEventListener('click', closeMembersModal);
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) closeMembersModal();
     });
-  });
 
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
-  });
-
-  // Tab switching
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const tabName = target.getAttribute('data-tab');
-      if (tabName) switchTab(tabName);
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const tabName = target.getAttribute('data-tab');
+        if (tabName) switchTab(tabName);
+      });
     });
-  });
 
-  // Invite modal
-  inviteBtn?.addEventListener('click', openInviteModal);
+    // Invite modal
+    inviteBtn?.addEventListener('click', openInviteModal);
+    getElement('close-invite-modal')?.addEventListener('click', closeInviteModal);
+    getElement('cancel-invite-btn')?.addEventListener('click', closeInviteModal);
+    inviteModal?.addEventListener('click', (e) => {
+      if (e.target === inviteModal) closeInviteModal();
+    });
 
-  [document.getElementById('close-invite-modal'), document.getElementById('cancel-invite-btn')].forEach(btn => {
-    btn?.addEventListener('click', closeInviteModal);
-  });
+    // Search
+    inviteSearch?.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        handleSearch((e.target as HTMLInputElement).value);
+      }, 300);
+    });
 
-  inviteModal.addEventListener('click', (e) => {
-    if (e.target === inviteModal) closeInviteModal();
-  });
+    // Send invitations
+    sendInviteBtn?.addEventListener('click', sendInvitations);
 
-  // Search
-  let searchTimeout: any;
-  inviteSearch?.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      handleSearch((e.target as HTMLInputElement).value);
-    }, 300);
-  });
-
-  // Send invitations
-  sendInviteBtn?.addEventListener('click', sendInvitations);
-
-  // Escape key
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (!inviteModal.classList.contains('hidden')) {
-        closeInviteModal();
-      } else if (!modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+    // Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (inviteModal && !inviteModal.classList.contains('hidden')) {
+          closeInviteModal();
+        } else if (modal && !modal.classList.contains('hidden')) {
+          closeMembersModal();
+        }
       }
-    }
-  });
+    });
+  };
+
+  // ===== Initialize =====
+  setupEventListeners();
 </script>

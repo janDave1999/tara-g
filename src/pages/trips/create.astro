@@ -1,130 +1,396 @@
 ---
 import Layout from "@/layouts/PagePlate.astro";
 import DatePicker from "@/components/DatePicker.astro";
-import { Plane, CalendarDays, MapPin, Users, HandCoins } from "@lucide/astro";
+import { Plane, CalendarDays, MapPin, Users, Clock, DollarSign, AlertCircle, Info } from "@lucide/astro";
 import Tags from "@/components/Trip/Tags.astro";
 ---
 
 <Layout title="Create Trip | Tara G">
   <section class="max-w-3xl mx-auto py-10 px-4 sm:px-8">
     <!-- HEADER -->
-    <h1 class="text-3xl font-bold mb-2">Plan Your Adventure</h1>
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Plan Your Adventure</h1>
+      <p class="text-slate-600">Create an unforgettable journey in just a few steps</p>
+    </div>
 
-          <!-- STEP PROGRESS BAR -->
+    <!-- STEP PROGRESS BAR -->
     <div class="relative mb-10 mt-4">
       <div class="h-1 bg-slate-200 rounded-full"></div>
-      <div id="progressBar" class="absolute top-0 h-1 bg-blue-500 rounded-full transition-all duration-300 w-[25%]"></div>
+      <div id="progressBar" class="absolute top-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out w-[25%]"></div>
       <div class="flex justify-between text-xs mt-2 font-medium">
-        <span data-step="1" class="step-label text-blue-600">Schedule</span>
-        <span data-step="2" class="step-label text-slate-400">Details</span>
-        <span data-step="3" class="step-label text-slate-400">Preferences</span>
-        <span data-step="4" class="step-label text-slate-400">Meetup</span>
+        <span data-step="1" class="step-label text-blue-600 transition-all duration-300">Schedule</span>
+        <span data-step="2" class="step-label text-slate-400 transition-all duration-300">Details</span>
+        <span data-step="3" class="step-label text-slate-400 transition-all duration-300">Budget & Rules</span>
+        <span data-step="4" class="step-label text-slate-400 transition-all duration-300">Logistics</span>
       </div>
     </div>
 
     <!-- FORM CARD -->
-    <form id="tripStepperForm" class="backdrop-blur-md bg-white/70 border border-white/60 shadow-xl rounded-2xl p-6 space-y-6">
+    <form id="tripStepperForm" class="backdrop-blur-md bg-white/70 border border-white/60 shadow-xl rounded-2xl p-6 space-y-6 transition-all duration-300">
 
-      <!-- STEP 1 -->
-      <div class="step" data-step="1">
-        <div class="flex items-center gap-2 mb-4">
-          <CalendarDays class="w-5 h-5 text-blue-500" />
+      <!-- STEP 1: SCHEDULE -->
+      <div class="step transition-opacity duration-300" data-step="1">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <CalendarDays class="w-5 h-5 text-blue-500" />
+          </div>
           <h2 class="font-semibold text-lg">When & Where</h2>
         </div>
 
-        <DatePicker nameFrom="start_date" nameTo="end_date" />
+        <div class="space-y-5">
+          <!-- Trip Date Range -->
+          <DatePicker
+            label="Trip Dates"
+            nameFrom="start_date"
+            nameTo="end_date"
+            required={true}
+            helperText="When does your adventure begin and end?"
+            id="tripDates"
+          />
 
-        <label class="font-medium mt-4 mb-1 block">Destination</label>
-        <div class="relative">
-          <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
-          <input type="text" class="border border-gray-300 rounded-lg w-full " id="regionInput" />
-          <input type="hidden" name="region_address" id="regionAddress" />
-          <input type="hidden" name="region_coordinates" id="regionCoordinates" />
+          <!-- Destination -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">
+              Destination
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <div class="relative group">
+              <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500 group-focus-within:text-purple-500 transition-colors" />
+              <input 
+                type="text" 
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                id="regionInput"
+                placeholder="Where are you headed?"
+                required
+              />
+              <input type="hidden" name="region_address" id="regionAddress" />
+              <input type="hidden" name="region_coordinates" id="regionCoordinates" />
+            </div>
+          </div>
+
+          <!-- Join Deadline with Time -->
+          <DatePicker
+            label="Join Deadline"
+            name="joined_by"
+            id="joinedBy"
+            mode="single"
+            enableTime={true}
+            defaultTime="23:59"
+            required={true}
+            helperText="Last moment for participants to join (allows last-minute joiners!)"
+          />
         </div>
-
-        <!-- Joined by -->
-        <label class="font-medium mt-4 mb-1 block">Joined by</label>
-        <!-- datepicker -->
-         <input type="date" name="joined_by" class="border border-gray-300 rounded-lg w-full " />
       </div>
 
-      <!-- STEP 2 -->
-      <div class="step hidden" data-step="2">
-        <div class="flex items-center gap-2 mb-4">
-          <Plane class="w-5 h-5 text-blue-500" />
+      <!-- STEP 2: DETAILS -->
+      <div class="step hidden transition-opacity duration-300" data-step="2">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <Plane class="w-5 h-5 text-blue-500" />
+          </div>
           <h2 class="font-semibold text-lg">Trip Details</h2>
         </div>
 
-        <label class="font-medium mb-1 block" for="title">Trip Title</label>
-        <input type="text" name="title" class="border border-gray-300 rounded-lg w-full " placeholder="e.g. Siargao Surf Trip 2025" />
+        <div class="space-y-4">
+          <div>
+            <label class="font-medium mb-2 block text-slate-700" for="title">
+              Trip Title
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <input 
+              type="text" 
+              name="title" 
+              id="tripTitle"
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+              placeholder="e.g. Siargao Surf Trip 2025"
+              required
+              maxlength="100"
+            />
+            <div class="text-xs text-slate-500 mt-1 text-right">
+              <span id="titleCount">0</span>/100
+            </div>
+          </div>
 
-        <label class="font-medium mt-4 mb-1 block" for="description">About the Trip</label>
-        <textarea name="description" class="border border-gray-300 rounded-lg w-full " rows="4" placeholder="What’s the vibe? What are you hoping to explore?"></textarea>
-        <Tags />
+          <div>
+            <label class="font-medium mb-2 block text-slate-700" for="description">
+              About the Trip
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <textarea 
+              name="description" 
+              id="tripDescription"
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+              rows="4" 
+              placeholder="What's the vibe? What are you hoping to explore?"
+              required
+              maxlength="500"
+            ></textarea>
+            <div class="text-xs text-slate-500 mt-1 text-right">
+              <span id="descCount">0</span>/500
+            </div>
+          </div>
+
+          <Tags />
+        </div>
       </div>
 
-      <!-- STEP 3 -->
-      <div class="step hidden" data-step="3">
-        <div class="flex items-center gap-2 mb-4">
-          <Users class="w-5 h-5 text-blue-500" />
-          <h2 class="font-semibold text-lg">Participants & Rules</h2>
+      <!-- STEP 3: BUDGET & RULES -->
+      <div class="step hidden transition-opacity duration-300" data-step="3">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <Users class="w-5 h-5 text-blue-500" />
+          </div>
+          <h2 class="font-semibold text-lg">Budget & Participants</h2>
         </div>
 
-        <label class="font-medium mb-1 block">Gender Preference</label>
-        <select name="gender" class="border border-gray-300 rounded-lg w-full ">
-          <option selected value="none">Select gender preference</option>
-          <option value="any">Any</option>
-          <option value="male">Male Only</option>
-          <option value="female">Female Only</option>
-        </select>
+        <div class="space-y-4">
+          <!-- Cost Sharing Method -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">
+              Cost Sharing Method
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <select 
+              name="cost_sharing" 
+              id="costSharing"
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+            >
+              <option value="">Select cost sharing method</option>
+              <option value="split_evenly">Split Evenly</option>
+              <option value="organizer_shoulders_cost">Organizer Shoulders All Costs</option>
+              <option value="pay_own_expenses">Everyone Pays Own Expenses</option>
+              <option value="custom_split">Custom Split (decide later)</option>
+            </select>
+            <p class="text-xs text-slate-500 mt-1" id="costSharingHelper">Choose how expenses will be handled</p>
+          </div>
 
-        <label class="font-medium mt-4 mb-1 block">Maximum Participants</label>
-        <input type="number" name="max_pax" class="border border-gray-300 rounded-lg w-full " min="1" />
+          <!-- Dynamic Budget Field -->
+          <div id="budgetWrapper" class="hidden">
+            <label class="font-medium mb-2 block text-slate-700">
+              <span id="budgetLabel">Estimated Budget</span>
+              <span class="text-xs text-slate-500 ml-1" id="budgetContext">(recommended)</span>
+            </label>
+            <div class="relative">
+              <DollarSign class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
+              <input 
+                type="number" 
+                name="estimated_budget" 
+                id="estimatedBudget"
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="e.g. 5000"
+                min="0"
+                step="100"
+              />
+            </div>
+            <p class="text-xs text-slate-500 mt-1" id="budgetHelper">This helps participants prepare financially</p>
+          </div>
 
-        <label class="font-medium mt-4 mb-1 block">Cost Sharing</label>
-        <div class="relative">
-          <select name="cost_sharing" class="border border-gray-300 rounded-lg w-full ">
-            <option selected value="none">Select cost sharing method</option>
-            <option value="split_evenly">Split Evenly</option>
-            <option value="organizer_shoulders_cost">Organizer Shoulders Cost</option>
-            <option value="custom_split">Custom Split</option>
-          </select>
+          <!-- Gender Preference -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">
+              Gender Preference
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <select 
+              name="gender" 
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+            >
+              <option value="">Select gender preference</option>
+              <option value="any">Any</option>
+              <option value="male">Male Only</option>
+              <option value="female">Female Only</option>
+            </select>
+          </div>
+
+          <!-- Maximum Participants -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">
+              Maximum Participants
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <input 
+              type="number" 
+              name="max_pax" 
+              id="maxPax"
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+              min="2"
+              max="50"
+              placeholder="e.g. 8"
+              required
+            />
+            <p class="text-xs text-slate-500 mt-1">Minimum 2, maximum 50 participants</p>
+          </div>
         </div>
       </div>
 
-      <!-- STEP 4 -->
-      <div class="step hidden" data-step="4">
-        <div class="flex items-center gap-2 mb-4">
-          <MapPin class="w-5 h-5 text-blue-500" />
-          <h2 class="font-semibold text-lg">Meetup Point</h2>
-        </div>
-        <div>
-            <label class="font-medium mb-1 block">Meeting Place</label>
-            <input type="text" name="pickup_address" class="border border-gray-300 rounded-lg w-full" id="pickupInput" placeholder="e.g. MOA Globe, Ayala Cebu Terminal, etc." />
-            <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
-            <input type="hidden" name="pickup_region" id="pickupAddress" />
-        </div>
-        
-        <div>
-            <label class="font-medium mt-4 mb-1 block">Meeting Time</label>
-            <input type="datetime-local" name="pickup_dates" class="border border-gray-300 rounded-lg w-full" />
+      <!-- STEP 4: LOGISTICS -->
+      <div class="step hidden transition-opacity duration-300" data-step="4">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <MapPin class="w-5 h-5 text-blue-500" />
+          </div>
+          <h2 class="font-semibold text-lg">Meetup & Transport</h2>
         </div>
 
-        <div>
-            <label class="font-medium mt-4 mb-1 block">Waiting Time (minutes)</label>
-            <input type="number" name="waiting_time" min="0" placeholder="Enter waiting time" class="border border-gray-300 rounded-lg w-full" />
+        <div class="space-y-5">
+          <!-- Meeting Time -->
+          <DatePicker
+            label="Meeting Date & Time"
+            name="pickup_dates"
+            id="pickupDates"
+            mode="single"
+            enableTime={true}
+            defaultTime="06:00"
+            required={true}
+            helperText="When should everyone gather?"
+          />
+
+          <!-- Pickup Point -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">
+              Pickup Point
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <div class="relative">
+              <MapPin class="absolute left-3 top-3 w-4 h-4 text-green-500" />
+              <input 
+                type="text" 
+                name="pickup_address" 
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                id="pickupInput" 
+                placeholder="e.g. MOA Globe, Ayala Cebu Terminal"
+                required
+              />
+              <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
+              <input type="hidden" name="pickup_region" id="pickupAddress" />
+            </div>
+          </div>
+
+          <!-- Same Location Checkbox -->
+          <div class="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <input 
+              type="checkbox" 
+              id="sameLocation" 
+              class="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <label for="sameLocation" class="text-sm text-slate-700 cursor-pointer">
+              <span class="font-medium">Drop-off at same location and time as pickup</span>
+              <p class="text-xs text-slate-600 mt-1">Uncheck if you're planning a one-way trip or ending at a different location/time</p>
+            </label>
+          </div>
+
+          <!-- Drop-off Section (conditional) -->
+          <div id="dropoffWrapper" class="hidden space-y-4">
+            <div class="border-t border-slate-200 pt-4">
+              <h3 class="font-medium text-slate-700 mb-4 flex items-center gap-2">
+                <MapPin class="w-4 h-4 text-red-500" />
+                Drop-off Details
+              </h3>
+              
+              <!-- Drop-off Location -->
+              <div class="mb-4">
+                <label class="font-medium mb-2 block text-slate-700">
+                  Drop-off Point
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <div class="relative">
+                  <MapPin class="absolute left-3 top-3 w-4 h-4 text-red-500" />
+                  <input 
+                    type="text" 
+                    name="dropoff_address" 
+                    class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                    id="dropoffInput" 
+                    placeholder="Where will the trip end?"
+                  />
+                  <input type="hidden" name="dropoff_coordinates" id="dropoffCoordinates" />
+                  <input type="hidden" name="dropoff_region" id="dropoffAddress" />
+                </div>
+              </div>
+
+              <!-- Drop-off Date & Time -->
+              <DatePicker
+                label="Drop-off Date & Time (Estimated)"
+                name="dropoff_dates"
+                id="dropoffDates"
+                mode="single"
+                enableTime={true}
+                defaultTime="18:00"
+                helperText="When do you expect to arrive at the drop-off point?"
+              />
+            </div>
+          </div>
+
+          <!-- Grace Period -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">Grace Period (minutes)</label>
+            <div class="relative">
+              <Clock class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
+              <input 
+                type="number" 
+                name="waiting_time" 
+                min="0"
+                max="60"
+                placeholder="e.g. 15" 
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                value="15"
+              />
+            </div>
+            <p class="text-xs text-slate-500 mt-1">How long will you wait for late participants?</p>
+          </div>
+
+          <!-- Info Box -->
+          <div class="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-100">
+            <Info class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div class="text-sm text-amber-900">
+              <p class="font-medium mb-1">Additional Stops & Itinerary</p>
+              <p class="text-xs text-amber-800">After creating your trip, you can add more pickup/drop-off points and finalize your complete itinerary in the trip dashboard.</p>
+            </div>
+          </div>
         </div>
-    </div>
+      </div>
 
       <!-- CONTROLS -->
-      <div class="flex justify-between pt-6">
-        <button type="button" id="stepPrev" class="btn btn-ghost">Back</button>
-        <button type="button" id="stepNext" class="btn btn-primary">Next</button>
-        <button type="submit" id="stepSubmit" class="btn btn-success">Create Trip</button>
+      <div class="flex justify-between pt-6 border-t border-slate-200">
+        <button 
+          type="button" 
+          id="stepPrev" 
+          class="px-6 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 transition-all duration-200 hidden"
+        >
+          ← Back
+        </button>
+        <button 
+          type="button" 
+          id="stepNext" 
+          class="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 ml-auto"
+        >
+          Next →
+        </button>
+        <button 
+          type="submit" 
+          id="stepSubmit" 
+          class="px-6 py-2.5 rounded-lg font-medium bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 ml-auto hidden"
+        >
+          Create Trip ✨
+        </button>
       </div>
     </form>
 
+    <!-- Tips Section -->
+    <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+      <h3 class="font-semibold text-sm text-blue-900 mb-2">💡 Pro Tips</h3>
+      <ul class="text-xs text-blue-800 space-y-1">
+        <li>• Join deadline includes time - perfect for last-minute joiners!</li>
+        <li>• Budget field changes based on your cost sharing method</li>
+        <li>• Set join deadline a few hours before meeting time for better planning</li>
+        <li>• You can add more stops and finalize itinerary after creating the trip</li>
+        <li>• A 15-minute grace period is usually ideal</li>
+      </ul>
+    </div>
+
   </section>
+
   <script type="module">
     let currentStep = 1;
     const totalSteps = 4;
@@ -136,14 +402,362 @@ import Tags from "@/components/Trip/Tags.astro";
     const prevBtn = document.getElementById("stepPrev");
     const submitBtn = document.getElementById("stepSubmit");
 
+    // Character counters
+    const titleInput = document.getElementById("tripTitle");
+    const descInput = document.getElementById("tripDescription");
+    const titleCount = document.getElementById("titleCount");
+    const descCount = document.getElementById("descCount");
+
+    if (titleInput && titleCount) {
+      titleInput.addEventListener("input", () => {
+        titleCount.textContent = titleInput.value.length;
+      });
+    }
+
+    if (descInput && descCount) {
+      descInput.addEventListener("input", () => {
+        descCount.textContent = descInput.value.length;
+      });
+    }
+
+    // Cost Sharing Dynamic Budget
+    const costSharing = document.getElementById("costSharing");
+    const budgetWrapper = document.getElementById("budgetWrapper");
+    const budgetLabel = document.getElementById("budgetLabel");
+    const budgetContext = document.getElementById("budgetContext");
+    const budgetHelper = document.getElementById("budgetHelper");
+    const estimatedBudget = document.getElementById("estimatedBudget");
+    const costSharingHelper = document.getElementById("costSharingHelper");
+
+    const budgetConfig = {
+      'split_evenly': {
+        label: 'Estimated Budget Per Person',
+        context: '(recommended)',
+        helper: 'This will be split equally among all participants',
+        placeholder: 'e.g. 5000 per person',
+        show: true
+      },
+      'organizer_shoulders_cost': {
+        label: 'Total Trip Budget',
+        context: '(optional)',
+        helper: 'Total cost you expect to shoulder for the entire trip',
+        placeholder: 'e.g. 50000 total',
+        show: true
+      },
+      'pay_own_expenses': {
+        label: 'Estimated Budget Per Person',
+        context: '(optional)',
+        helper: 'Give participants an idea of what to budget for their personal expenses',
+        placeholder: 'e.g. 3000 per person',
+        show: true
+      },
+      'custom_split': {
+        label: 'Estimated Total Budget',
+        context: '(optional)',
+        helper: 'Total trip cost before splitting (you can finalize the split later)',
+        placeholder: 'e.g. 40000 total',
+        show: true
+      }
+    };
+
+    costSharing.addEventListener('change', (e) => {
+      const method = e.target.value;
+      const config = budgetConfig[method];
+
+      if (config && config.show) {
+        budgetWrapper.classList.remove('hidden');
+        budgetLabel.textContent = config.label;
+        budgetContext.textContent = config.context;
+        budgetHelper.textContent = config.helper;
+        estimatedBudget.placeholder = config.placeholder;
+
+        // Update helper text for cost sharing
+        if (method === 'split_evenly') {
+          costSharingHelper.textContent = 'All costs will be divided equally among participants';
+        } else if (method === 'organizer_shoulders_cost') {
+          costSharingHelper.textContent = 'You\'ll cover all trip expenses';
+        } else if (method === 'pay_own_expenses') {
+          costSharingHelper.textContent = 'Each person pays for their own meals, activities, etc.';
+        } else {
+          costSharingHelper.textContent = 'You\'ll decide the split arrangement later';
+        }
+      } else {
+        budgetWrapper.classList.add('hidden');
+        costSharingHelper.textContent = 'Choose how expenses will be handled';
+      }
+    });
+
+    // Same Location Checkbox
+    const sameLocationCheckbox = document.getElementById("sameLocation");
+    const dropoffWrapper = document.getElementById("dropoffWrapper");
+    const dropoffInput = document.getElementById("dropoffInput");
+    const dropoffDatesInput = document.getElementById("dropoffDates");
+
+    sameLocationCheckbox.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        dropoffWrapper.classList.add("hidden");
+        dropoffInput.required = false;
+        dropoffInput.value = "";
+        
+        // Clear dropoff date picker
+        if (dropoffDatesInput && dropoffDatesInput._flatpickr) {
+          dropoffDatesInput._flatpickr.clear();
+        }
+      } else {
+        dropoffWrapper.classList.remove("hidden");
+        dropoffInput.required = true;
+        
+        // Update constraints for dropoff date
+        updateDropoffDateConstraints();
+      }
+    });
+
+    // Initialize same location as checked
+    sameLocationCheckbox.checked = true;
+
+    // DateTime helper functions
+    function getDateTimeValue(id) {
+      if (id === 'tripDates') {
+        const fromInput = document.getElementById('tripDates-from');
+        const toInput = document.getElementById('tripDates-to');
+        return {
+          start: fromInput ? fromInput.value : null,
+          end: toInput ? toInput.value : null
+        };
+      } else {
+        const hiddenInput = document.getElementById(`${id}-hidden`);
+        return hiddenInput ? hiddenInput.value : null;
+      }
+    }
+
+    function showDateTimeError(id, message) {
+      const errorDiv = document.querySelector(`[data-error="${id}"]`);
+      const errorText = document.querySelector(`[data-error-text="${id}"]`);
+      const pickerInput = document.getElementById(id);
+      
+      if (errorDiv && errorText) {
+        errorText.textContent = message;
+        errorDiv.classList.remove('hidden');
+        pickerInput?.classList.add('border-red-300');
+      }
+    }
+
+    function hideDateTimeError(id) {
+      const errorDiv = document.querySelector(`[data-error="${id}"]`);
+      const pickerInput = document.getElementById(id);
+      
+      if (errorDiv) {
+        errorDiv.classList.add('hidden');
+        pickerInput?.classList.remove('border-red-300');
+      }
+    }
+
+    function updateDateConstraints() {
+      const tripDates = getDateTimeValue('tripDates');
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Update constraints using the exposed methods
+      if (window.updateDatePickerConstraints) {
+        // Set minimum date for trip dates to today
+        if (window.updateDatePickerConstraints['tripDates']) {
+          window.updateDatePickerConstraints['tripDates'].setMinDate(today);
+        }
+        
+        // Update join deadline constraints (must be before start date)
+        if (tripDates.start && window.updateDatePickerConstraints['joinedBy']) {
+          const startDateOnly = new Date(tripDates.start.split('T')[0]);
+          const dayBefore = new Date(startDateOnly);
+          dayBefore.setDate(dayBefore.getDate() - 1);
+          
+          window.updateDatePickerConstraints['joinedBy'].setMinDate(today);
+          window.updateDatePickerConstraints['joinedBy'].setMaxDate(dayBefore.toISOString().split('T')[0]);
+        }
+        
+        // Update pickup date constraints (should be on or before start date)
+        if (tripDates.start && window.updateDatePickerConstraints['pickupDates']) {
+          window.updateDatePickerConstraints['pickupDates'].setMinDate(today);
+          window.updateDatePickerConstraints['pickupDates'].setMaxDate(tripDates.start.split('T')[0]);
+        }
+        
+        // Update dropoff date constraints
+        updateDropoffDateConstraints();
+      }
+    }
+
+    function updateDropoffDateConstraints() {
+      const tripDates = getDateTimeValue('tripDates');
+      const pickupDateTime = getDateTimeValue('pickupDates');
+      
+      if (window.updateDatePickerConstraints && window.updateDatePickerConstraints['dropoffDates']) {
+        // Drop-off should be between pickup time and trip end date
+        if (pickupDateTime) {
+          const pickupDate = new Date(pickupDateTime);
+          window.updateDatePickerConstraints['dropoffDates'].setMinDate(pickupDate.toISOString().split('T')[0]);
+        }
+        
+        if (tripDates.end) {
+          const endDate = new Date(tripDates.end);
+          // Allow drop-off to be up to 1 day after trip end for buffer
+          const dayAfter = new Date(endDate);
+          dayAfter.setDate(dayAfter.getDate() + 1);
+          window.updateDatePickerConstraints['dropoffDates'].setMaxDate(dayAfter.toISOString().split('T')[0]);
+        }
+      }
+    }
+
+    function validateDates() {
+      const tripDates = getDateTimeValue('tripDates');
+      const joinedByDateTime = getDateTimeValue('joinedBy');
+      
+      let isValid = true;
+      const now = new Date();
+      
+      hideDateTimeError('tripDates');
+      hideDateTimeError('joinedBy');
+      
+      if (!tripDates.start || !tripDates.end || !joinedByDateTime) {
+        return true;
+      }
+      
+      const start = new Date(tripDates.start);
+      const end = new Date(tripDates.end);
+      const joinBy = new Date(joinedByDateTime);
+      
+      if (start < now) {
+        showDateTimeError('tripDates', 'Trip cannot start in the past');
+        isValid = false;
+      }
+      
+      if (end < start) {
+        showDateTimeError('tripDates', 'End date must be after start date');
+        isValid = false;
+      }
+      
+      if (joinBy < now) {
+        showDateTimeError('joinedBy', 'Join deadline cannot be in the past');
+        isValid = false;
+      } else if (joinBy >= start) {
+        showDateTimeError('joinedBy', 'Join deadline must be before trip start');
+        isValid = false;
+      }
+      
+      return isValid;
+    }
+
+    function validateMeetingTime() {
+      const pickupDateTime = getDateTimeValue('pickupDates');
+      const tripDates = getDateTimeValue('tripDates');
+      
+      let isValid = true;
+      const now = new Date();
+      
+      hideDateTimeError('pickupDates');
+      
+      if (!pickupDateTime) {
+        return true;
+      }
+      
+      const meetingTime = new Date(pickupDateTime);
+      
+      if (meetingTime < now) {
+        showDateTimeError('pickupDates', 'Meeting time cannot be in the past');
+        isValid = false;
+      }
+      
+      if (tripDates.start) {
+        const tripStart = new Date(tripDates.start);
+        if (meetingTime > tripStart) {
+          showDateTimeError('pickupDates', 'Meeting time should be on or before trip start');
+          isValid = false;
+        }
+      }
+      
+      return isValid;
+    }
+
+    function validateDropoffTime() {
+      const dropoffDateTime = getDateTimeValue('dropoffDates');
+      const pickupDateTime = getDateTimeValue('pickupDates');
+      const tripDates = getDateTimeValue('tripDates');
+      
+      let isValid = true;
+      
+      hideDateTimeError('dropoffDates');
+      
+      // Only validate if dropoff is visible and has value
+      if (!dropoffWrapper.classList.contains('hidden') && dropoffDateTime) {
+        const dropoffTime = new Date(dropoffDateTime);
+        
+        if (pickupDateTime) {
+          const pickupTime = new Date(pickupDateTime);
+          if (dropoffTime <= pickupTime) {
+            showDateTimeError('dropoffDates', 'Drop-off time must be after pickup time');
+            isValid = false;
+          }
+        }
+        
+        if (tripDates.end) {
+          const tripEnd = new Date(tripDates.end);
+          // Allow 1 day buffer after trip end
+          const maxDropoff = new Date(tripEnd);
+          maxDropoff.setDate(maxDropoff.getDate() + 1);
+          
+          if (dropoffTime > maxDropoff) {
+            showDateTimeError('dropoffDates', 'Drop-off should be within trip duration');
+            isValid = false;
+          }
+        }
+      }
+      
+      return isValid;
+    }
+
+    function validateCurrentStep() {
+      const currentStepElement = document.querySelector(`.step[data-step="${currentStep}"]`);
+      const requiredInputs = currentStepElement.querySelectorAll('[required]');
+      
+      let hasEmptyFields = false;
+      for (let input of requiredInputs) {
+        if (!input.value || (input.tagName === 'SELECT' && input.value === '')) {
+          input.classList.add('border-red-300');
+          hasEmptyFields = true;
+        } else {
+          input.classList.remove('border-red-300');
+        }
+      }
+      
+      if (hasEmptyFields) return false;
+      
+      if (currentStep === 1) {
+        return validateDates();
+      }
+      
+      if (currentStep === 4) {
+        return validateMeetingTime() && validateDropoffTime();
+      }
+      
+      return true;
+    }
+
     function ui() {
-      steps.forEach(s => s.classList.toggle("hidden", Number(s.dataset.step) !== currentStep));
+      steps.forEach(s => {
+        const isActive = Number(s.dataset.step) === currentStep;
+        s.classList.toggle("hidden", !isActive);
+        if (isActive) {
+          s.style.opacity = "0";
+          setTimeout(() => s.style.opacity = "1", 50);
+        }
+      });
 
       labels.forEach(l => {
-        const active = Number(l.dataset.step) === currentStep;
-        l.classList.toggle("text-blue-600", active);
-        l.classList.toggle("text-slate-400", !active);
-        l.classList.toggle("font-semibold", active);
+        const stepNum = Number(l.dataset.step);
+        const isActive = stepNum === currentStep;
+        const isPast = stepNum < currentStep;
+        
+        l.classList.toggle("text-blue-600", isActive);
+        l.classList.toggle("text-green-600", isPast);
+        l.classList.toggle("text-slate-400", !isActive && !isPast);
+        l.classList.toggle("font-semibold", isActive);
       });
 
       progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
@@ -153,114 +767,190 @@ import Tags from "@/components/Trip/Tags.astro";
       submitBtn.classList.toggle("hidden", currentStep !== totalSteps);
     }
 
-    nextBtn.onclick = () => { if (currentStep < totalSteps) currentStep++; ui(); };
-    prevBtn.onclick = () => { if (currentStep > 1) currentStep--; ui(); };
+    nextBtn.onclick = () => { 
+      if (validateCurrentStep() && currentStep < totalSteps) {
+        currentStep++; 
+        ui();
+      }
+    };
+
+    prevBtn.onclick = () => { 
+      if (currentStep > 1) {
+        currentStep--; 
+        ui();
+      }
+    };
+
+    document.addEventListener('change', (e) => {
+      const target = e.target;
+      
+      // Check if change is from any of our date pickers
+      if (target.name === 'start_date' || target.name === 'end_date' || target.name === 'joined_by') {
+        updateDateConstraints();
+        validateDates();
+      }
+      
+      if (target.name === 'pickup_dates') {
+        validateMeetingTime();
+        updateDropoffDateConstraints();
+      }
+      
+      if (target.name === 'dropoff_dates') {
+        validateDropoffTime();
+      }
+    });
+
+    updateDateConstraints();
     ui();
 
-    // OPTIONAL — autosave
+    // Autosave
     const form = document.getElementById("tripStepperForm");
+    let saveTimeout;
     form.addEventListener("input", () => {
-      const data = Object.fromEntries(new FormData(form).entries());
-      localStorage.setItem("tripDraft", JSON.stringify(data));
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        const data = Object.fromEntries(new FormData(form).entries());
+        sessionStorage.setItem("tripDraft", JSON.stringify(data));
+      }, 500);
     });
+
+    // Load draft
+    const draft = sessionStorage.getItem("tripDraft");
+    if (draft) {
+      const data = JSON.parse(draft);
+      Object.keys(data).forEach(key => {
+        const input = form.querySelector(`[name="${key}"]`);
+        if (input && data[key]) {
+          input.value = data[key];
+          if (input.id === "tripTitle") titleCount.textContent = data[key].length;
+          if (input.id === "tripDescription") descCount.textContent = data[key].length;
+          if (input.id === "costSharing") {
+            costSharing.dispatchEvent(new Event('change'));
+          }
+        }
+      });
+      updateDateConstraints();
+    }
 
     form.addEventListener("submit", e => {
       e.preventDefault();
-      console.log("Trip Created:", Object.fromEntries(new FormData(form).entries()));
+      if (!validateCurrentStep()) {
+        return;
+      }
+      sessionStorage.removeItem("tripDraft");
     });
   </script>
+
   <script>
-import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
+    import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
 
-// Get session ID from cookie
-const sessionId = document.cookie
-  .split("; ")
-  .find((row) => row.startsWith("sb-session-id="))
-  ?.split("=")[1] as string;
+    const sessionId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("sb-session-id="))
+      ?.split("=")[1] as string;
 
-const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
-const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
-// const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
+    const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
+    const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
+    const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
 
-const regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
-const pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
-// const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
+    const regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
+    const pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
+    const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
 
-// Initialize Mapbox search boxes once
-createMapboxSearchBox({
-  sessionTokenID: sessionId,
-  targetSelector: "#regionInput",
-  onSelect: (result) => {
-    regionAddress.value = result.name;
-    regionCoordinates.value = JSON.stringify(result.coordinates);
-  },
-});
+    createMapboxSearchBox({
+      sessionTokenID: sessionId,
+      targetSelector: "#regionInput",
+      onSelect: (result) => {
+        regionAddress.value = result.name;
+        regionCoordinates.value = JSON.stringify(result.coordinates);
+      },
+    });
 
-createMapboxSearchBox({
-  sessionTokenID: sessionId,
-  targetSelector: "#pickupInput",
-  onSelect: (result) => {
-    pickupAddress.value = result.name;
-    pickupCoordinates.value = JSON.stringify(result.coordinates);
-  },
-});
+    createMapboxSearchBox({
+      sessionTokenID: sessionId,
+      targetSelector: "#pickupInput",
+      onSelect: (result) => {
+        pickupAddress.value = result.name;
+        pickupCoordinates.value = JSON.stringify(result.coordinates);
+      },
+    });
 
-      import { actions } from "astro:actions";
-      import type { TripFormData } from "@/types/trip";
-      import { slugify } from "@/scripts/Slugify";
-      import { showToast } from "@/scripts/Toast";
-      import { showLoading, hideLoading } from "@/lib/loading";
+    createMapboxSearchBox({
+      sessionTokenID: sessionId,
+      targetSelector: "#dropoffInput",
+      onSelect: (result) => {
+        dropoffAddress.value = result.name;
+        dropoffCoordinates.value = JSON.stringify(result.coordinates);
+      },
+    });
 
-      let form = document.getElementById("tripStepperForm") as HTMLFormElement;
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        showLoading();
-        try {
-          const formData = new FormData(form);
+    import { actions } from "astro:actions";
+    import type { TripFormData } from "@/types/trip";
+    import { slugify } from "@/scripts/Slugify";
+    import { showToast } from "@/scripts/Toast";
+    import { showLoading, hideLoading } from "@/lib/loading";
 
-          // convert tags into an array
-          const tagsString = formData.get("tags") as string | string[];
-          const tagsArray = Array.isArray(tagsString) ? tagsString : tagsString.split(",").map(tag => tag.trim());
+    let form = document.getElementById("tripStepperForm") as HTMLFormElement;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      showLoading();
+      try {
+        const formData = new FormData(form);
 
-          let slug = await slugify(formData.get("title") as string);
-          formData.set("slug", slug);
+        const tagsString = formData.get("tags") as string | string[];
+        const tagsArray = Array.isArray(tagsString) ? tagsString : tagsString.split(",").map(tag => tag.trim());
 
-          const tripData: TripFormData = {
-            title: formData.get("title") as string,
-            tags: tagsArray,
-            joined_by: formData.get("joined_by") as string,
-            region_address: formData.get("region_address") as string,
-            region_coordinates: formData.get("region_coordinates") as string,
-            pickup_address: formData.get("pickup_address") as string,
-            pickup_coordinates: formData.get("pickup_coordinates") as string,
-            dropoff_address: formData.get("dropoff_address") as string,
-            dropoff_coordinates: formData.get("dropoff_coordinates") as string,
-            description: formData.get("description") as string,
-            waiting_time: parseInt(formData.get("waiting_time") as string) || 0,
-            cost_sharing: formData.get("cost_sharing") as string,
-            max_pax: parseInt(formData.get("max_pax") as string) || 0,
-            start_date: formData.get("start_date") as string,
-            end_date: formData.get("end_date") as string,
-            gender_preference: formData.get("gender") as string,
-            slug: formData.get("slug") as string,
-            pickup_dates: formData.get("pickup_dates") as string
-          } ;
+        let slug = await slugify(formData.get("title") as string);
+        formData.set("slug", slug);
 
-          let  data = await actions.trip.createTrip(tripData);
-          console.log(data);
-          if (data.error) {  
-            showToast({ message: data.error.message, type: "error" });
-          } else {
-            let slug = JSON.parse(data.data)
-            slug = slug.data.trip_id
-            console.log("slug", slug);
-            window.location.href = `/trips/${slug}`;
-          }
-        } finally {
-          hideLoading();
+        // Handle same location logic
+        const sameLocation = (document.getElementById("sameLocation") as HTMLInputElement).checked;
+        if (sameLocation) {
+          formData.set("dropoff_address", formData.get("pickup_address") as string);
+          formData.set("dropoff_coordinates", formData.get("pickup_coordinates") as string);
+          formData.set("dropoff_region", formData.get("pickup_region") as string);
+          
+          // Set dropoff date as pickup date if same location
+          formData.set("dropoff_dates", formData.get("pickup_dates") as string);
         }
-      });
 
-</script>
+        const tripData: TripFormData = {
+          title: formData.get("title") as string,
+          tags: tagsArray,
+          joined_by: formData.get("joined_by") as string,
+          region_address: formData.get("region_address") as string,
+          region_coordinates: formData.get("region_coordinates") as string,
+          pickup_address: formData.get("pickup_address") as string,
+          pickup_coordinates: formData.get("pickup_coordinates") as string,
+          dropoff_address: formData.get("dropoff_address") as string,
+          dropoff_coordinates: formData.get("dropoff_coordinates") as string,
+          description: formData.get("description") as string,
+          waiting_time: parseInt(formData.get("waiting_time") as string) || 15,
+          cost_sharing: formData.get("cost_sharing") as string,
+          max_pax: parseInt(formData.get("max_pax") as string) || 0,
+          start_date: formData.get("start_date") as string,
+          end_date: formData.get("end_date") as string,
+          gender_preference: formData.get("gender") as string,
+          slug: formData.get("slug") as string,
+          pickup_dates: formData.get("pickup_dates") as string,
+          dropoff_dates: formData.get("dropoff_dates") as string,
+          estimated_budget: parseInt(formData.get("estimated_budget") as string) || null
+        };
+
+        let data = await actions.trip.createTrip(tripData);
+        console.log(data);
+        if (data.error) {  
+          showToast({ message: data.error.message, type: "error" });
+        } else {
+          let slug = JSON.parse(data.data)
+          slug = slug.data.trip_id
+          console.log("slug", slug);
+          sessionStorage.removeItem("tripDraft");
+          window.location.href = `/trips/${slug}`;
+        }
+      } finally {
+        hideLoading();
+      }
+    });
+  </script>
 </Layout>
-

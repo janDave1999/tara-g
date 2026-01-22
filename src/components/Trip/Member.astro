@@ -28,9 +28,9 @@ const isOwner = userRole === 'owner';
   data-members={JSON.stringify(secureMembers)}
   data-user-role={userRole}
 >
-  <button class="btn btn-sm" id="member-btn">
+  <!-- <button class="btn btn-sm" id="member-btn">
     Members
-  </button>
+  </button> -->
 </div>
 
 <div 
@@ -70,6 +70,10 @@ const isOwner = userRole === 'owner';
 
     <!-- Footer -->
     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 text-right">
+      <!-- Invite button -->
+      <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-200 rounded-lg transition-colors">
+        Invite Members
+      </button>
       <button 
         id="close-modal-btn" 
         class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
@@ -80,8 +84,101 @@ const isOwner = userRole === 'owner';
   </div>
 </div>
 
+<!-- Invite Modal (Messenger-style) -->
+<div 
+  id="invite-modal" 
+  class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+>
+  <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+    
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="text-lg font-bold text-slate-800">Invite to Trip</h3>
+        <p class="text-xs text-slate-500">Search by name or email</p>
+      </div>
+      <button 
+        id="close-invite-modal" 
+        class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full"
+        aria-label="Close"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Search Input -->
+    <div class="px-6 py-4 border-b border-slate-100">
+      <div class="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input 
+          type="text" 
+          id="invite-search"
+          placeholder="Search people by name or email..."
+          class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+        />
+      </div>
+
+      <!-- Selected Users Pills -->
+      <div id="selected-users" class="mt-3 flex flex-wrap gap-2 empty:hidden"></div>
+    </div>
+
+    <!-- Suggestions List -->
+    <div class="px-6 py-3 bg-slate-50/50">
+      <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Suggestions</h4>
+    </div>
+
+    <!-- Scrollable User List -->
+    <div class="overflow-y-auto max-h-[300px] px-2">
+      <div id="invite-suggestions" class="divide-y divide-slate-100"></div>
+      <div id="invite-search-results" class="divide-y divide-slate-100"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+      <div class="text-sm text-slate-600">
+        <span id="selected-count">0</span> selected
+      </div>
+      <div class="flex gap-2">
+        <button 
+          id="cancel-invite-btn" 
+          class="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button 
+          id="send-invite-btn" 
+          class="px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          Send Invitations
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   import { deobfuscate } from "@/lib/obfuscate";
+
+  // ===== Mock Data for Suggestions =====
+  const MOCK_SUGGESTIONS = [
+    { id: 'user_001', name: 'Sarah Johnson', email: 'sarah.j@email.com', avatar: 'SJ', relation: 'From previous trip to Bali' },
+    { id: 'user_002', name: 'Michael Chen', email: 'mchen@email.com', avatar: 'MC', relation: 'From previous trip to Tokyo' },
+    { id: 'user_003', name: 'Emma Wilson', email: 'emma.w@email.com', avatar: 'EW', relation: 'From previous trip to Paris' },
+    { id: 'user_004', name: 'James Rodriguez', email: 'jrod@email.com', avatar: 'JR', relation: 'Suggested based on interests' },
+  ];
+
+  // Mock searchable users (simulating API search)
+  const MOCK_SEARCHABLE_USERS = [
+    { id: 'user_005', name: 'Olivia Brown', email: 'olivia.b@email.com', avatar: 'OB' },
+    { id: 'user_006', name: 'Daniel Kim', email: 'daniel.kim@email.com', avatar: 'DK' },
+    { id: 'user_007', name: 'Sophia Martinez', email: 'sophia.m@email.com', avatar: 'SM' },
+    { id: 'user_008', name: 'Alex Turner', email: 'alex.t@email.com', avatar: 'AT' },
+  ];
 
   // ===== Configuration =====
   const STATUS_CONFIG: Record<string, string> = {
@@ -99,11 +196,23 @@ const isOwner = userRole === 'owner';
   let tripMembers = rawMembers ? JSON.parse(rawMembers) : [];
   const isOwner = userRole === 'owner';
 
+  // Invite modal state
+  let selectedUsers: Set<string> = new Set();
+
   // ===== DOM Elements =====
   const modal = document.getElementById('members-modal') as HTMLDivElement;
   const membersList = document.getElementById('members-list') as HTMLTableSectionElement;
   const tableHeaders = document.getElementById('table-headers') as HTMLTableRowElement;
   const roleIndicator = document.getElementById('role-indicator') as HTMLParagraphElement;
+
+  // Invite modal elements
+  const inviteModal = document.getElementById('invite-modal') as HTMLDivElement;
+  const inviteSearch = document.getElementById('invite-search') as HTMLInputElement;
+  const inviteSuggestions = document.getElementById('invite-suggestions') as HTMLDivElement;
+  const inviteSearchResults = document.getElementById('invite-search-results') as HTMLDivElement;
+  const selectedUsersContainer = document.getElementById('selected-users') as HTMLDivElement;
+  const selectedCountSpan = document.getElementById('selected-count') as HTMLSpanElement;
+  const sendInviteBtn = document.getElementById('send-invite-btn') as HTMLButtonElement;
 
   // ===== Table Setup =====
   function setupTableStructure() {
@@ -196,20 +305,179 @@ const isOwner = userRole === 'owner';
     });
   }
 
+  // ===== Invite Modal Functions =====
+  function renderSuggestions() {
+    inviteSuggestions.innerHTML = '';
+    
+    // Filter out already invited/joined members
+    const existingMemberEmails = tripMembers.map((m: any) => m.email);
+    const availableSuggestions = MOCK_SUGGESTIONS.filter(
+      user => !existingMemberEmails.includes(user.email)
+    );
+
+    availableSuggestions.forEach(user => {
+      inviteSuggestions.appendChild(createUserItem(user, true));
+    });
+  }
+
+  function createUserItem(user: any, showRelation = false) {
+    const div = document.createElement('div');
+    const isSelected = selectedUsers.has(user.id);
+    
+    div.className = `flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`;
+    div.innerHTML = `
+      <div class="flex items-center gap-3 flex-1">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+          ${user.avatar}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-slate-800 truncate">${user.name}</div>
+          <div class="text-xs text-slate-500 truncate">${user.email}</div>
+          ${showRelation && user.relation ? `<div class="text-xs text-slate-400 mt-0.5 truncate">${user.relation}</div>` : ''}
+        </div>
+      </div>
+      <div class="checkbox-container flex-shrink-0">
+        <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+      </div>
+    `;
+
+    div.addEventListener('click', () => toggleUserSelection(user, div));
+    return div;
+  }
+
+  function toggleUserSelection(user: any, element: HTMLDivElement) {
+    const checkbox = element.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    
+    if (selectedUsers.has(user.id)) {
+      selectedUsers.delete(user.id);
+      checkbox.checked = false;
+      element.classList.remove('bg-blue-50');
+    } else {
+      selectedUsers.add(user.id);
+      checkbox.checked = true;
+      element.classList.add('bg-blue-50');
+    }
+    
+    updateSelectedDisplay();
+  }
+
+  function updateSelectedDisplay() {
+    selectedUsersContainer.innerHTML = '';
+    selectedCountSpan.textContent = selectedUsers.size.toString();
+    sendInviteBtn.disabled = selectedUsers.size === 0;
+
+    selectedUsers.forEach(userId => {
+      const user = [...MOCK_SUGGESTIONS, ...MOCK_SEARCHABLE_USERS].find(u => u.id === userId);
+      if (!user) return;
+
+      const pill = document.createElement('div');
+      pill.className = 'inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm';
+      pill.innerHTML = `
+        <span class="font-medium">${user.name}</span>
+        <button class="hover:bg-blue-200 rounded-full p-0.5 transition-colors" data-user-id="${user.id}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      `;
+
+      const removeBtn = pill.querySelector('button') as HTMLButtonElement;
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedUsers.delete(userId);
+        updateSelectedDisplay();
+        renderSuggestions();
+      });
+
+      selectedUsersContainer.appendChild(pill);
+    });
+  }
+
+  function handleSearch(query: string) {
+    if (!query.trim()) {
+      inviteSearchResults.innerHTML = '';
+      inviteSearchResults.classList.add('hidden');
+      inviteSuggestions.classList.remove('hidden');
+      return;
+    }
+
+    // Simulate search
+    const results = MOCK_SEARCHABLE_USERS.filter(user => 
+      user.name.toLowerCase().includes(query.toLowerCase()) ||
+      user.email.toLowerCase().includes(query.toLowerCase())
+    );
+
+    inviteSuggestions.classList.add('hidden');
+    inviteSearchResults.classList.remove('hidden');
+    inviteSearchResults.innerHTML = '';
+
+    if (results.length === 0) {
+      inviteSearchResults.innerHTML = `
+        <div class="p-8 text-center text-slate-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p class="text-sm">No users found</p>
+          <p class="text-xs mt-1">Try a different search term</p>
+        </div>
+      `;
+    } else {
+      results.forEach(user => {
+        inviteSearchResults.appendChild(createUserItem(user, false));
+      });
+    }
+  }
+
+  async function sendInvitations() {
+    const selectedUsersList = Array.from(selectedUsers).map(userId => {
+      return [...MOCK_SUGGESTIONS, ...MOCK_SEARCHABLE_USERS].find(u => u.id === userId);
+    }).filter(Boolean);
+
+    console.log('Sending invitations to:', selectedUsersList);
+
+    // TODO: Replace with actual API call
+    // const response = await fetch('/api/trip/send-invitations', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ 
+    //     tripId: 'current-trip-id',
+    //     invitees: selectedUsersList.map(u => ({ id: u.id, email: u.email }))
+    //   })
+    // });
+
+    // Simulate success
+    alert(`Invitations sent to ${selectedUsersList.length} people!`);
+    
+    // Reset and close
+    selectedUsers.clear();
+    updateSelectedDisplay();
+    inviteSearch.value = '';
+    handleSearch('');
+    closeInviteModal();
+  }
+
+  function openInviteModal() {
+    inviteModal.classList.remove('hidden');
+    inviteModal.classList.add('flex');
+    selectedUsers.clear();
+    updateSelectedDisplay();
+    renderSuggestions();
+    inviteSearch.focus();
+  }
+
+  function closeInviteModal() {
+    inviteModal.classList.add('hidden');
+    inviteModal.classList.remove('flex');
+    inviteSearch.value = '';
+    handleSearch('');
+  }
+
   // ===== Action Handlers =====
   async function handleUpdateStatus(secureId: string, status: string) {
     try {
-      // Deobfuscate the ID for API call
       const userId = deobfuscate(secureId);
       
       // TODO: Replace with actual API call
-      // const response = await fetch('/api/trip/update-member-status', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ userId, status })
-      // });
-      
-      // Optimistic UI update
       const member = tripMembers.find((m: any) => m.secureId === secureId);
       if (member) {
         member.status = status;
@@ -228,13 +496,6 @@ const isOwner = userRole === 'owner';
       const userId = deobfuscate(secureId);
       
       // TODO: Replace with actual API call
-      // const response = await fetch('/api/trip/remove-member', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ userId })
-      // });
-      
-      // Optimistic UI update
       tripMembers = tripMembers.filter((m: any) => m.secureId !== secureId);
       renderMembers();
     } catch (error) {
@@ -253,6 +514,8 @@ const isOwner = userRole === 'owner';
   }
 
   // ===== Event Listeners =====
+  
+  // Members modal
   document.getElementById('member-btn')?.addEventListener('click', () => {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -267,7 +530,6 @@ const isOwner = userRole === 'owner';
     });
   });
 
-  // Close modal on background click
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.classList.add('hidden');
@@ -275,11 +537,38 @@ const isOwner = userRole === 'owner';
     }
   });
 
-  // Close modal on Escape key
+  // Invite modal triggers
+  document.getElementById('invite-btn')?.addEventListener('click', openInviteModal);
+
+  [document.getElementById('close-invite-modal'), document.getElementById('cancel-invite-btn')].forEach(btn => {
+    btn?.addEventListener('click', closeInviteModal);
+  });
+
+  inviteModal.addEventListener('click', (e) => {
+    if (e.target === inviteModal) closeInviteModal();
+  });
+
+  // Search functionality
+  let searchTimeout: any;
+  inviteSearch?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      handleSearch((e.target as HTMLInputElement).value);
+    }, 300);
+  });
+
+  // Send invitations
+  sendInviteBtn?.addEventListener('click', sendInvitations);
+
+  // Close modals on Escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
+    if (e.key === 'Escape') {
+      if (!inviteModal.classList.contains('hidden')) {
+        closeInviteModal();
+      } else if (!modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
     }
   });
 </script>

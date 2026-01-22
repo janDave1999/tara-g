@@ -1,0 +1,147 @@
+---
+// DateTimePicker.astro
+interface Props {
+  label: string;
+  name: string;
+  id: string;
+  required?: boolean;
+  helperText?: string;
+  minDate?: string;
+  maxDate?: string;
+  includeTime?: boolean;
+  defaultTime?: string;
+}
+
+const { 
+  label, 
+  name, 
+  id, 
+  required = false, 
+  helperText,
+  minDate,
+  maxDate,
+  includeTime = false,
+  defaultTime = "09:00"
+} = Astro.props;
+
+const dateId = `${id}-date`;
+const timeId = `${id}-time`;
+---
+
+<div class="datetime-picker-wrapper" data-picker-id={id}>
+  <label class="font-medium mb-2 block text-slate-700">
+    {label}
+    {required && <span class="text-red-500 ml-1">*</span>}
+  </label>
+  
+  <div class="flex gap-2">
+    <!-- Date Input -->
+    <div class="flex-1">
+      <input
+        type="date"
+        id={dateId}
+        data-date-input={id}
+        class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        required={required}
+        min={minDate}
+        max={maxDate}
+      />
+    </div>
+
+    <!-- Time Input (conditional) -->
+    {includeTime && (
+      <div class="w-32">
+        <input
+          type="time"
+          id={timeId}
+          data-time-input={id}
+          class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          value={defaultTime}
+          required={required}
+        />
+      </div>
+    )}
+  </div>
+
+  <!-- Hidden input for form submission -->
+  <input
+    type="hidden"
+    name={name}
+    id={id}
+    data-datetime-hidden={id}
+  />
+
+  <!-- Error message -->
+  <div 
+    id={`${id}-error`}
+    data-error={id}
+    class="hidden text-sm text-red-500 flex items-center gap-1 mt-1"
+  >
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span data-error-text={id}></span>
+  </div>
+
+  <!-- Helper text -->
+  {helperText && (
+    <p class="text-xs text-slate-500 mt-1">{helperText}</p>
+  )}
+</div>
+
+<script define:vars={{ id, includeTime, defaultTime }}>
+  // Initialize the datetime picker
+  const wrapper = document.querySelector(`[data-picker-id="${id}"]`);
+  if (wrapper) {
+    const dateInput = wrapper.querySelector(`[data-date-input="${id}"]`);
+    const timeInput = wrapper.querySelector(`[data-time-input="${id}"]`);
+    const hiddenInput = wrapper.querySelector(`[data-datetime-hidden="${id}"]`);
+    
+    function updateHiddenInput() {
+      if (!dateInput.value) {
+        hiddenInput.value = '';
+        return;
+      }
+
+      if (includeTime && timeInput && timeInput.value) {
+        // Combine date and time
+        hiddenInput.value = `${dateInput.value}T${timeInput.value}`;
+      } else {
+        // Date only
+        hiddenInput.value = dateInput.value;
+      }
+
+      // Dispatch change event for validation
+      hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    dateInput?.addEventListener('change', updateHiddenInput);
+    timeInput?.addEventListener('change', updateHiddenInput);
+
+    // Set initial value if time is included
+    if (includeTime && dateInput.value && timeInput) {
+      updateHiddenInput();
+    }
+  }
+</script>
+
+<style>
+  /* Custom date/time input styling */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: opacity(0.6);
+    transition: filter 0.2s;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    filter: opacity(1);
+  }
+
+  input[type="date"]:disabled,
+  input[type="time"]:disabled {
+    background-color: #f1f5f9;
+    cursor: not-allowed;
+  }
+</style>

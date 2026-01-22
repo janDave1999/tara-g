@@ -2,175 +2,298 @@
 const {
   name = "tags",
   label = "Tags",
+  helperText = "Select or create custom tags to describe your trip",
+  maxTags = 10,
   predefined = [
     "beach", "mountains", "waterfalls", "food", "culture",
     "adventure", "relaxation", "nightlife", "museums",
-    "gigs", "festivals", "camping"
+    "gigs", "festivals", "camping", "hiking", "diving",
+    "surfing", "photography", "wildlife", "road-trip"
   ]
 } = Astro.props;
 ---
 
 <div class="tag-component-wrapper">
-  <label class="font-medium mt-4 mb-2 block">{label}</label>
+  <label class="font-medium mb-2 block text-slate-700">
+    {label}
+    <span class="text-xs text-slate-500 ml-1 font-normal">({maxTags} max)</span>
+  </label>
 
-  <div class="flex flex-wrap gap-2 mb-3">
-    {predefined.map((tag: string) => (
-      <button
-        type="button"
-        class="predefined-tag px-3 py-1 rounded-full border text-sm hover:bg-gray-50 transition-colors"
-        data-value={tag}
-      >
-        + {tag}
-      </button>
-    ))}
+  <!-- Predefined Tags -->
+  <div class="mb-3">
+    <p class="text-xs text-slate-600 mb-2">Quick select:</p>
+    <div class="flex flex-wrap gap-2">
+      {predefined.map((tag: string) => (
+        <button
+          type="button"
+          class="predefined-tag px-3 py-1.5 rounded-full border border-slate-300 text-sm hover:bg-slate-50 transition-all duration-200 hover:scale-105"
+          data-value={tag}
+        >
+          {tag}
+        </button>
+      ))}
+    </div>
   </div>
 
-  <div
-    id="input-wrapper"
-    class="flex flex-wrap items-center gap-2 w-full border rounded px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all cursor-text"
-  >
-    <input
-      id="tag-input"
-      type="text"
-      placeholder="Type and press Space..."
-      class="flex-grow border-0 border:focus-none outline-none bg-transparent text-sm min-w-[120px]"
-      autocomplete="off"
-    />
+  <!-- Custom Tag Input -->
+  <div>
+    <p class="text-xs text-slate-600 mb-2">Or create custom:</p>
+    <div
+      id="input-wrapper"
+      class="flex flex-wrap items-center gap-2 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all cursor-text min-h-[42px]"
+    >
+      <input
+        id="tag-input"
+        type="text"
+        placeholder="Type and press Enter or Space..."
+        class="flex-grow border-0 outline-none bg-transparent text-sm min-w-[180px]"
+        autocomplete="off"
+      />
+    </div>
+    <p class="text-xs text-slate-500 mt-1">
+      <span id="tag-count">0</span>/{maxTags} tags • Press Enter or Space to add
+    </p>
   </div>
 
+  <!-- Hidden input for form submission -->
   <input type="hidden" name={name} id="tags-hidden" />
+
+  <!-- Max tags warning -->
+  <div id="max-tags-warning" class="hidden mt-2 text-sm text-amber-600 flex items-center gap-1">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <span>Maximum {maxTags} tags reached</span>
+  </div>
 </div>
 
 <style>
-  /* Styles for the dynamic tags inside the input */
+  /* Selected tag pills */
   :global(.selected-pill) {
     display: inline-flex;
     align-items: center;
-    background-color: #eff6ff; /* blue-50 */
-    color: #1d4ed8; /* blue-700 */
-    border: 1px solid #bfdbfe; /* blue-200 */
+    gap: 4px;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 1px solid #93c5fd;
     border-radius: 9999px;
-    padding: 2px 10px;
+    padding: 4px 10px;
     font-size: 0.875rem;
     user-select: none;
+    animation: slideIn 0.2s ease-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   :global(.selected-pill button) {
-    margin-left: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
     color: #1e40af;
     cursor: pointer;
     font-weight: bold;
     line-height: 1;
+    border-radius: 50%;
+    transition: all 0.2s;
+    background: transparent;
   }
   
   :global(.selected-pill button:hover) {
-    color: #ef4444; /* red-500 */
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    transform: rotate(90deg);
   }
 
-  /* Style for active predefined buttons */
+  /* Active predefined buttons */
   .predefined-tag.active {
-    background-color: #dbeafe; /* blue-100 */
-    border-color: #2563eb;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: #3b82f6;
     color: #1e40af;
+    font-weight: 500;
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  }
+
+  .predefined-tag:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Input wrapper states */
+  #input-wrapper.has-tags {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #input-wrapper.error {
+    border-color: #ef4444;
   }
 </style>
 
-<script is:inline>
-  // using IIFE to avoid global namespace pollution
+<script is:inline define:vars={{ maxTags }}>
   (function() {
-    let tags = new Set(); // Stores unique tags
+    let tags = new Set();
     
     const wrapper = document.getElementById("input-wrapper");
     const input = document.getElementById("tag-input");
     const hiddenInput = document.getElementById("tags-hidden");
+    const tagCount = document.getElementById("tag-count");
+    const maxWarning = document.getElementById("max-tags-warning");
     const suggestionButtons = document.querySelectorAll(".predefined-tag");
 
-    // 1. Core Logic: Add a tag
-    function addTag(tag) {
-      const cleanedTag = tag.trim().toLowerCase();
-      if (!cleanedTag) return;
+    // Validation
+    function validateTag(tag) {
+      const cleaned = tag.trim().toLowerCase();
       
-      tags.add(cleanedTag);
+      if (!cleaned) return { valid: false, message: "" };
+      if (cleaned.length < 2) return { valid: false, message: "Tag too short (min 2 characters)" };
+      if (cleaned.length > 20) return { valid: false, message: "Tag too long (max 20 characters)" };
+      if (!/^[a-z0-9-]+$/.test(cleaned)) return { valid: false, message: "Only letters, numbers, and hyphens allowed" };
+      if (tags.has(cleaned)) return { valid: false, message: "Tag already added" };
+      if (tags.size >= maxTags) return { valid: false, message: `Maximum ${maxTags} tags allowed` };
+      
+      return { valid: true, cleaned };
+    }
+
+    function showInputError(message) {
+      wrapper.classList.add("error");
+      input.placeholder = message;
+      setTimeout(() => {
+        wrapper.classList.remove("error");
+        input.placeholder = "Type and press Enter or Space...";
+      }, 2000);
+    }
+
+    function addTag(tag) {
+      const validation = validateTag(tag);
+      
+      if (!validation.valid) {
+        if (validation.message) showInputError(validation.message);
+        return false;
+      }
+      
+      tags.add(validation.cleaned);
       renderTags();
       input.value = "";
       syncHidden();
+      updateUI();
+      return true;
     }
 
-    // 2. Core Logic: Remove a tag
     function removeTag(tag) {
       tags.delete(tag);
       renderTags();
       syncHidden();
+      updateUI();
     }
 
-    // 3. Render the pills inside the input wrapper
     function renderTags() {
-      // Clear current pills (keep the input at the end)
       const existingPills = wrapper.querySelectorAll('.selected-pill');
       existingPills.forEach(el => el.remove());
 
-      // Create new pills
-      const reversedTags = Array.from(tags); // Maintain order logic if needed
+      const tagsArray = Array.from(tags);
       
-      reversedTags.forEach(tag => {
+      tagsArray.forEach(tag => {
         const pill = document.createElement("span");
         pill.className = "selected-pill";
         pill.innerHTML = `
-          ${tag}
-          <button type="button" data-remove="${tag}">&times;</button>
+          <span>${tag}</span>
+          <button type="button" data-remove="${tag}" aria-label="Remove ${tag}">&times;</button>
         `;
-        // Insert before the input box
         wrapper.insertBefore(pill, input);
       });
 
-      // Update styling of predefined buttons
+      // Update predefined button states
       suggestionButtons.forEach(btn => {
-        if (tags.has(btn.dataset.value)) {
-          btn.classList.add("active");
-        } else {
-          btn.classList.remove("active");
-        }
+        const isActive = tags.has(btn.dataset.value);
+        const isDisabled = tags.size >= maxTags && !isActive;
+        
+        btn.classList.toggle("active", isActive);
+        btn.disabled = isDisabled;
       });
+
+      // Update wrapper class
+      wrapper.classList.toggle("has-tags", tags.size > 0);
     }
 
-    // 4. Sync to hidden input for form submission
     function syncHidden() {
       hiddenInput.value = Array.from(tags).join(",");
     }
 
-    // --- EVENT LISTENERS ---
-
-    // Focus input when clicking anywhere in the gray wrapper
-    wrapper.addEventListener("click", (e) => {
-      if (e.target === wrapper) input.focus();
+    function updateUI() {
+      tagCount.textContent = tags.size;
       
-      // Handle 'x' button clicks on pills
+      // Show/hide max warning
+      if (tags.size >= maxTags) {
+        maxWarning.classList.remove("hidden");
+        input.disabled = true;
+        input.placeholder = `Maximum ${maxTags} tags reached`;
+      } else {
+        maxWarning.classList.add("hidden");
+        input.disabled = false;
+        input.placeholder = "Type and press Enter or Space...";
+      }
+    }
+
+    // Event Listeners
+    wrapper.addEventListener("click", (e) => {
+      if (e.target === wrapper && !input.disabled) {
+        input.focus();
+      }
+      
       if (e.target.tagName === "BUTTON" && e.target.dataset.remove) {
         removeTag(e.target.dataset.remove);
+        input.focus();
       }
     });
 
-    // Handle typing (Space, Enter, Backspace)
     input.addEventListener("keydown", (e) => {
-      const value = input.value;
+      const value = input.value.trim();
 
-      // Case: Space or Enter -> Create Tag
       if (e.key === " " || e.key === "Enter") {
-        e.preventDefault(); // Stop space/enter from being added to text
-        addTag(value);
+        e.preventDefault();
+        if (value) addTag(value);
       }
 
-      // Case: Backspace -> Delete last tag if input is empty
-      if (e.key === "Backspace" && value === "") {
+      if (e.key === "Backspace" && value === "" && tags.size > 0) {
         const tagsArray = Array.from(tags);
-        if (tagsArray.length > 0) {
-          const lastTag = tagsArray[tagsArray.length - 1];
-          removeTag(lastTag);
-        }
+        removeTag(tagsArray[tagsArray.length - 1]);
+      }
+
+      // Prevent typing if max reached
+      if (tags.size >= maxTags && e.key !== "Backspace" && e.key !== "Delete") {
+        e.preventDefault();
       }
     });
 
-    // Handle predefined suggestion clicks
+    // Paste support
+    input.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      const pastedTags = pastedText.split(/[,\s]+/).filter(t => t.trim());
+      
+      let addedCount = 0;
+      pastedTags.forEach(tag => {
+        if (addTag(tag)) addedCount++;
+      });
+      
+      if (addedCount > 0) {
+        input.value = "";
+      }
+    });
+
     suggestionButtons.forEach(btn => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value;
@@ -179,9 +302,17 @@ const {
         } else {
           addTag(val);
         }
-        input.focus(); // Keep focus for smooth flow
+        input.focus();
       });
     });
 
+    // Initialize
+    updateUI();
+
+    // Load from hidden input if pre-populated
+    if (hiddenInput.value) {
+      const initialTags = hiddenInput.value.split(",").filter(t => t.trim());
+      initialTags.forEach(tag => addTag(tag));
+    }
   })();
 </script>

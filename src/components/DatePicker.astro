@@ -5,6 +5,13 @@ interface Props {
   nameTo?: string;
   minDate?: string;
   maxDate?: string;
+  required?: boolean;
+  helperText?: string;
+  enableTime?: boolean;
+  mode?: 'single' | 'range';
+  name?: string;
+  id?: string;
+  defaultTime?: string;
 }
 
 const {
@@ -12,61 +19,256 @@ const {
   nameFrom = "dateFrom",
   nameTo = "dateTo",
   minDate = "",
-  maxDate = ""
+  maxDate = "",
+  required = false,
+  helperText = "",
+  enableTime = false,
+  mode = "range",
+  name = "",
+  id = "",
+  defaultTime = "09:00"
 } = Astro.props;
+
+// Generate unique IDs for single mode
+const pickerId = id || `flatpickr-${Math.random().toString(36).substr(2, 9)}`;
+const isSingleMode = mode === 'single';
 ---
-<div class="flex flex-col space-y-2 w-full">
-  {label && <label class="font-semibold text-sm">{label}</label>}
+
+<div class="flex flex-col space-y-2 w-full datetime-picker-wrapper" data-picker-id={pickerId}>
+  {label && (
+    <label class="font-medium text-slate-700">
+      {label}
+      {required && <span class="text-red-500 ml-1">*</span>}
+    </label>
+  )}
 
   <input
-    id="flatpickr-range"
+    id={pickerId}
     type="text"
-    class="border px-4 py-2 rounded-lg w-full"
-    placeholder="Pick a date range"
+    class="border border-gray-300 px-4 py-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+    placeholder={isSingleMode ? "Pick a date" : "Pick a date range"}
     autocomplete="off"
     data-min={minDate}
     data-max={maxDate}
+    data-enable-time={enableTime}
+    data-mode={mode}
+    data-default-time={defaultTime}
+    required={required}
   />
 
-  <input type="hidden" name={nameFrom} id="dateFrom" />
-  <input type="hidden" name={nameTo} id="dateTo" />
+  {isSingleMode ? (
+    <input type="hidden" name={name} id={`${pickerId}-hidden`} />
+  ) : (
+    <>
+      <input type="hidden" name={nameFrom} id={`${pickerId}-from`} />
+      <input type="hidden" name={nameTo} id={`${pickerId}-to`} />
+    </>
+  )}
+
+  <!-- Error message -->
+  <div 
+    id={`${pickerId}-error`}
+    data-error={pickerId}
+    class="hidden text-sm text-red-500 flex items-center gap-1"
+  >
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span data-error-text={pickerId}></span>
+  </div>
+
+  {helperText && (
+    <p class="text-xs text-slate-500">{helperText}</p>
+  )}
 </div>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-<script is:inline>
+<script is:inline define:vars={{ pickerId }}>
   document.addEventListener("DOMContentLoaded", () => {
-    const picker = document.getElementById("flatpickr-range");
-    const inputFrom = document.getElementById("dateFrom");
-    const inputTo = document.getElementById("dateTo");
+    const picker = document.getElementById(pickerId);
+    if (!picker) return;
 
     const min = picker.dataset.min || null;
     const max = picker.dataset.max || null;
+    const enableTime = picker.dataset.enableTime === "true";
+    const mode = picker.dataset.mode || "range";
+    const defaultTime = picker.dataset.defaultTime || "09:00";
 
     const formatter = new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
+      ...(enableTime && {
+        hour: "2-digit",
+        minute: "2-digit"
+      })
     });
 
-    // Use selector string for full TS compatibility
-    flatpickr("#flatpickr-range", {
-      mode: "range",
-      dateFormat: "Y-m-d",
+    const config = {
+      mode: mode,
+      dateFormat: enableTime ? "Y-m-d H:i" : "Y-m-d",
+      enableTime: enableTime,
+      time_24hr: false,
       minDate: min,
       maxDate: max,
+      ...(enableTime && {
+        defaultHour: parseInt(defaultTime.split(':')[0]),
+        defaultMinute: parseInt(defaultTime.split(':')[1])
+      }),
+      // Mobile-friendly settings
+      disableMobile: false, // Allow native mobile date pickers to work
+      onReady: function(selectedDates, dateStr, instance) {
+        // Add custom class for styling
+        instance.calendarContainer.classList.add('flatpickr-enhanced');
+        
+        // Set initial value if exists to prevent validation errors
+        if (mode === 'single') {
+          const hiddenInput = document.getElementById(`${pickerId}-hidden`);
+          if (hiddenInput && selectedDates.length > 0) {
+            const selected = selectedDates[0];
+            if (enableTime) {
+              hiddenInput.value = selected.toISOString().slice(0, 16);
+            } else {
+              hiddenInput.value = selected.toISOString().split("T")[0];
+            }
+          }
+        } else {
+          const inputFrom = document.getElementById(`${pickerId}-from`);
+          const inputTo = document.getElementById(`${pickerId}-to`);
+          if (inputFrom && inputTo && selectedDates.length > 0) {
+            const start = selectedDates[0];
+            const end = selectedDates.length === 2 ? selectedDates[1] : selectedDates[0];
+            
+            if (enableTime) {
+              inputFrom.value = start.toISOString().slice(0, 16);
+              inputTo.value = end.toISOString().slice(0, 16);
+            } else {
+              inputFrom.value = start.toISOString().split("T")[0];
+              inputTo.value = end.toISOString().split("T")[0];
+            }
+          }
+        }
+      },
+      onChange: function(selectedDates, dateStr, instance) {
+        // Trigger validation on change
+        const changeEvent = new Event('change', { bubbles: true });
+        picker.dispatchEvent(changeEvent);
+      },
       onClose: (dates, _, instance) => {
         if (!dates || dates.length === 0) return;
 
-        const start = dates[0];
-        const end = dates.length === 2 ? dates[1] : dates[0];
+        if (mode === 'single') {
+          const selected = dates[0];
+          const hiddenInput = document.getElementById(`${pickerId}-hidden`);
+          
+          if (enableTime) {
+            hiddenInput.value = selected.toISOString().slice(0, 16);
+            instance.input.value = formatter.format(selected);
+          } else {
+            hiddenInput.value = selected.toISOString().split("T")[0];
+            instance.input.value = formatter.format(selected);
+          }
 
-        inputFrom.value = start.toISOString().split("T")[0];
-        inputTo.value = end.toISOString().split("T")[0];
+          // Dispatch change event for validation
+          const changeEvent = new Event('change', { bubbles: true });
+          hiddenInput.dispatchEvent(changeEvent);
 
-        instance.input.value = `${formatter.format(start)} - ${formatter.format(end)}`;
+        } else {
+          // Range mode
+          const start = dates[0];
+          const end = dates.length === 2 ? dates[1] : dates[0];
+
+          const inputFrom = document.getElementById(`${pickerId}-from`);
+          const inputTo = document.getElementById(`${pickerId}-to`);
+
+          if (enableTime) {
+            inputFrom.value = start.toISOString().slice(0, 16);
+            inputTo.value = end.toISOString().slice(0, 16);
+          } else {
+            inputFrom.value = start.toISOString().split("T")[0];
+            inputTo.value = end.toISOString().split("T")[0];
+          }
+
+          instance.input.value = `${formatter.format(start)} - ${formatter.format(end)}`;
+
+          // Dispatch change events
+          inputFrom.dispatchEvent(new Event('change', { bubbles: true }));
+          inputTo.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       },
-    });
+    };
+
+    const fpInstance = flatpickr(`#${pickerId}`, config);
+
+    // Store instance for external access
+    picker._flatpickr = fpInstance;
+
+    // Expose methods to update constraints
+    window.updateDatePickerConstraints = window.updateDatePickerConstraints || {};
+    window.updateDatePickerConstraints[pickerId] = {
+      setMinDate: (date) => fpInstance.set('minDate', date),
+      setMaxDate: (date) => fpInstance.set('maxDate', date),
+      getInstance: () => fpInstance
+    };
   });
 </script>
+
+<style is:global>
+  .flatpickr-enhanced {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .flatpickr-enhanced .flatpickr-day.selected,
+  .flatpickr-enhanced .flatpickr-day.selected:hover {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    border-color: #3b82f6;
+  }
+
+  .flatpickr-enhanced .flatpickr-day.inRange {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    box-shadow: none;
+  }
+
+  .flatpickr-enhanced .flatpickr-day:hover {
+    background: #f1f5f9;
+  }
+
+  .flatpickr-enhanced .flatpickr-current-month .flatpickr-monthDropdown-months {
+    background: white;
+  }
+
+  .flatpickr-enhanced .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background: #f1f5f9;
+  }
+
+  .flatpickr-calendar.arrowTop:before,
+  .flatpickr-calendar.arrowTop:after {
+    display: none;
+  }
+
+  /* Disabled dates styling */
+  .flatpickr-day.flatpickr-disabled {
+    color: #cbd5e1;
+    cursor: not-allowed;
+  }
+
+  .flatpickr-day.flatpickr-disabled:hover {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  /* Time input styling */
+  .flatpickr-time input {
+    font-weight: 500;
+  }
+
+  .flatpickr-time input:hover,
+  .flatpickr-time input:focus {
+    background: #f1f5f9;
+  }
+</style>

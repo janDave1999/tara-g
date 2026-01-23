@@ -953,7 +953,111 @@ export const trip = {
       };
     },
   }),
+
+
+    getUserOwnedTrips: defineAction({
+    input: z.object({
+      userId: z.string().uuid(),
+      search: z.string().optional(),
+      status: z.string().optional(),
+      limit: z.number().default(12),
+      offset: z.number().default(0),
+    }),
+    handler: async ({ userId, search, status, limit, offset }) => {
+      const { data, error } = await supabaseAdmin.rpc('get_user_owned_trips', {
+        p_user_id: userId,
+        p_search: search || null,
+        p_status: status || null,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+      if (error) throw error;
+
+      return {
+        trips: data || [],
+        totalCount: data?.[0]?.total_count || 0,
+      };
+    },
+  }),
+
+  // Get trips user is a member of
+  getUserMemberTrips: defineAction({
+    input: z.object({
+      userId: z.string().uuid(),
+      search: z.string().optional(),
+      memberStatus: z.string().optional(),
+      limit: z.number().default(12),
+      offset: z.number().default(0),
+    }),
+    handler: async ({ userId, search, memberStatus, limit, offset }) => {
+      const { data, error } = await supabaseAdmin.rpc('get_user_member_trips', {
+        p_user_id: userId,
+        p_search: search || null,
+        p_member_status: memberStatus || null,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+      if (error) throw error;
+
+      return {
+        trips: data || [],
+        totalCount: data?.[0]?.total_count || 0,
+      };
+    },
+  }),
+
+  // Get recent/discover trips
+  getRecentTrips: defineAction({
+    input: z.object({
+      userId: z.string().uuid(),
+      search: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      region: z.string().optional(),
+      limit: z.number().default(12),
+      offset: z.number().default(0),
+    }),
+    handler: async ({ userId, search, tags, region, limit, offset }) => {
+      const { data, error } = await supabaseAdmin.rpc('get_recent_trips', {
+        p_user_id: userId,
+        p_search: search || null,
+        p_tags: tags || null,
+        p_region: region || null,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+      if (error) throw error;
+
+      return {
+        trips: data || [],
+        totalCount: data?.[0]?.total_count || 0,
+      };
+    },
+  }),
+
+  // Get suggested trips
+  getSuggestedTrips: defineAction({
+    input: z.object({
+      userId: z.string().uuid(),
+      limit: z.number().default(6),
+    }),
+    handler: async ({ userId, limit }) => {
+      const { data, error } = await supabaseAdmin.rpc('get_suggested_trips', {
+        p_user_id: userId,
+        p_limit: limit,
+      });
+
+      if (error) throw error;
+
+      return {
+        trips: data || [],
+      };
+    },
+  }),
 }
+
 
 type tripDetailsSchema = ActionInputSchema<typeof trip.getTripDetails>;
 

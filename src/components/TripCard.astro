@@ -1,0 +1,163 @@
+---
+interface Props {
+  trip: any;
+  type: 'owned' | 'member' | 'discover';
+}
+
+const { trip, type } = Astro.props;
+
+const formatDate = (date: string | null) => {
+  if (!date) return 'TBD';
+  return new Date(date).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
+
+const getStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    planning: 'bg-yellow-100 text-yellow-800',
+    upcoming: 'bg-blue-100 text-blue-800',
+    ongoing: 'bg-green-100 text-green-800',
+    completed: 'bg-gray-100 text-gray-800',
+    cancelled: 'bg-red-100 text-red-800',
+  };
+  return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+};
+
+console.log(trip);
+---
+
+<a 
+  href={`/trips/${trip.trip_id}`}
+  class="group block rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white"
+>
+  <!-- Cover Image -->
+  <div class="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
+    {trip.cover_image ? (
+      <img 
+        src={trip.cover_image} 
+        alt={trip.title}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+      />
+    ) : (
+      <div class="flex items-center justify-center h-full">
+        <svg class="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+    )}
+    
+    <!-- Status Badge -->
+    <div class="absolute top-3 right-3">
+      <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
+        {trip.status}
+      </span>
+    </div>
+
+    {/* Role Badge for member trips */}
+    {type === 'member' && trip.role && (
+      <div class="absolute top-3 left-3">
+        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+          {trip.role}
+        </span>
+      </div>
+    )}
+  </div>
+
+  <!-- Content -->
+  <div class="p-5 space-y-3">
+    <!-- Title and Region -->
+    <div>
+      <h3 class="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+        {trip.title}
+      </h3>
+      {trip.region && (
+        <p class="text-sm text-gray-500 flex items-center gap-1 mt-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          {trip.region}
+        </p>
+      )}
+    </div>
+
+    <!-- Description -->
+    {trip.description && (
+      <p class="text-sm text-gray-600 line-clamp-2">
+        {trip.description}
+      </p>
+    )}
+
+    <!-- Tags -->
+    {trip.tags && trip.tags.length > 0 && (
+      <div class="flex flex-wrap gap-1.5">
+        {trip.tags.slice(0, 3).map((tag: string) => (
+          <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+            {tag}
+          </span>
+        ))}
+        {trip.tags.length > 3 && (
+          <span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-md text-xs">
+            +{trip.tags.length - 3}
+          </span>
+        )}
+      </div>
+    )}
+
+    <!-- Dates -->
+    <div class="flex items-center gap-2 text-sm text-gray-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span>{formatDate(trip.start_date)} - {formatDate(trip.end_date)}</span>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+      {type === 'owned' && (
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <span>{trip.member_count || 0} members</span>
+        </div>
+      )}
+
+      {type === 'member' && trip.owner_name && (
+        <div class="flex items-center gap-2">
+          {trip.owner_avatar ? (
+            <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
+          ) : (
+            <div class="w-6 h-6 rounded-full bg-gray-300"></div>
+          )}
+          <span class="text-sm text-gray-600">by {trip.owner_name}</span>
+        </div>
+      )}
+
+      {type === 'discover' && (
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-2">
+            {trip.owner_avatar ? (
+              <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
+            ) : (
+              <div class="w-6 h-6 rounded-full bg-gray-300"></div>
+            )}
+            <span class="text-sm text-gray-600">{trip.owner_name}</span>
+          </div>
+          {trip.current_participants !== undefined && trip.max_pax && (
+            <span class="text-xs text-gray-500">
+              {trip.current_participants}/{trip.max_pax} spots
+            </span>
+          )}
+        </div>
+      )}
+
+      <div class="text-xs text-gray-400">
+        {new Date(trip.created_at).toLocaleDateString()}
+      </div>
+    </div>
+  </div>
+</a>

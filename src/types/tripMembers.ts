@@ -1,5 +1,3 @@
-// src/components/trip/members/types.ts
-
 export type MemberStatus = 'pending' | 'joined' | 'invited' | 'left';
 export type MemberRole = 'owner' | 'admin' | 'member';
 
@@ -48,14 +46,6 @@ export interface MembersData {
   summary: TripSummary;
 }
 
-// export interface UserSuggestion {
-//   user_id: string; 
-//   full_name: string;
-//   username?: string;
-//   email?: string;
-//   avatar_url?: string | null;
-//   relation_reason?: string;
-// }
 
 export interface UserSuggestion {
   user_id: string;

@@ -879,7 +879,7 @@ export const trip = {
       const { data, error } = await supabase.rpc('approve_join_request', {
         p_member_id: input.memberId,
         p_trip_id: input.tripId,
-        p_approver_id: "d0d3fb74-8da5-4cbc-b2b8-dbd17bf60e1d"
+        p_approver_id: userId
       });
       
       if (error || !data?.success) {

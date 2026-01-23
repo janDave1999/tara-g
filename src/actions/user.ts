@@ -209,7 +209,6 @@ export const onboarding = {
     }),
     handler: async (input, context) => {
       const userId = context.locals.user_id;
-      console.log("USER ID CHECKING",userId);
       if (!userId) {
         throw new ActionError({
           code: 'UNAUTHORIZED',

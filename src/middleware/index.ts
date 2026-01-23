@@ -162,7 +162,6 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* -------------------- ONBOARDING CHECK (Using RPC) -------------------- */
   if (locals.user_id ) {
     // Skip onboarding check for exempt routes
-    console.log(`Checking onboarding status for ${pathname}`);
     const isExempt = onboardingExemptRoutes.some(route => 
       micromatch.isMatch(pathname, route)
     );
@@ -176,7 +175,6 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     if (!isExempt) {
       // Use RPC to get onboarding status
       const onboardingStatus = await checkOnboardingStatus(locals.user_id);
-      console.log(`Onboarding status: ${onboardingStatus}`);
       if (onboardingStatus) {
         // Store in locals for use in pages
         locals.onboarding_status = onboardingStatus;
@@ -184,7 +182,6 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
         // Redirect to onboarding if not completed
         if (!onboardingStatus.onboarding_completed) {
           const nextStep = onboardingStatus.next_required_step || 'profile';
-          console.log(`Redirecting to /onboarding/${nextStep}`);
           // Only redirect if not already on onboarding page
           if (!micromatch.isMatch(pathname, onboardingRoutes)) {
             return redirect(`/onboarding/${nextStep}`);

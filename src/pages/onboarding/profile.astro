@@ -1,0 +1,341 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabase } from "@/lib/supabase";
+
+const user_id = Astro.locals.user_id;
+if (!user_id) return Astro.redirect("/signin");
+
+// Use RPC to get all user data in one call
+const { data: profileData, error } = await supabase.rpc('get_user_profile_data', {
+  p_user_id: user_id
+});
+
+if (error) {
+  console.error('Error fetching profile:', error);
+}
+
+const userData = profileData?.user || {};
+const userInfo = profileData?.information || {};
+---
+
+<PagePlate title="Complete Your Profile">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
+    <div class="max-w-2xl mx-auto">
+      <!-- Progress Bar -->
+      <div class="mb-8">
+        <div class="flex justify-between text-sm text-gray-600 mb-2">
+          <span>Profile Setup</span>
+          <span>Step 1 of 3</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: 33%"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome! Let's set up your profile</h1>
+          <p class="text-gray-600">This helps other travelers get to know you better</p>
+        </div>
+
+        <form id="profileForm" class="space-y-6">
+          <!-- Avatar Upload -->
+          <div class="flex flex-col items-center mb-6">
+            <div class="relative">
+              <div class="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <img id="avatarPreview" src={userData.avatar_url || "/default-avatar.png"} 
+                     alt="Avatar" class="w-full h-full object-cover" />
+              </div>
+              <label class="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <input type="file" id="avatarInput" accept="image/*" class="hidden" />
+              </label>
+            </div>
+            <input type="hidden" name="avatar_url" id="avatarUrl" value={userData.avatar_url || ''} />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- First Name -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                First Name <span class="text-red-500">*</span>
+              </label>
+              <input type="text" name="first_name" value={userInfo.first_name || ''}
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                     required />
+            </div>
+
+            <!-- Last Name -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Last Name <span class="text-red-500">*</span>
+              </label>
+              <input type="text" name="last_name" value={userInfo.last_name || ''}
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                     required />
+            </div>
+          </div>
+
+          <!-- Username -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Username <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">@</span>
+              <input type="text" name="username" value={userData.username || ''}
+                     class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                     pattern="[a-zA-Z0-9_]+" required />
+            </div>
+            <p id="usernameStatus" class="mt-1 text-sm"></p>
+          </div>
+
+          <!-- Date of Birth -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Date of Birth
+            </label>
+            <input type="date" name="dob" value={userInfo.dob || ''}
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+
+          <!-- Gender -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+            <select name="gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="">Prefer not to say</option>
+              <option value="male" selected={userInfo.gender === 'male'}>Male</option>
+              <option value="female" selected={userInfo.gender === 'female'}>Female</option>
+              <option value="non-binary" selected={userInfo.gender === 'non-binary'}>Non-binary</option>
+              <option value="other" selected={userInfo.gender === 'other'}>Other</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Nationality -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
+              <input type="text" name="nationality" value={userInfo.nationality || ''}
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            <!-- Location -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <input type="text" name="location_city" placeholder="City, Country"
+                     value={userInfo.location_city || ''}
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+          </div>
+
+          <!-- Bio -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Bio
+              <span class="text-gray-400 font-normal">(Tell others about yourself)</span>
+            </label>
+            <textarea name="bio" rows="4" maxlength="500"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      placeholder="Share your travel philosophy, favorite destinations, or what makes you a great travel companion..."
+            >{userData.bio || ''}</textarea>
+            <p class="text-sm text-gray-500 mt-1">
+              <span id="bioCount">0</span>/500 characters
+            </p>
+          </div>
+
+          <!-- Error/Success Display -->
+          <div id="errorDisplay" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-600 text-sm"></p>
+          </div>
+          
+          <div id="successDisplay" class="hidden p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-green-600 text-sm"></p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-between pt-6">
+            <button type="button" id="skipBtn"
+                    class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition">
+              Skip for now
+            </button>
+            <button type="submit" id="submitBtn"
+                    class="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              Continue
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { actions } from 'astro:actions';
+
+    const form = document.getElementById('profileForm') as HTMLFormElement;
+    const usernameInput = form.querySelector('[name="username"]') as HTMLInputElement;
+    const usernameStatus = document.getElementById('usernameStatus') as HTMLElement;
+    const bioTextarea = form.querySelector('[name="bio"]') as HTMLTextAreaElement;
+    const bioCount = document.getElementById('bioCount') as HTMLElement;
+    const avatarInput = document.getElementById('avatarInput') as HTMLInputElement;
+    const avatarPreview = document.getElementById('avatarPreview') as HTMLImageElement;
+    const avatarUrl = document.getElementById('avatarUrl') as HTMLInputElement;
+    const errorDisplay = document.getElementById('errorDisplay') as HTMLElement;
+    const successDisplay = document.getElementById('successDisplay') as HTMLElement;
+    const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+
+    let usernameCheckTimeout: NodeJS.Timeout;
+
+    // Bio character counter
+    bioTextarea?.addEventListener('input', () => {
+      const count = bioTextarea.value.length;
+      bioCount.textContent = count.toString();
+    });
+    bioCount.textContent = bioTextarea?.value.length.toString() || '0';
+
+    // Avatar upload with action
+    avatarInput?.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        avatarPreview.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to server
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const { data, error } = await actions.onboarding.uploadAvatar(formData);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        avatarUrl.value = data.url;
+        showSuccess('Avatar uploaded successfully!');
+      } catch (error) {
+        console.error('Avatar upload failed:', error);
+        showError('Failed to upload avatar. Please try again.');
+      }
+    });
+
+    // Username availability check using RPC
+    usernameInput?.addEventListener('input', () => {
+      clearTimeout(usernameCheckTimeout);
+      const username = usernameInput.value.trim();
+
+      if (username.length < 3) {
+        usernameStatus.textContent = 'Username must be at least 3 characters';
+        usernameStatus.className = 'mt-1 text-sm text-gray-500';
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        usernameStatus.textContent = 'Username can only contain letters, numbers, and underscores';
+        usernameStatus.className = 'mt-1 text-sm text-red-600';
+        return;
+      }
+
+      usernameStatus.textContent = 'Checking...';
+      usernameStatus.className = 'mt-1 text-sm text-gray-500';
+
+      usernameCheckTimeout = setTimeout(async () => {
+        try {
+          const { data, error } = await actions.onboarding.checkUsername({ username });
+
+          if (error) throw error;
+
+          if (data.available) {
+            usernameStatus.textContent = '✓ ' + data.message;
+            usernameStatus.className = 'mt-1 text-sm text-green-600';
+          } else {
+            usernameStatus.textContent = '✗ ' + data.message;
+            usernameStatus.className = 'mt-1 text-sm text-red-600';
+          }
+        } catch (error) {
+          usernameStatus.textContent = 'Error checking username';
+          usernameStatus.className = 'mt-1 text-sm text-red-600';
+        }
+      }, 500);
+    });
+
+    // Form submission - uses RPC via action
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+      hideMessages();
+
+      const formData = new FormData(form);
+      
+      // Build profile object
+      const profileInput = {
+        username: formData.get('username') as string,
+        first_name: formData.get('first_name') as string,
+        last_name: formData.get('last_name') as string,
+        bio: formData.get('bio') as string || undefined,
+        avatar_url: avatarUrl.value || undefined,
+        dob: formData.get('dob') as string || undefined,
+        nationality: formData.get('nationality') as string || undefined,
+        location_city: formData.get('location_city') as string || undefined,
+        gender: formData.get('gender') as any,
+      };
+
+      try {
+        const { data, error } = await actions.onboarding.updateProfile(profileInput);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        showSuccess(data.message || 'Profile updated!');
+        
+        // Redirect to next step after a brief delay
+        setTimeout(() => {
+          window.location.href = '/onboarding/interests';
+        }, 1000);
+      } catch (error: any) {
+        showError(error.message || 'Failed to update profile');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue';
+      }
+    });
+
+    // Skip button
+    document.getElementById('skipBtn')?.addEventListener('click', async () => {
+      try {
+        await actions.onboarding.skipOnboardingStep({ step: 'profile' });
+        window.location.href = '/onboarding/interests';
+      } catch (error) {
+        console.error('Skip failed:', error);
+      }
+    });
+
+    // Helper functions
+    function showError(message: string) {
+      errorDisplay.classList.remove('hidden');
+      errorDisplay.querySelector('p')!.textContent = message;
+      successDisplay.classList.add('hidden');
+    }
+
+    function showSuccess(message: string) {
+      successDisplay.classList.remove('hidden');
+      successDisplay.querySelector('p')!.textContent = message;
+      errorDisplay.classList.add('hidden');
+    }
+
+    function hideMessages() {
+      errorDisplay.classList.add('hidden');
+      successDisplay.classList.add('hidden');
+    }
+  </script>
+</PagePlate>

@@ -1,0 +1,198 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabase } from "@/lib/supabase";
+
+const user_id = Astro.locals.user_id;
+if (!user_id) return Astro.redirect("/signin");
+
+const INTEREST_CATEGORIES = {
+  adventure: { label: 'Adventure', icon: '🏔️' },
+  culture: { label: 'Culture', icon: '🏛️' },
+  food: { label: 'Food & Dining', icon: '🍜' },
+  nature: { label: 'Nature', icon: '🌿' },
+  nightlife: { label: 'Nightlife', icon: '🎉' },
+  wellness: { label: 'Wellness', icon: '🧘' },
+  shopping: { label: 'Shopping', icon: '🛍️' },
+  photography: { label: 'Photography', icon: '📸' }
+};
+
+// Use RPC to get profile data including interests
+const { data: profileData } = await supabase.rpc('get_user_profile_data', {
+  p_user_id: user_id
+});
+
+const selectedInterests = profileData?.interests || [];
+---
+
+<PagePlate title="Select Your Interests">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+      <!-- Progress Bar -->
+      <div class="mb-8">
+        <div class="flex justify-between text-sm text-gray-600 mb-2">
+          <span>Select Interests</span>
+          <span>Step 2 of 3</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: 66%"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">What interests you?</h1>
+          <p class="text-gray-600">Select at least 3 categories to help us match you with like-minded travelers</p>
+        </div>
+
+        <form id="interestsForm" class="space-y-6">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Object.entries(INTEREST_CATEGORIES).map(([key, category]) => (
+              <label class="interest-card cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  name="interests" 
+                  value={key} 
+                  class="hidden peer" 
+                  checked={selectedInterests.includes(key)}
+                />
+                <div class="p-6 border-2 border-gray-200 rounded-xl transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 h-full flex flex-col items-center justify-center">
+                  <div class="text-4xl mb-3">{category.icon}</div>
+                  <h3 class="font-semibold text-center text-gray-900 text-sm">{category.label}</h3>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <p id="selectionHint" class="text-sm text-red-600 text-center hidden">
+            Please select at least 3 interests
+          </p>
+
+          <p class="text-center text-sm text-gray-600">
+            Selected: <span id="selectedCount" class="font-semibold text-blue-600">0</span> interests
+          </p>
+
+          <!-- Error/Success Display -->
+          <div id="errorDisplay" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-600 text-sm"></p>
+          </div>
+          
+          <div id="successDisplay" class="hidden p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-green-600 text-sm"></p>
+          </div>
+
+          <div class="flex justify-between pt-6">
+            <button type="button" id="backBtn"
+                    class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition">
+              ← Back
+            </button>
+            <div class="space-x-3">
+              <button type="button" id="skipBtn"
+                      class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition">
+                Skip for now
+              </button>
+              <button type="submit" id="submitBtn"
+                      class="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                Continue
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { actions } from 'astro:actions';
+
+    const form = document.getElementById('interestsForm') as HTMLFormElement;
+    const hint = document.getElementById('selectionHint') as HTMLElement;
+    const errorDisplay = document.getElementById('errorDisplay') as HTMLElement;
+    const successDisplay = document.getElementById('successDisplay') as HTMLElement;
+    const selectedCount = document.getElementById('selectedCount') as HTMLElement;
+    const checkboxes = form.querySelectorAll('input[name="interests"]') as NodeListOf<HTMLInputElement>;
+    const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+
+    // Update count
+    const updateCount = () => {
+      const count = Array.from(checkboxes).filter(cb => cb.checked).length;
+      selectedCount.textContent = count.toString();
+      
+      if (count > 0) {
+        hint.classList.add('hidden');
+      }
+    };
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+    updateCount();
+
+    // Form submission - uses RPC via action
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+      hideMessages();
+
+      const selected = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      if (selected.length < 3) {
+        hint.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue';
+        return;
+      }
+
+      try {
+        const { data, error } = await actions.onboarding.setInterests({ 
+          interests: selected 
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        showSuccess(data.message || `${data.count} interests saved!`);
+
+        // Redirect to next step
+        setTimeout(() => {
+          window.location.href = '/onboarding/preferences';
+        }, 1000);
+      } catch (error: any) {
+        showError(error.message || 'Failed to save interests');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue';
+      }
+    });
+
+    document.getElementById('backBtn')?.addEventListener('click', () => {
+      window.location.href = '/onboarding/profile';
+    });
+
+    document.getElementById('skipBtn')?.addEventListener('click', async () => {
+      try {
+        await actions.onboarding.skipOnboardingStep({ step: 'interests' });
+        window.location.href = '/onboarding/preferences';
+      } catch (error) {
+        console.error('Skip failed:', error);
+      }
+    });
+
+    function showError(message: string) {
+      errorDisplay.classList.remove('hidden');
+      errorDisplay.querySelector('p')!.textContent = message;
+      successDisplay.classList.add('hidden');
+    }
+
+    function showSuccess(message: string) {
+      successDisplay.classList.remove('hidden');
+      successDisplay.querySelector('p')!.textContent = message;
+      errorDisplay.classList.add('hidden');
+    }
+
+    function hideMessages() {
+      errorDisplay.classList.add('hidden');
+      successDisplay.classList.add('hidden');
+    }
+  </script>
+</PagePlate>

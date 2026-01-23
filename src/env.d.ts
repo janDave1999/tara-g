@@ -35,10 +35,10 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
-declare namespace App {
-  interface Locals {
-    user_id: string | null;
-    username: string | null;
-    avatar_url: string | null;
-  }
-}
+// declare namespace App {
+//   interface Locals {
+//     user_id: string | null;
+//     username: string | null;
+//     avatar_url: string | null;
+//   }
+// }

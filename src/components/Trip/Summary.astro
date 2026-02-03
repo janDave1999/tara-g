@@ -1,12 +1,13 @@
 ---
-import { MapPin, Calendar, Users, LucideVenusAndMars, HandCoins, Share2Icon, EllipsisVertical } from '@lucide/astro';
-import Member from './Member.astro';
+import { MapPin, Calendar, Users, LucideVenusAndMars, HandCoins } from '@lucide/astro';
+import EditableCard from './EditableCard.astro';
+import DestinationModal from './modal/DestinationModal.astro';
+import DatesModal from './modal/DatesModal.astro';
+import PreferencesModal from './modal/PreferenceModal.astro';
+import BudgetModal from './modal/BudgetModal.astro';
+import DescriptionModal from './modal/DescriptionModal.astro';
 
-// Props
 const {
-  title,
-  visibility,
-  tags,
   destination,
   tripStart,
   tripEnd,
@@ -16,273 +17,150 @@ const {
   costSharing,
   description,
   userRole,
-  members
+  tripId,
+  tripStatus,
+  joinedBy,
+  estimatedBudget,
+  tags,
+  title
 } = Astro.props;
 
-let tagsArray = [];
-
-const isFull = currentPax >= maxPax ? true : false;
-if (Array.isArray(tags)) {
-  tagsArray = tags;
-} else if (typeof tags === "string") {
-  const cleaned = tags.trim();
-  if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
-    try {
-      tagsArray = JSON.parse(cleaned);
-    } catch (e) {
-      tagsArray = [];
-    }
-  } else {
-    tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
-  }
-}
+const isOwner = userRole === 'owner';
+const isCompleted = tripStatus === 'completed';
+const canEdit = isOwner && !isCompleted;
 
 const paxPercentage = Math.min((currentPax / maxPax) * 100, 100);
-
-const statusColors: { [key in 'active' | 'completed' | 'cancelled' | 'draft' | 'archived' | 'private' | 'public']: string } = {
-  active: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
-  completed: 'bg-blue-100 text-blue-700 ring-blue-600/20',
-  cancelled: 'bg-red-100 text-red-700 ring-red-600/20',
-  draft: 'bg-amber-100 text-amber-700 ring-amber-600/20',
-  archived: 'bg-gray-100 text-gray-700 ring-gray-600/20',
-  private: 'bg-purple-100 text-purple-700 ring-purple-600/20',
-  public: 'bg-sky-100 text-sky-700 ring-sky-600/20',
-};
 ---
 
-<section class="max-w-5xl mx-auto mt-8 mb-16 px-4">
-  <!-- Main Card with Modern Styling -->
-  <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+<div class="p-6 md:p-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     
-    <!-- Header Section -->
-    <div class="bg-gradient-to-br from-green-50 via-white to-emerald-50 p-6 md:p-8 border-b border-gray-100">
-      <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-        
-        <!-- Title & Tags -->
-        <div class="space-y-3 flex-1">
-          <div class="flex items-start gap-3">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
-              {title}
-            </h1>
-            {visibility && (
-              <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
-                {visibility.toUpperCase()}
-              </span>
-            )}
-          </div>
-          
-          {tagsArray.length > 0 && (
-            <div class="flex flex-wrap gap-2">
-              {tagsArray.map((tag: string) => (
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+    <!-- Destination Card -->
+    <EditableCard
+      editType="destination"
+      icon={MapPin}
+      label="Destination"
+      isEditable={canEdit}
+      colorScheme="green"
+    >
+      <p class="font-semibold text-gray-900 text-lg">{destination}</p>
+    </EditableCard>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-2 items-center">
-          {userRole === 'owner' && (
-            <button 
-              class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
-              onclick="/* open settings modal */"
-              aria-label="Trip settings"
-            >
-              <EllipsisVertical class="w-4 h-4" />
-            </button>
-          )}
-          
-          <button 
-            class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            onclick="/* open share modal */"
-            aria-label="Share trip"
-          >
-            <Share2Icon class="w-4 h-4" />
-            <span class="hidden sm:inline">Share</span>
-          </button>
-          
-          {userRole === 'member' && (
-            <button 
-              class="btn btn-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all focus:ring-2 focus:ring-red-500 focus:outline-none"
-              onclick="if(confirm('Leave trip?')) window.location.href=`/api/trips/${Astro.props.tripId}/leave`"
-            >
-              Leave Trip
-            </button>
-          )}
-          
-          {(userRole === 'owner' || userRole === 'member') && (
-            <Member member={members} />
-          )}
-          
-          {userRole === 'visitor' && !isFull && (
-            <button 
-              id="join-btn" 
-              class="btn btn-sm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-none shadow-lg shadow-green-500/30 transition-all focus:ring-2 focus:ring-green-500 focus:outline-none"
-            >
-              Request to Join
-            </button>
-          )}
-          
-          {userRole === 'visitor' && isFull && (
-            <button 
-              class="btn btn-sm bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed" 
-              disabled
-            >
-              Trip Full
-            </button>
-          )}
-          
-          {userRole === 'pending' && (
-            <button 
-              id="cancel-req-btn" 
-              class="btn btn-sm bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-all focus:ring-2 focus:ring-amber-500 focus:outline-none"
-            >
-              Cancel Request
-            </button>
-          )}
+    <!-- Trip Dates Card -->
+    <EditableCard
+      editType="dates"
+      icon={Calendar}
+      label="Trip Dates"
+      isEditable={canEdit}
+      colorScheme="emerald"
+    >
+      <div class="flex flex-col gap-0.5">
+        <span class="font-medium text-gray-900 text-sm">
+          {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripStart))}
+        </span>
+        <span class="text-gray-400 text-xs">to</span>
+        <span class="font-medium text-gray-900 text-sm">
+          {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripEnd))}
+        </span>
+      </div>
+    </EditableCard>
+
+    <!-- Members Card (Not Editable) -->
+    <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-teal-50 to-transparent hover:shadow-md transition-shadow" id="member-btn">
+      <div class="flex-shrink-0 p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-500/30">
+        <Users class="w-5 h-5 text-white" />
+      </div>
+      <div class="flex-1 w-full">
+        <div class="flex justify-between items-center mb-2">
+          <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Members</p>
+          <span class="text-sm font-bold text-gray-900">
+            {currentPax} <span class="text-gray-400 font-normal">/ {maxPax}</span>
+          </span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+          <div 
+            class="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-500" 
+            style={`width: ${paxPercentage}%`}
+          ></div>
         </div>
       </div>
     </div>
 
-    <!-- Trip Details Grid -->
-    <div class="p-6 md:p-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        <!-- Destination -->
-        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-transparent hover:shadow-md transition-shadow">
-          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg shadow-green-500/30">
-            <MapPin class="w-5 h-5 text-white" />
-          </div>
-          <div class="flex-1">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Destination</p>
-            <p class="font-semibold text-gray-900 text-lg">{destination}</p>
-          </div>
-        </div>
+    <!-- Gender & Max Pax Card -->
+    <EditableCard
+      editType="preferences"
+      icon={LucideVenusAndMars}
+      label="Preferences"
+      isEditable={canEdit}
+      colorScheme="lime"
+    >
+      <p class="font-semibold text-gray-900 capitalize">{genderPref || "Any"}</p>
+      <p class="text-xs text-gray-500 mt-1">Max: {maxPax} people</p>
+    </EditableCard>
 
-        <!-- Trip Dates -->
-        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-transparent hover:shadow-md transition-shadow">
-          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/30">
-            <Calendar class="w-5 h-5 text-white" />
-          </div>
-          <div class="flex-1">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Trip Dates</p>
-            <div class="flex flex-col gap-0.5">
-              <span class="font-medium text-gray-900 text-sm">
-                {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripStart))}
-              </span>
-              <span class="text-gray-400 text-xs">to</span>
-              <span class="font-medium text-gray-900 text-sm">
-                {new Intl.DateTimeFormat('en-US', {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(tripEnd))}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Joiners Progress -->
-        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-teal-50 to-transparent hover:shadow-md transition-shadow" id="member-btn">
-          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-500/30">
-            <Users class="w-5 h-5 text-white" />
-          </div>
-          <div class="flex-1 w-full">
-            <div class="flex justify-between items-center mb-2">
-              <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Members</p>
-              <span class="text-sm font-bold text-gray-900">
-                {currentPax} <span class="text-gray-400 font-normal">/ {maxPax}</span>
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div 
-                class="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-500" 
-                style={`width: ${paxPercentage}%`}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Gender Preference -->
-        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-lime-50 to-transparent hover:shadow-md transition-shadow">
-          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-lime-500 to-lime-600 rounded-xl shadow-lg shadow-lime-500/30">
-            <LucideVenusAndMars class="w-5 h-5 text-white" />
-          </div>
-          <div class="flex-1">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Gender Preference</p>
-            <p class="font-semibold text-gray-900 capitalize">{genderPref || "Any"}</p>
-          </div>
-        </div>
-
-        <!-- Cost Sharing -->
-        <div class="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-transparent hover:shadow-md transition-shadow">
-          <div class="flex-shrink-0 p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg shadow-amber-500/30">
-            <HandCoins class="w-5 h-5 text-white" />
-          </div>
-          <div class="flex-1">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Cost Sharing</p>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 mt-1">
-              {String(costSharing).toUpperCase()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Description Section -->
-      <div class="mt-8 p-6 rounded-xl bg-gradient-to-br from-green-50 to-white border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span class="w-1 h-5 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></span>
-          About this trip
-        </h3>
-        <p class="text-gray-700 leading-relaxed whitespace-pre-line">
-          {description}
-        </p>
-      </div>
-    </div>
+    <!-- Cost Sharing Card -->
+    <EditableCard
+      editType="budget"
+      icon={HandCoins}
+      label="Cost Sharing"
+      isEditable={canEdit}
+      colorScheme="amber"
+    >
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 mt-1">
+        {String(costSharing).toUpperCase().replace(/_/g, ' ')}
+      </span>
+      {estimatedBudget && (
+        <p class="text-xs text-gray-600 mt-2">₱{estimatedBudget.toLocaleString()}</p>
+      )}
+    </EditableCard>
   </div>
-</section>
+
+  <!-- Description Section -->
+  <div 
+    class={`mt-8 p-6 rounded-xl bg-gradient-to-br from-green-50 to-white border border-gray-100 transition-all ${canEdit ? 'cursor-pointer hover:shadow-lg hover:border-green-200 group' : ''}`}
+    data-edit="description"
+    data-editable={canEdit}
+  >
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <span class="w-1 h-5 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></span>
+        About this trip
+      </h3>
+      {canEdit && (
+        <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+          </svg>
+        </div>
+      )}
+    </div>
+    <p class="text-gray-700 leading-relaxed whitespace-pre-line">
+      {description}
+    </p>
+  </div>
+</div>
+
+<!-- Modals (Only render for owners) -->
+{canEdit && (
+  <>
+    <DestinationModal destination={destination} tripId={tripId} />
+    <DatesModal tripStart={tripStart} tripEnd={tripEnd} joinedBy={joinedBy} tripId={tripId} />
+    <PreferencesModal genderPref={genderPref} maxPax={maxPax} currentPax={currentPax} tripId={tripId} />
+    <BudgetModal costSharing={costSharing} estimatedBudget={estimatedBudget} tripId={tripId} />
+    <DescriptionModal title={title} description={description} tags={tags} tripId={tripId} />
+  </>
+)}
 
 <script>
-  import { showToast } from '@/scripts/Toast';
-  import { actions, ActionError } from 'astro:actions';
-  import { createConfirmModal } from 'src/scripts/Modal';
+  const editableCards = document.querySelectorAll('[data-editable="true"]');
 
-  const joinBtn = document.getElementById("join-btn") as HTMLButtonElement;
-  const cancelRequestBtn = document.getElementById("cancel-req-btn") as HTMLButtonElement;
-  let link = window.location.href;
-  let tripID = link.substring(link.lastIndexOf('/') + 1);
-
-  if (joinBtn) {
-    joinBtn.addEventListener("click", async () => {
-      createConfirmModal({
-        message: "Are you sure you want to join this trip?",
-        confirmText: "Join",
-        onConfirm: async () => {
-          let {data, error } = await actions.trip.joinTrip({trip_id: tripID});
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: "error" });
-          } else {
-            showToast({ message: "Joined trip successfully!", type: "success" });
-            setTimeout(() => window.location.reload(), 1500);
-          }
-        },
-      })
-    })
-  }
-
-  if(cancelRequestBtn){
-    cancelRequestBtn.addEventListener("click", async () => {
-      createConfirmModal({
-        message: "Are you sure you want to cancel your request to join this trip?",
-        confirmText: "Yes, cancel request",
-        onConfirm: async () => {
-          let {data, error } = await actions.trip.cancelJoinRequest({trip_id: tripID});
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: "error" });
-          } else {
-            showToast({ message: "Canceled trip request successfully!", type: "success" });
-            setTimeout(() => window.location.reload(), 1500);
-          }
-        },
-      })
-    })
-  }
+  editableCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const editType = card.getAttribute('data-edit');
+      const modal = document.getElementById(`edit-${editType}-modal`) as HTMLDialogElement;
+      if (modal) {
+        modal.showModal();
+      }
+    });
+  });
 </script>

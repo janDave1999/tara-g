@@ -26,7 +26,7 @@ import Tags from "@/components/Trip/Tags.astro";
     </div>
 
     <!-- FORM CARD -->
-    <form id="tripStepperForm" class="backdrop-blur-md bg-white/70 border border-white/60 shadow-xl rounded-2xl p-6 space-y-6 transition-all duration-300">
+    <form id="tripStepperForm" novalidate class="backdrop-blur-md bg-white/70 border border-white/60 shadow-xl rounded-2xl p-6 space-y-6 transition-all duration-300">
 
       <!-- STEP 1: SCHEDULE -->
       <div class="step transition-opacity duration-300" data-step="1">
@@ -58,12 +58,12 @@ import Tags from "@/components/Trip/Tags.astro";
               <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500 group-focus-within:text-purple-500 transition-colors" />
               <input 
                 type="text" 
+                name="region_address"
                 class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
                 id="regionInput"
                 placeholder="Where are you headed?"
                 required
               />
-              <input type="hidden" name="region_address" id="regionAddress" />
               <input type="hidden" name="region_coordinates" id="regionCoordinates" />
             </div>
           </div>
@@ -167,7 +167,7 @@ import Tags from "@/components/Trip/Tags.astro";
 
           <!-- Dynamic Budget Field -->
           <div id="budgetWrapper" class="hidden">
-            <label class="font-medium mb-2 block text-slate-700">
+            <label for="estimated_budget" class="font-medium mb-2 block text-slate-700">
               <span id="budgetLabel">Estimated Budget</span>
               <span class="text-xs text-slate-500 ml-1" id="budgetContext">(recommended)</span>
             </label>
@@ -177,7 +177,7 @@ import Tags from "@/components/Trip/Tags.astro";
                 type="number" 
                 name="estimated_budget" 
                 id="estimatedBudget"
-                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 transition-all"
                 placeholder="e.g. 5000"
                 min="0"
                 step="100"
@@ -193,7 +193,8 @@ import Tags from "@/components/Trip/Tags.astro";
               <span class="text-red-500 ml-1">*</span>
             </label>
             <select 
-              name="gender" 
+              name="gender_preference" 
+              id="genderPreference"
               class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               required
             >
@@ -206,7 +207,7 @@ import Tags from "@/components/Trip/Tags.astro";
 
           <!-- Maximum Participants -->
           <div>
-            <label class="font-medium mb-2 block text-slate-700">
+            <label for="max_pax" class="font-medium mb-2 block text-slate-700">
               Maximum Participants
               <span class="text-red-500 ml-1">*</span>
             </label>
@@ -214,7 +215,7 @@ import Tags from "@/components/Trip/Tags.astro";
               type="number" 
               name="max_pax" 
               id="maxPax"
-              class="border border-gray-300 rounded-lg w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+              class="border border-gray-300 rounded-lg w-full px-4 py-2.5  transition-all" 
               min="2"
               max="50"
               placeholder="e.g. 8"
@@ -256,16 +257,34 @@ import Tags from "@/components/Trip/Tags.astro";
             <div class="relative">
               <MapPin class="absolute left-3 top-3 w-4 h-4 text-green-500" />
               <input 
-                type="text" 
-                name="pickup_address" 
+                type="text"
+                name="pickup_address"
                 class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
                 id="pickupInput" 
                 placeholder="e.g. MOA Globe, Ayala Cebu Terminal"
                 required
               />
               <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
-              <input type="hidden" name="pickup_region" id="pickupAddress" />
             </div>
+          </div>
+
+          <!-- Waiting Time / Grace Period -->
+          <div>
+            <label class="font-medium mb-2 block text-slate-700">Grace Period (minutes)</label>
+            <div class="relative">
+              <Clock class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
+              <input 
+                type="number" 
+                name="waiting_time" 
+                id="waitingTime"
+                min="0"
+                max="60"
+                placeholder="e.g. 15" 
+                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                value="15"
+              />
+            </div>
+            <p class="text-xs text-slate-500 mt-1">How long will you wait for late participants?</p>
           </div>
 
           <!-- Same Location Checkbox -->
@@ -298,14 +317,13 @@ import Tags from "@/components/Trip/Tags.astro";
                 <div class="relative">
                   <MapPin class="absolute left-3 top-3 w-4 h-4 text-red-500" />
                   <input 
-                    type="text" 
-                    name="dropoff_address" 
+                    type="text"
+                    name="dropoff_address"
                     class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
                     id="dropoffInput" 
                     placeholder="Where will the trip end?"
                   />
                   <input type="hidden" name="dropoff_coordinates" id="dropoffCoordinates" />
-                  <input type="hidden" name="dropoff_region" id="dropoffAddress" />
                 </div>
               </div>
 
@@ -320,24 +338,6 @@ import Tags from "@/components/Trip/Tags.astro";
                 helperText="When do you expect to arrive at the drop-off point?"
               />
             </div>
-          </div>
-
-          <!-- Grace Period -->
-          <div>
-            <label class="font-medium mb-2 block text-slate-700">Grace Period (minutes)</label>
-            <div class="relative">
-              <Clock class="absolute left-3 top-3 w-4 h-4 text-blue-500" />
-              <input 
-                type="number" 
-                name="waiting_time" 
-                min="0"
-                max="60"
-                placeholder="e.g. 15" 
-                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value="15"
-              />
-            </div>
-            <p class="text-xs text-slate-500 mt-1">How long will you wait for late participants?</p>
           </div>
 
           <!-- Info Box -->
@@ -391,44 +391,468 @@ import Tags from "@/components/Trip/Tags.astro";
 
   </section>
 
-  <script type="module">
+  <!-- CONSOLIDATED SCRIPT - ALL LOGIC IN ONE PLACE -->
+  <script>
+    import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
+    import { actions } from "astro:actions";
+    import type { TripFormData } from "@/types/trip";
+    import { slugify } from "@/scripts/Slugify";
+    import { showToast } from "@/scripts/Toast";
+    import { showLoading, hideLoading } from "@/lib/loading";
+
+    // ==================== GLOBAL STATE ====================
     let currentStep = 1;
     const totalSteps = 4;
 
+    // ==================== DOM ELEMENTS ====================
     const steps = document.querySelectorAll(".step");
     const progressBar = document.getElementById("progressBar");
     const labels = document.querySelectorAll(".step-label");
     const nextBtn = document.getElementById("stepNext");
     const prevBtn = document.getElementById("stepPrev");
     const submitBtn = document.getElementById("stepSubmit");
+    const form = document.getElementById("tripStepperForm") as HTMLFormElement;
 
     // Character counters
-    const titleInput = document.getElementById("tripTitle");
-    const descInput = document.getElementById("tripDescription");
+    const titleInput = document.getElementById("tripTitle") as HTMLInputElement;
+    const descInput = document.getElementById("tripDescription") as HTMLTextAreaElement;
     const titleCount = document.getElementById("titleCount");
     const descCount = document.getElementById("descCount");
 
-    if (titleInput && titleCount) {
-      titleInput.addEventListener("input", () => {
-        titleCount.textContent = titleInput.value.length;
-      });
-    }
-
-    if (descInput && descCount) {
-      descInput.addEventListener("input", () => {
-        descCount.textContent = descInput.value.length;
-      });
-    }
-
-    // Cost Sharing Dynamic Budget
-    const costSharing = document.getElementById("costSharing");
+    // Cost Sharing Elements
+    const costSharing = document.getElementById("costSharing") as any;
     const budgetWrapper = document.getElementById("budgetWrapper");
     const budgetLabel = document.getElementById("budgetLabel");
     const budgetContext = document.getElementById("budgetContext");
     const budgetHelper = document.getElementById("budgetHelper");
-    const estimatedBudget = document.getElementById("estimatedBudget");
+    const estimatedBudget = document.getElementById("estimatedBudget") as HTMLInputElement;
     const costSharingHelper = document.getElementById("costSharingHelper");
 
+    // Same Location Elements
+    const sameLocationCheckbox = document.getElementById("sameLocation") as HTMLInputElement;
+    const dropoffWrapper = document.getElementById("dropoffWrapper");
+    const dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
+
+    // ==================== UTILITY FUNCTIONS ====================
+    
+    /**
+     * Get date/time value from various input types
+     * Handles both single date pickers and date ranges
+     */
+    function getDateTimeValue(id: string) {
+      if (id === 'tripDates') {
+        // For range picker - try multiple possible input name patterns
+        const fromInput = document.querySelector(`input[name="start_date"]`) as HTMLInputElement;
+        const toInput = document.querySelector(`input[name="end_date"]`) as HTMLInputElement;
+        
+        if (!fromInput || !toInput) {
+          console.warn(`Date range inputs not found for ${id}`);
+          return { start: null, end: null };
+        }
+        
+        return {
+          start: fromInput.value || null,
+          end: toInput.value || null
+        };
+      } else {
+        // For single date pickers - try the actual input name first
+        const directInput = document.querySelector(`input[name="${id.replace(/([A-Z])/g, '_$1').toLowerCase()}"]`) as HTMLInputElement;
+        if (directInput?.value) {
+          return directInput.value;
+        }
+        
+        // Fallback to looking for hidden input
+        const hiddenInput = document.getElementById(`${id}-hidden`) as HTMLInputElement;
+        if (hiddenInput?.value) {
+          return hiddenInput.value;
+        }
+        
+        // Last resort - try the display input
+        const displayInput = document.getElementById(id) as HTMLInputElement;
+        if (displayInput?.value) {
+          return displayInput.value;
+        }
+        
+        console.warn(`No value found for date picker: ${id}`);
+        return null;
+      }
+    }
+
+    /**
+     * Show error message for date/time picker
+     */
+    function showDateTimeError(id: string, message: string) {
+      const errorDiv = document.querySelector(`[data-error="${id}"]`);
+      const errorText = document.querySelector(`[data-error-text="${id}"]`);
+      const pickerInput = document.getElementById(id);
+      
+      if (errorDiv && errorText) {
+        errorText.textContent = message;
+        errorDiv.classList.remove('hidden');
+      }
+      
+      if (pickerInput) {
+        pickerInput.classList.add('border-red-300');
+      }
+    }
+
+    /**
+     * Hide error message for date/time picker
+     */
+    function hideDateTimeError(id: string) {
+      const errorDiv = document.querySelector(`[data-error="${id}"]`);
+      const pickerInput = document.getElementById(id);
+      
+      if (errorDiv) {
+        errorDiv.classList.add('hidden');
+      }
+      
+      if (pickerInput) {
+        pickerInput.classList.remove('border-red-300');
+      }
+    }
+
+    // ==================== VALIDATION FUNCTIONS ====================
+
+    /**
+     * Validate trip dates and join deadline
+     */
+    function validateDates(): boolean {
+      const tripDates = getDateTimeValue('tripDates') as any;
+      const joinedByDateTime = getDateTimeValue('joinedBy') as any;
+      
+      let isValid = true;
+      const now = new Date();
+      
+      // Clear previous errors
+      hideDateTimeError('tripDates');
+      hideDateTimeError('joinedBy');
+      
+      // If fields are empty, let HTML5 validation handle it
+      if (!tripDates.start || !tripDates.end || !joinedByDateTime) {
+        return true;
+      }
+      
+      const start = new Date(tripDates.start);
+      const end = new Date(tripDates.end);
+      const joinBy = new Date(joinedByDateTime);
+      
+      // Trip cannot start in the past
+      if (start < now) {
+        showDateTimeError('tripDates', 'Trip cannot start in the past');
+        isValid = false;
+      }
+      
+      // End date must be after start date
+      if (end < start) {
+        showDateTimeError('tripDates', 'End date must be after start date');
+        isValid = false;
+      }
+      
+      // Join deadline validations
+      if (joinBy < now) {
+        showDateTimeError('joinedBy', 'Join deadline cannot be in the past');
+        isValid = false;
+      } else if (joinBy >= start) {
+        showDateTimeError('joinedBy', 'Join deadline must be before trip start');
+        isValid = false;
+      }
+      
+      return isValid;
+    }
+
+    /**
+     * Validate meeting/pickup time
+     */
+    function validateMeetingTime(): boolean {
+      const pickupDateTime = getDateTimeValue('pickupDates') as any;
+      const tripDates = getDateTimeValue('tripDates') as any;
+      
+      let isValid = true;
+      const now = new Date();
+      
+      hideDateTimeError('pickupDates');
+      
+      if (!pickupDateTime) {
+        return true; // Let HTML5 validation handle empty required fields
+      }
+      
+      const meetingTime = new Date(pickupDateTime);
+      
+      // Meeting time cannot be in the past
+      if (meetingTime < now) {
+        showDateTimeError('pickupDates', 'Meeting time cannot be in the past');
+        isValid = false;
+      }
+      
+      // Meeting should be on or before trip start
+      if (tripDates.start) {
+        const tripStart = new Date(tripDates.start);
+        if (meetingTime > tripStart) {
+          showDateTimeError('pickupDates', 'Meeting time should be on or before trip start');
+          isValid = false;
+        }
+      }
+      
+      return isValid;
+    }
+
+    function toDateOnly(value: string | Date): DateOnlyString {
+      const d = typeof value === 'string' ? new Date(value) : value;
+      return d.toISOString().split('T')[0] as DateOnlyString;
+    }
+
+    /**
+     * Validate drop-off time
+     */
+    function validateDropoffTime(): boolean {
+      const dropoffDateTime = getDateTimeValue('dropoffDates') as any;
+      const pickupDateTime = getDateTimeValue('pickupDates') as any;
+      const tripDates = getDateTimeValue('tripDates') as any;
+      
+      let isValid = true;
+      
+      hideDateTimeError('dropoffDates');
+      
+      // Only validate if dropoff section is visible and has value
+      if (dropoffWrapper && !dropoffWrapper.classList.contains('hidden') && dropoffDateTime) {
+        const dropoffTime = new Date(dropoffDateTime);
+        
+        // Drop-off must be after pickup
+        if (pickupDateTime) {
+          const pickupTime = new Date(pickupDateTime);
+          if (dropoffTime <= pickupTime) {
+            showDateTimeError('dropoffDates', 'Drop-off time must be after pickup time');
+            isValid = false;
+          }
+        }
+        
+        // Drop-off should be within reasonable range of trip end
+        if (tripDates.end) {
+          const tripEnd = new Date(tripDates.end);
+          const maxDropoff = new Date(tripEnd);
+          maxDropoff.setDate(maxDropoff.getDate() + 1); // Allow 1 day buffer
+          
+          if (dropoffTime > maxDropoff) {
+            showDateTimeError('dropoffDates', 'Drop-off should be within trip duration (plus 1 day)');
+            isValid = false;
+          }
+        }
+      }
+      
+      return isValid;
+    }
+
+    /**
+     * Validate the current step
+     */
+    function validateCurrentStep(): boolean {
+      const currentStepElement = document.querySelector(`.step[data-step="${currentStep}"]`);
+      if (!currentStepElement) return false;
+      
+      const requiredInputs = currentStepElement.querySelectorAll('[required]') as NodeListOf<HTMLInputElement>;
+      let hasEmptyFields = false;
+      
+      requiredInputs.forEach((input: HTMLInputElement) => {
+        // Skip validation for hidden fields
+        const isInHiddenWrapper = input.offsetParent === null;
+        
+        if (!isInHiddenWrapper) {
+          const isEmpty = !input.value || (input.tagName === 'SELECT' && input.value === '');
+          
+          if (isEmpty) {
+            input.classList.add('border-red-300');
+            hasEmptyFields = true;
+          } else {
+            input.classList.remove('border-red-300');
+          }
+        }
+      });
+      
+      if (hasEmptyFields) {
+        showToast({
+          message: 'Please fill in all required fields',
+          type: 'error'
+        });
+        return false;
+      }
+      
+      // Step-specific validation
+      if (currentStep === 1) {
+        return validateDates();
+      }
+      
+      if (currentStep === 4) {
+        return validateMeetingTime() && validateDropoffTime();
+      }
+      
+      return true;
+    }
+
+    // ==================== DATE CONSTRAINT UPDATES ====================
+    type DateOnlyString = `${number}-${number}-${number}`;
+
+interface DateRange {
+  start?: string;
+  end?: string;
+}
+
+interface DatePickerConstraint {
+  setMinDate(date: DateOnlyString): void;
+  setMaxDate(date: DateOnlyString): void;
+}
+
+type DatePickerMap = Record<string, DatePickerConstraint>;
+declare global {
+  interface Window {
+    updateDatePickerConstraints?: DatePickerMap;
+  }
+}
+
+    /**
+     * Update date picker constraints based on other date selections
+     */
+    function updateDateConstraints(): void {
+      const constraints = window.updateDatePickerConstraints;
+      
+      if (!constraints) {
+        console.warn('Date picker constraints API not available yet');
+        return;
+      }
+      
+      const tripDates = getDateTimeValue('tripDates') as DateRange;
+      const today = toDateOnly(new Date());
+      
+      try {
+        // Trip dates: minimum is today
+        constraints.tripDates?.setMinDate(today);
+        
+        // Join deadline: must be before trip start
+        if (tripDates?.start && constraints.joinedBy) {
+          const startDate = new Date(tripDates.start);
+          const dayBefore = new Date(startDate);
+          dayBefore.setDate(startDate.getDate() - 1);
+          
+          constraints.joinedBy.setMinDate(today);
+          constraints.joinedBy.setMaxDate(toDateOnly(dayBefore));
+        }
+        
+        // Pickup date: today → trip start
+        if (tripDates?.start && constraints.pickupDates) {
+          constraints.pickupDates.setMinDate(today);
+          constraints.pickupDates.setMaxDate(toDateOnly(tripDates.start));
+        }
+        
+        // Drop-off dates
+        updateDropoffDateConstraints();
+      } catch (error) {
+        console.error('Error updating date constraints:', error);
+      }
+    }
+
+
+    /**
+     * Update drop-off date constraints
+     */
+     function updateDropoffDateConstraints(): void {
+      const constraints = window.updateDatePickerConstraints;
+      
+      if (!constraints?.dropoffDates) {
+        return;
+      }
+      
+      const tripDates = getDateTimeValue('tripDates') as DateRange;
+      const pickupDateTime = getDateTimeValue('pickupDates') as string | null;
+      
+      try {
+        // Min: pickup date
+        if (pickupDateTime) {
+          constraints.dropoffDates.setMinDate(
+          toDateOnly(pickupDateTime)
+          );
+        }
+        
+        // Max: day after trip end
+        if (tripDates?.end) {
+          const endDate = new Date(tripDates.end);
+          const dayAfter = new Date(endDate);
+          dayAfter.setDate(endDate.getDate() + 1);
+          
+          constraints.dropoffDates.setMaxDate(
+          toDateOnly(dayAfter)
+          );
+        }
+      } catch (error) {
+        console.error('Error updating dropoff constraints:', error);
+      }
+    }
+
+
+    // ==================== UI UPDATE FUNCTIONS ====================
+
+    /**
+     * Update UI to reflect current step
+     */
+    function updateUI() {
+      // Show/hide steps with display instead of adding/removing from DOM
+      steps.forEach(s => {
+        const isActive = Number(s.getAttribute('data-step')) === currentStep;
+        
+        if (isActive) {
+          s.classList.remove("hidden");
+          (s as HTMLElement).style.opacity = "0";
+          setTimeout(() => (s as HTMLElement).style.opacity = "1", 50);
+        } else {
+          s.classList.add("hidden");
+        }
+      });
+
+      // Update step labels
+      labels.forEach(l => {
+        const stepNum = Number(l.getAttribute('data-step'));
+        const isActive = stepNum === currentStep;
+        const isPast = stepNum < currentStep;
+        
+        l.classList.toggle("text-blue-600", isActive);
+        l.classList.toggle("text-green-600", isPast);
+        l.classList.toggle("text-slate-400", !isActive && !isPast);
+        l.classList.toggle("font-semibold", isActive);
+      });
+
+      // Update progress bar
+      if (progressBar) {
+        progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+      }
+
+      // Show/hide navigation buttons
+      if (prevBtn) prevBtn.classList.toggle("hidden", currentStep === 1);
+      if (nextBtn) nextBtn.classList.toggle("hidden", currentStep === totalSteps);
+      if (submitBtn) submitBtn.classList.toggle("hidden", currentStep !== totalSteps);
+    }
+
+    // ==================== EVENT HANDLERS ====================
+
+    /**
+     * Character counter for title
+     */
+    if (titleInput && titleCount) {
+      titleInput.addEventListener("input", () => {
+        titleCount.textContent = titleInput.value.length.toString();
+      });
+    }
+
+    /**
+     * Character counter for description
+     */
+    if (descInput && descCount) {
+      descInput.addEventListener("input", () => {
+        descCount.textContent = descInput.value.length.toString();
+      });
+    }
+
+    /**
+     * Cost sharing method change handler
+     */
     const budgetConfig = {
       'split_evenly': {
         label: 'Estimated Budget Per Person',
@@ -460,497 +884,472 @@ import Tags from "@/components/Trip/Tags.astro";
       }
     };
 
-    costSharing.addEventListener('change', (e) => {
-      const method = e.target.value;
-      const config = budgetConfig[method];
+    if (costSharing) {
+      costSharing.addEventListener('change', (e: any) => {
+        const method = (e.target as HTMLSelectElement).value;
+        const config = ( budgetConfig as any)[method];
 
-      if (config && config.show) {
-        budgetWrapper.classList.remove('hidden');
-        budgetLabel.textContent = config.label;
-        budgetContext.textContent = config.context;
-        budgetHelper.textContent = config.helper;
-        estimatedBudget.placeholder = config.placeholder;
+        if (config && config.show && budgetWrapper) {
+          budgetWrapper.classList.remove('hidden');
+          if (budgetLabel) budgetLabel.textContent = config.label;
+          if (budgetContext) budgetContext.textContent = config.context;
+          if (budgetHelper) budgetHelper.textContent = config.helper;
+          if (estimatedBudget) estimatedBudget.placeholder = config.placeholder;
 
-        // Update helper text for cost sharing
-        if (method === 'split_evenly') {
-          costSharingHelper.textContent = 'All costs will be divided equally among participants';
-        } else if (method === 'organizer_shoulders_cost') {
-          costSharingHelper.textContent = 'You\'ll cover all trip expenses';
-        } else if (method === 'pay_own_expenses') {
-          costSharingHelper.textContent = 'Each person pays for their own meals, activities, etc.';
-        } else {
-          costSharingHelper.textContent = 'You\'ll decide the split arrangement later';
-        }
-      } else {
-        budgetWrapper.classList.add('hidden');
-        costSharingHelper.textContent = 'Choose how expenses will be handled';
-      }
-    });
-
-    // Same Location Checkbox
-    const sameLocationCheckbox = document.getElementById("sameLocation");
-    const dropoffWrapper = document.getElementById("dropoffWrapper");
-    const dropoffInput = document.getElementById("dropoffInput");
-    const dropoffDatesInput = document.getElementById("dropoffDates");
-
-    sameLocationCheckbox.addEventListener("change", (e) => {
-      if (e.target.checked) {
-        dropoffWrapper.classList.add("hidden");
-        dropoffInput.required = false;
-        dropoffInput.value = "";
-        
-        // Clear dropoff date picker
-        if (dropoffDatesInput && dropoffDatesInput._flatpickr) {
-          dropoffDatesInput._flatpickr.clear();
-        }
-      } else {
-        dropoffWrapper.classList.remove("hidden");
-        dropoffInput.required = true;
-        
-        // Update constraints for dropoff date
-        updateDropoffDateConstraints();
-      }
-    });
-
-    // Initialize same location as checked
-    sameLocationCheckbox.checked = true;
-
-    // DateTime helper functions
-    function getDateTimeValue(id) {
-      if (id === 'tripDates') {
-        const fromInput = document.getElementById('tripDates-from');
-        const toInput = document.getElementById('tripDates-to');
-        return {
-          start: fromInput ? fromInput.value : null,
-          end: toInput ? toInput.value : null
-        };
-      } else {
-        const hiddenInput = document.getElementById(`${id}-hidden`);
-        return hiddenInput ? hiddenInput.value : null;
-      }
-    }
-
-    function showDateTimeError(id, message) {
-      const errorDiv = document.querySelector(`[data-error="${id}"]`);
-      const errorText = document.querySelector(`[data-error-text="${id}"]`);
-      const pickerInput = document.getElementById(id);
-      
-      if (errorDiv && errorText) {
-        errorText.textContent = message;
-        errorDiv.classList.remove('hidden');
-        pickerInput?.classList.add('border-red-300');
-      }
-    }
-
-    function hideDateTimeError(id) {
-      const errorDiv = document.querySelector(`[data-error="${id}"]`);
-      const pickerInput = document.getElementById(id);
-      
-      if (errorDiv) {
-        errorDiv.classList.add('hidden');
-        pickerInput?.classList.remove('border-red-300');
-      }
-    }
-
-    function updateDateConstraints() {
-      const tripDates = getDateTimeValue('tripDates');
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Update constraints using the exposed methods
-      if (window.updateDatePickerConstraints) {
-        // Set minimum date for trip dates to today
-        if (window.updateDatePickerConstraints['tripDates']) {
-          window.updateDatePickerConstraints['tripDates'].setMinDate(today);
-        }
-        
-        // Update join deadline constraints (must be before start date)
-        if (tripDates.start && window.updateDatePickerConstraints['joinedBy']) {
-          const startDateOnly = new Date(tripDates.start.split('T')[0]);
-          const dayBefore = new Date(startDateOnly);
-          dayBefore.setDate(dayBefore.getDate() - 1);
-          
-          window.updateDatePickerConstraints['joinedBy'].setMinDate(today);
-          window.updateDatePickerConstraints['joinedBy'].setMaxDate(dayBefore.toISOString().split('T')[0]);
-        }
-        
-        // Update pickup date constraints (should be on or before start date)
-        if (tripDates.start && window.updateDatePickerConstraints['pickupDates']) {
-          window.updateDatePickerConstraints['pickupDates'].setMinDate(today);
-          window.updateDatePickerConstraints['pickupDates'].setMaxDate(tripDates.start.split('T')[0]);
-        }
-        
-        // Update dropoff date constraints
-        updateDropoffDateConstraints();
-      }
-    }
-
-    function updateDropoffDateConstraints() {
-      const tripDates = getDateTimeValue('tripDates');
-      const pickupDateTime = getDateTimeValue('pickupDates');
-      
-      if (window.updateDatePickerConstraints && window.updateDatePickerConstraints['dropoffDates']) {
-        // Drop-off should be between pickup time and trip end date
-        if (pickupDateTime) {
-          const pickupDate = new Date(pickupDateTime);
-          window.updateDatePickerConstraints['dropoffDates'].setMinDate(pickupDate.toISOString().split('T')[0]);
-        }
-        
-        if (tripDates.end) {
-          const endDate = new Date(tripDates.end);
-          // Allow drop-off to be up to 1 day after trip end for buffer
-          const dayAfter = new Date(endDate);
-          dayAfter.setDate(dayAfter.getDate() + 1);
-          window.updateDatePickerConstraints['dropoffDates'].setMaxDate(dayAfter.toISOString().split('T')[0]);
-        }
-      }
-    }
-
-    function validateDates() {
-      const tripDates = getDateTimeValue('tripDates');
-      const joinedByDateTime = getDateTimeValue('joinedBy');
-      
-      let isValid = true;
-      const now = new Date();
-      
-      hideDateTimeError('tripDates');
-      hideDateTimeError('joinedBy');
-      
-      if (!tripDates.start || !tripDates.end || !joinedByDateTime) {
-        return true;
-      }
-      
-      const start = new Date(tripDates.start);
-      const end = new Date(tripDates.end);
-      const joinBy = new Date(joinedByDateTime);
-      
-      if (start < now) {
-        showDateTimeError('tripDates', 'Trip cannot start in the past');
-        isValid = false;
-      }
-      
-      if (end < start) {
-        showDateTimeError('tripDates', 'End date must be after start date');
-        isValid = false;
-      }
-      
-      if (joinBy < now) {
-        showDateTimeError('joinedBy', 'Join deadline cannot be in the past');
-        isValid = false;
-      } else if (joinBy >= start) {
-        showDateTimeError('joinedBy', 'Join deadline must be before trip start');
-        isValid = false;
-      }
-      
-      return isValid;
-    }
-
-    function validateMeetingTime() {
-      const pickupDateTime = getDateTimeValue('pickupDates');
-      const tripDates = getDateTimeValue('tripDates');
-      
-      let isValid = true;
-      const now = new Date();
-      
-      hideDateTimeError('pickupDates');
-      
-      if (!pickupDateTime) {
-        return true;
-      }
-      
-      const meetingTime = new Date(pickupDateTime);
-      
-      if (meetingTime < now) {
-        showDateTimeError('pickupDates', 'Meeting time cannot be in the past');
-        isValid = false;
-      }
-      
-      if (tripDates.start) {
-        const tripStart = new Date(tripDates.start);
-        if (meetingTime > tripStart) {
-          showDateTimeError('pickupDates', 'Meeting time should be on or before trip start');
-          isValid = false;
-        }
-      }
-      
-      return isValid;
-    }
-
-    function validateDropoffTime() {
-      const dropoffDateTime = getDateTimeValue('dropoffDates');
-      const pickupDateTime = getDateTimeValue('pickupDates');
-      const tripDates = getDateTimeValue('tripDates');
-      
-      let isValid = true;
-      
-      hideDateTimeError('dropoffDates');
-      
-      // Only validate if dropoff is visible and has value
-      if (!dropoffWrapper.classList.contains('hidden') && dropoffDateTime) {
-        const dropoffTime = new Date(dropoffDateTime);
-        
-        if (pickupDateTime) {
-          const pickupTime = new Date(pickupDateTime);
-          if (dropoffTime <= pickupTime) {
-            showDateTimeError('dropoffDates', 'Drop-off time must be after pickup time');
-            isValid = false;
+          // Update helper text for cost sharing
+          if (costSharingHelper) {
+            if (method === 'split_evenly') {
+              costSharingHelper.textContent = 'All costs will be divided equally among participants';
+            } else if (method === 'organizer_shoulders_cost') {
+              costSharingHelper.textContent = 'You\'ll cover all trip expenses';
+            } else if (method === 'pay_own_expenses') {
+              costSharingHelper.textContent = 'Each person pays for their own meals, activities, etc.';
+            } else {
+              costSharingHelper.textContent = 'You\'ll decide the split arrangement later';
+            }
           }
+        } else if (budgetWrapper) {
+          budgetWrapper.classList.add('hidden');
+          if (estimatedBudget) estimatedBudget.setCustomValidity('');
+          if (costSharingHelper) costSharingHelper.textContent = 'Choose how expenses will be handled';
         }
+      });
+    }
+
+    /**
+     * Same location checkbox handler
+     */
+    if (sameLocationCheckbox) {
+      sameLocationCheckbox.addEventListener("change", (e) => {
+        const isChecked = (e.target as HTMLInputElement).checked;
         
-        if (tripDates.end) {
-          const tripEnd = new Date(tripDates.end);
-          // Allow 1 day buffer after trip end
-          const maxDropoff = new Date(tripEnd);
-          maxDropoff.setDate(maxDropoff.getDate() + 1);
-          
-          if (dropoffTime > maxDropoff) {
-            showDateTimeError('dropoffDates', 'Drop-off should be within trip duration');
-            isValid = false;
+        if (dropoffWrapper) {
+          if (isChecked) {
+            dropoffWrapper.classList.add("hidden");
+            
+            // Clear and disable dropoff fields
+            if (dropoffInput) {
+              dropoffInput.required = false;
+              dropoffInput.value = "";
+              dropoffInput.classList.remove('border-red-300');
+            }
+            
+            const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
+            if (dropoffCoordinates) {
+              dropoffCoordinates.value = "";
+            }
+            
+            // Clear and disable dropoff date picker
+            const dropoffDatesInput = document.getElementById("dropoffDates") as HTMLInputElement;
+            if (dropoffDatesInput) {
+              dropoffDatesInput.required = false;
+              dropoffDatesInput.value = "";
+              
+              // Clear flatpickr if available
+              if ((dropoffDatesInput as any)._flatpickr) {
+                (dropoffDatesInput as any)._flatpickr.clear();
+              }
+            }
+            
+            hideDateTimeError('dropoffDates');
+          } else {
+            dropoffWrapper.classList.remove("hidden");
+            
+            // Enable dropoff fields
+            if (dropoffInput) {
+              dropoffInput.required = true;
+            }
+            
+            const dropoffDatesInput = document.getElementById("dropoffDates") as HTMLInputElement;
+            if (dropoffDatesInput) {
+              dropoffDatesInput.required = true;
+            }
+            
+            // Update constraints for dropoff date
+            updateDropoffDateConstraints();
           }
-        }
-      }
-      
-      return isValid;
-    }
-
-    function validateCurrentStep() {
-      const currentStepElement = document.querySelector(`.step[data-step="${currentStep}"]`);
-      const requiredInputs = currentStepElement.querySelectorAll('[required]');
-      
-      let hasEmptyFields = false;
-      for (let input of requiredInputs) {
-        if (!input.value || (input.tagName === 'SELECT' && input.value === '')) {
-          input.classList.add('border-red-300');
-          hasEmptyFields = true;
-        } else {
-          input.classList.remove('border-red-300');
-        }
-      }
-      
-      if (hasEmptyFields) return false;
-      
-      if (currentStep === 1) {
-        return validateDates();
-      }
-      
-      if (currentStep === 4) {
-        return validateMeetingTime() && validateDropoffTime();
-      }
-      
-      return true;
-    }
-
-    function ui() {
-      steps.forEach(s => {
-        const isActive = Number(s.dataset.step) === currentStep;
-        s.classList.toggle("hidden", !isActive);
-        if (isActive) {
-          s.style.opacity = "0";
-          setTimeout(() => s.style.opacity = "1", 50);
         }
       });
 
-      labels.forEach(l => {
-        const stepNum = Number(l.dataset.step);
-        const isActive = stepNum === currentStep;
-        const isPast = stepNum < currentStep;
-        
-        l.classList.toggle("text-blue-600", isActive);
-        l.classList.toggle("text-green-600", isPast);
-        l.classList.toggle("text-slate-400", !isActive && !isPast);
-        l.classList.toggle("font-semibold", isActive);
-      });
-
-      progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
-
-      prevBtn.classList.toggle("hidden", currentStep === 1);
-      nextBtn.classList.toggle("hidden", currentStep === totalSteps);
-      submitBtn.classList.toggle("hidden", currentStep !== totalSteps);
+      // Initialize same location as checked
+      sameLocationCheckbox.checked = true;
     }
 
-    nextBtn.onclick = () => { 
-      if (validateCurrentStep() && currentStep < totalSteps) {
-        currentStep++; 
-        ui();
-      }
-    };
+    /**
+     * Navigation button handlers
+     */
+    if (nextBtn) {
+      nextBtn.onclick = () => {
+        if (validateCurrentStep() && currentStep < totalSteps) {
+          currentStep++;
+          updateUI();
+        }
+      };
+    }
 
-    prevBtn.onclick = () => { 
-      if (currentStep > 1) {
-        currentStep--; 
-        ui();
-      }
-    };
+    if (prevBtn) {
+      prevBtn.onclick = () => {
+        if (currentStep > 1) {
+          currentStep--;
+          updateUI();
+        }
+      };
+    }
 
+    /**
+     * Listen for date changes to update constraints and validate
+     */
     document.addEventListener('change', (e) => {
-      const target = e.target;
+      const target = e.target as HTMLInputElement;
       
-      // Check if change is from any of our date pickers
       if (target.name === 'start_date' || target.name === 'end_date' || target.name === 'joined_by') {
         updateDateConstraints();
-        validateDates();
+        if (currentStep === 1) {
+          validateDates();
+        }
       }
       
       if (target.name === 'pickup_dates') {
-        validateMeetingTime();
+        if (currentStep === 4) {
+          validateMeetingTime();
+        }
         updateDropoffDateConstraints();
       }
       
       if (target.name === 'dropoff_dates') {
-        validateDropoffTime();
+        if (currentStep === 4) {
+          validateDropoffTime();
+        }
       }
     });
 
-    updateDateConstraints();
-    ui();
-
-    // Autosave
-    const form = document.getElementById("tripStepperForm");
-    let saveTimeout;
-    form.addEventListener("input", () => {
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        const data = Object.fromEntries(new FormData(form).entries());
-        sessionStorage.setItem("tripDraft", JSON.stringify(data));
-      }, 500);
-    });
-
-    // Load draft
-    const draft = sessionStorage.getItem("tripDraft");
-    if (draft) {
-      const data = JSON.parse(draft);
-      Object.keys(data).forEach(key => {
-        const input = form.querySelector(`[name="${key}"]`);
-        if (input && data[key]) {
-          input.value = data[key];
-          if (input.id === "tripTitle") titleCount.textContent = data[key].length;
-          if (input.id === "tripDescription") descCount.textContent = data[key].length;
-          if (input.id === "costSharing") {
-            costSharing.dispatchEvent(new Event('change'));
-          }
-        }
+    // ==================== MAPBOX INTEGRATION ====================
+    function createSessionToken() {
+      // generate UUID
+      return crypto.randomUUID();
+    }
+    // create sessionID
+    const sessionId = await createSessionToken();
+    if (!sessionId) {
+      console.error('Session ID not found for Mapbox integration');
+    } else {
+      // Region/Destination autocomplete
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#regionInput",
+        onSelect: (result) => {
+          const regionInput = document.getElementById("regionInput") as HTMLInputElement;
+          const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
+          
+          if (regionInput) regionInput.value = result.name;
+          if (regionCoordinates) regionCoordinates.value = JSON.stringify(result.coordinates);
+        },
       });
-      updateDateConstraints();
+
+      // Pickup point autocomplete
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#pickupInput",
+        onSelect: (result) => {
+          const pickupInput = document.getElementById("pickupInput") as HTMLInputElement;
+          const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
+          
+          if (pickupInput) pickupInput.value = result.name;
+          if (pickupCoordinates) pickupCoordinates.value = JSON.stringify(result.coordinates);
+        },
+      });
+
+      // Dropoff point autocomplete
+      createMapboxSearchBox({
+        sessionTokenID: sessionId,
+        targetSelector: "#dropoffInput",
+        onSelect: (result) => {
+          const dropoffInput = document.getElementById("dropoffInput") as HTMLInputElement;
+          const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
+          
+          if (dropoffInput) dropoffInput.value = result.name;
+          if (dropoffCoordinates) dropoffCoordinates.value = JSON.stringify(result.coordinates);
+        },
+      });
     }
 
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-      if (!validateCurrentStep()) {
-        return;
-      }
-      sessionStorage.removeItem("tripDraft");
-    });
-  </script>
+    // ==================== FORM SUBMISSION ====================
 
-  <script>
-    import { createMapboxSearchBox } from "../../scripts/mapBoxSearch.js";
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        // Final validation
+        if (!validateCurrentStep()) {
+          showToast({
+            message: 'Please fill in all required fields correctly',
+            type: 'error'
+          });
+          return;
+        }
+        
+        showLoading();
+        
+        try {
+          // Collect ALL form data directly - no disabling needed with novalidate attribute
+          const formData = new FormData(form);
 
-    const sessionId = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("sb-session-id="))
-      ?.split("=")[1] as string;
+          // Log all form data for debugging
+          console.log("Raw FormData entries:");
+          for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+          }
 
-    const regionCoordinates = document.getElementById("regionCoordinates") as HTMLInputElement;
-    const pickupCoordinates = document.getElementById("pickupCoordinates") as HTMLInputElement;
-    const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
-
-    const regionAddress = document.getElementById("regionAddress") as HTMLInputElement;
-    const pickupAddress = document.getElementById("pickupAddress") as HTMLInputElement;
-    const dropoffAddress = document.getElementById("dropoffAddress") as HTMLInputElement;
-
-    createMapboxSearchBox({
-      sessionTokenID: sessionId,
-      targetSelector: "#regionInput",
-      onSelect: (result) => {
-        regionAddress.value = result.name;
-        regionCoordinates.value = JSON.stringify(result.coordinates);
-      },
-    });
-
-    createMapboxSearchBox({
-      sessionTokenID: sessionId,
-      targetSelector: "#pickupInput",
-      onSelect: (result) => {
-        pickupAddress.value = result.name;
-        pickupCoordinates.value = JSON.stringify(result.coordinates);
-      },
-    });
-
-    createMapboxSearchBox({
-      sessionTokenID: sessionId,
-      targetSelector: "#dropoffInput",
-      onSelect: (result) => {
-        dropoffAddress.value = result.name;
-        dropoffCoordinates.value = JSON.stringify(result.coordinates);
-      },
-    });
-
-    import { actions } from "astro:actions";
-    import type { TripFormData } from "@/types/trip";
-    import { slugify } from "@/scripts/Slugify";
-    import { showToast } from "@/scripts/Toast";
-    import { showLoading, hideLoading } from "@/lib/loading";
-
-    let form = document.getElementById("tripStepperForm") as HTMLFormElement;
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      showLoading();
-      try {
-        const formData = new FormData(form);
-
-        const tagsString = formData.get("tags") as string | string[];
-        const tagsArray = Array.isArray(tagsString) ? tagsString : tagsString.split(",").map(tag => tag.trim());
-
-        let slug = await slugify(formData.get("title") as string);
-        formData.set("slug", slug);
-
-        // Handle same location logic
-        const sameLocation = (document.getElementById("sameLocation") as HTMLInputElement).checked;
-        if (sameLocation) {
-          formData.set("dropoff_address", formData.get("pickup_address") as string);
-          formData.set("dropoff_coordinates", formData.get("pickup_coordinates") as string);
-          formData.set("dropoff_region", formData.get("pickup_region") as string);
+          // Handle tags - use getAll for multiple values
+          const tagsInputs = formData.getAll("tags");
+          let tagsArray: string[] = [];
           
-          // Set dropoff date as pickup date if same location
-          formData.set("dropoff_dates", formData.get("pickup_dates") as string);
-        }
+          if (tagsInputs.length > 0) {
+            tagsArray = tagsInputs
+              .flatMap(tag => typeof tag === 'string' ? tag.split(',') : [])
+              .map(tag => tag.trim())
+              .filter(tag => tag.length > 0);
+          }
 
-        const tripData: TripFormData = {
-          title: formData.get("title") as string,
-          tags: tagsArray,
-          joined_by: formData.get("joined_by") as string,
-          region_address: formData.get("region_address") as string,
-          region_coordinates: formData.get("region_coordinates") as string,
-          pickup_address: formData.get("pickup_address") as string,
-          pickup_coordinates: formData.get("pickup_coordinates") as string,
-          dropoff_address: formData.get("dropoff_address") as string,
-          dropoff_coordinates: formData.get("dropoff_coordinates") as string,
-          description: formData.get("description") as string,
-          waiting_time: parseInt(formData.get("waiting_time") as string) || 15,
-          cost_sharing: formData.get("cost_sharing") as string,
-          max_pax: parseInt(formData.get("max_pax") as string) || 0,
-          start_date: formData.get("start_date") as string,
-          end_date: formData.get("end_date") as string,
-          gender_preference: formData.get("gender") as string,
-          slug: formData.get("slug") as string,
-          pickup_dates: formData.get("pickup_dates") as string,
-          dropoff_dates: formData.get("dropoff_dates") as string,
-          estimated_budget: parseInt(formData.get("estimated_budget") as string) || null
-        };
+          // Generate slug from title
+          const title = formData.get("title") as string;
+          
+          if (!title) {
+            showToast({
+              message: 'Trip title is required. Please go back to Step 2.',
+              type: 'error'
+            });
+            hideLoading();
+            return;
+          }
+          
+          const description = formData.get("description") as string;
+          if (!description) {
+            showToast({
+              message: 'Trip description is required. Please go back to Step 2.',
+              type: 'error'
+            });
+            hideLoading();
+            return;
+          }
+          
+          const genderPreference = formData.get("gender_preference") as string;
+          if (!genderPreference) {
+            showToast({
+              message: 'Gender preference is required. Please go back to Step 3.',
+              type: 'error'
+            });
+            hideLoading();
+            return;
+          }
+          
+          const costSharing = formData.get("cost_sharing") as string;
+          if (!costSharing) {
+            showToast({
+              message: 'Cost sharing method is required. Please go back to Step 3.',
+              type: 'error'
+            });
+            hideLoading();
+            return;
+          }
+          
+          const regionAddress = formData.get("region_address") as string;
+          if (!regionAddress) {
+            showToast({
+              message: 'Destination is required. Please go back to Step 1.',
+              type: 'error'
+            });
+            hideLoading();
+            return;
+          }
+          
+          let slug: string;
+          
+          try {
+            slug = await slugify(title);
+          } catch (slugError) {
+            console.error('Slug generation failed:', slugError);
+            // Fallback slug generation
+            slug = title.toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '');
+          }
 
-        let data = await actions.trip.createTrip(tripData);
-        console.log(data);
-        if (data.error) {  
-          showToast({ message: data.error.message, type: "error" });
-        } else {
-          let slug = JSON.parse(data.data)
-          slug = slug.data.trip_id
-          console.log("slug", slug);
-          sessionStorage.removeItem("tripDraft");
-          window.location.href = `/trips/${slug}`;
+          // Handle same location logic
+          const sameLocation = sameLocationCheckbox?.checked ?? true;
+          
+          let dropoffAddress = formData.get("dropoff_address") as string;
+          let dropoffCoordinates = formData.get("dropoff_coordinates") as string;
+          let dropoffDates = formData.get("dropoff_dates") as string;
+          
+          if (sameLocation) {
+            // Use pickup details for dropoff
+            dropoffAddress = formData.get("pickup_address") as string;
+            dropoffCoordinates = formData.get("pickup_coordinates") as string;
+            dropoffDates = formData.get("pickup_dates") as string;
+          }
+
+          // Construct trip data
+          const tripData: TripFormData = {
+            title: title,
+            description: formData.get("description") as string,
+            slug: slug,
+            
+            // Dates
+            start_date: formData.get("start_date") as string,
+            end_date: formData.get("end_date") as string,
+            joined_by: formData.get("joined_by") as string,
+            
+            // Settings
+            max_pax: parseInt(formData.get("max_pax") as string) || 2,
+            gender_preference: formData.get("gender_preference") as 'any' | 'male' | 'female',
+            cost_sharing: formData.get("cost_sharing") as 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split',
+            estimated_budget: formData.get("estimated_budget") ? parseFloat(formData.get("estimated_budget") as string) : null,
+            tags: tagsArray,
+            
+            // Region/Destination
+            region_address: formData.get("region_address") as string,
+            region_coordinates: formData.get("region_coordinates") as string,
+            
+            // Pickup
+            pickup_address: formData.get("pickup_address") as string,
+            pickup_coordinates: formData.get("pickup_coordinates") as string,
+            pickup_dates: formData.get("pickup_dates") as string,
+            waiting_time: parseInt(formData.get("waiting_time") as string) || 15,
+            
+            // Dropoff
+            dropoff_address: dropoffAddress,
+            dropoff_coordinates: dropoffCoordinates,
+            dropoff_dates: dropoffDates,
+          };
+
+          console.log("Submitting trip data:", tripData);
+
+          // Call the server action
+          const { data: result, error } = await actions.trip.createTrip(tripData);
+          
+          console.log("Server response:", result, error);
+
+          if (error) {
+            showToast({ 
+              message: error.message || 'Failed to create trip', 
+              type: "error" 
+            });
+          } else {
+            // Clear draft from session storage
+            sessionStorage.removeItem("tripDraft");
+            
+            // Parse the response to get trip_id
+            let tripId;
+            if (typeof result === 'string') {
+              try {
+                const parsed = JSON.parse(result);
+                tripId = parsed.data?.trip_id || parsed.trip_id;
+              } catch {
+                tripId = result;
+              }
+            } else if (result && typeof result === 'object') {
+              tripId = (result as any).trip_id || (result as any).data?.trip_id;
+            } else {
+              tripId = result;
+            }
+            
+            console.log("Created trip ID:", tripId);
+            
+            // Show success message
+            showToast({ 
+              message: 'Trip created successfully!', 
+              type: "success" 
+            });
+            
+            // Redirect to trip page
+            setTimeout(() => {
+              if (tripId) {
+                window.location.href = `/trips/${tripId}`;
+              } else {
+                window.location.href = `/trips`;
+              }
+            }, 1000);
+          }
+        } catch (err) {
+          console.error('Trip creation error:', err);
+          showToast({ 
+            message: err instanceof Error ? err.message : 'An unexpected error occurred', 
+            type: "error" 
+          });
+        } finally {
+          hideLoading();
         }
-      } finally {
-        hideLoading();
+      });
+    }
+
+    // ==================== AUTOSAVE ====================
+
+    let saveTimeout: number;
+    if (form) {
+      form.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        saveTimeout = window.setTimeout(() => {
+          try {
+            const data = Object.fromEntries(new FormData(form).entries());
+            sessionStorage.setItem("tripDraft", JSON.stringify(data));
+          } catch (error) {
+            console.error('Failed to save draft:', error);
+          }
+        }, 500);
+      });
+    }
+
+    // ==================== LOAD DRAFT ====================
+
+    const draft = sessionStorage.getItem("tripDraft");
+    if (draft && form) {
+      try {
+        const data = JSON.parse(draft);
+        Object.keys(data).forEach(key => {
+          const input = form.querySelector(`[name="${key}"]`) as HTMLInputElement;
+          if (input && data[key]) {
+            input.value = data[key];
+            
+            // Update character counters
+            if (input.id === "tripTitle" && titleCount) {
+              titleCount.textContent = data[key].length.toString();
+            }
+            if (input.id === "tripDescription" && descCount) {
+              descCount.textContent = data[key].length.toString();
+            }
+            
+            // Trigger cost sharing update
+            if (input.id === "costSharing") {
+              costSharing.dispatchEvent(new Event('change'));
+            }
+          }
+        });
+        
+        updateDateConstraints();
+      } catch (error) {
+        console.error('Failed to load draft:', error);
       }
-    });
+    }
+
+    // ==================== INITIALIZATION ====================
+
+    // Initial UI update
+    updateUI();
+
+    // Initial date constraints setup (wait a bit for date pickers to initialize)
+    setTimeout(() => {
+      updateDateConstraints();
+    }, 500);
+
+    // Expose validation function globally for debugging
+    (window as any).validateCurrentStep = validateCurrentStep;
+    (window as any).validateDates = validateDates;
+    (window as any).validateMeetingTime = validateMeetingTime;
+    (window as any).validateDropoffTime = validateDropoffTime;
+
+function uuidv4() {
+throw new Error("Function not implemented.");
+}
   </script>
 </Layout>

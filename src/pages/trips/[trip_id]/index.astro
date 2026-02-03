@@ -1,63 +1,209 @@
 ---
-import PagePlate from '@/layouts/PagePlate.astro';
-import { actions } from 'astro:actions';
-import Summary from '@/components/Trip/Summary.astro';
+import Layout from '@/layouts/PagePlate.astro';
+import TripHeader from '@/components/Trip/TripHeader.astro';
+import TripDetails from '@/components/Trip/Summary.astro';
 import Member from '@/components/Trip/Member.astro';
+import { supabaseAdmin } from '@/lib/supabase';
 import Itinerary from '@/components/Trip/Itinerary.astro';
 import Hero from '@/components/Trip/Hero.astro';
-import { undefined } from 'astro:schema';
+console.log("Connecting to Supabase...");
+const slug = Astro.params.trip_id || '';
+console.log("slug", slug);
+const user = Astro.locals.user_id;
 
-let userID = Astro.locals.user_id || "";
-let slug = Astro.params.trip_id || "";
+// Get trip data
+const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details', {
+  p_trip_id: slug,
+  p_current_user_id: user
+});
 
-// Fetch trip data
-let { data: tripDATA, error } = await Astro.callAction(actions.trip.getTripDetails, { slug, user_id: userID });
-if (error) throw error;
+console.log("Error:", error);
 
-if (!tripDATA) {
-  return Astro.redirect("/trips");
+if (error || !tripData) {
+  return Astro.redirect('/404');
 }
-let trip = tripDATA
-// Extract the first detail object
-let trip_details = trip.trip_details
 
-// Keep other nested arrays
-let trip_location = trip.trip_location;
-let trip_members = trip.trip_members;
-let trip_pools = trip.trip_pools;
-let trip_pool_members = trip.trip_pool_members;
-let trip_expenses = trip.trip_expenses;
-let trip_images = trip.trip_images;
-let trip_visibility = trip.trip_visibility;
-console.log("trip_visibility", trip_members);
+console.log("tripData", tripData);
+
+const trip = tripData;
+console.log("tripsssss", trip);
+// Extract data from the nested structure
+const {
+  trip_id,
+  title,
+  description,
+  status,
+  user_role,
+  trip_details,
+  trip_locations,
+  trip_members,
+  trip_visibility,
+  trip_images,
+} = trip;
+
+// Get primary location (destination)
+const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
+const destination = primaryLocation?.location?.name || 'No destination set';
+
+// Prepare props for components
+const tripProps = {
+  tripId: trip_id,
+  title,
+  description: trip_details?.description || description,
+  tripStatus: status,
+  userRole: user_role,
+  visibility: trip_visibility?.visibility || 'private',
+  
+  // Trip Details
+  destination,
+  tripStart: trip_details?.start_date,
+  tripEnd: trip_details?.end_date,
+  joinedBy: trip_details?.join_by 
+    ? `${trip_details.join_by}T${trip_details.join_by_time || '23:59:00'}`
+    : null,
+  
+  // Members
+  currentPax: trip_members?.length || 0,
+  maxPax: trip_details?.max_pax || 0,
+  members: trip_members || [],
+  
+  // Preferences
+  genderPref: trip_details?.gender_pref || 'any',
+  costSharing: trip_details?.cost_sharing || 'split_evenly',
+  estimatedBudget: trip_details?.estimated_budget,
+  
+  // Tags
+  tags: trip_details?.tags || [],
+  
+  // Locations
+  locations: trip_locations || []
+};
 ---
 
-<PagePlate title={trip.title}>
-  <Hero server:defer userRole={trip.user_role} trip_images={trip_images}/>
+<Layout title={`${title} | Tara G`}>
+  <section class="max-w-5xl mx-auto mt-8 mb-16 px-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <Hero server:defer userRole={trip.user_role} trip_images={trip_images}/>
+      <TripHeader {...tripProps} />
+      <TripDetails {...tripProps} />
+    </div>
 
-  <Summary server:defer
-      tripMembers={trip_members}
-      userRole={trip.user_role}
-      status={trip.status}
-      title={trip.title}
-      joinBy={trip_details?.join_by}
-      description={trip.description}
-      destination={trip_details?.region}
-      tripStart={trip_details?.start_date}
-      tripEnd={trip_details?.end_date}
-      genderPref={trip_details?.gender_pref}
-      maxPax={trip_details?.max_pax}
-      costSharing={trip_details?.cost_sharing}
-      tags={trip_details?.tags}
-      maxPax={trip_visibility?.max_participants}
-      currentPax={trip_visibility?.current_participants}
-      visibility={trip_visibility?.visibility}
-      members={trip_members}
-    /> 
-<Itinerary 
+    {/* Action Buttons for Join/Leave */}
+    {user_role !== 'owner' && (
+      <div class="mt-6 flex justify-end gap-3">
+        {user_role === 'visitor' && trip_members.length < trip_details.max_pax && status === 'active' && (
+          <button 
+            id="join-btn" 
+            class="btn btn-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-none shadow-lg shadow-green-500/30"
+          >
+            Request to Join
+          </button>
+        )}
+        
+        {user_role === 'visitor' && trip_members.length >= trip_details.max_pax && (
+          <button class="btn btn-lg bg-gray-100 text-gray-400 cursor-not-allowed" disabled>
+            Trip Full
+          </button>
+        )}
+        
+        {user_role === 'pending' && (
+          <button 
+            id="cancel-req-btn" 
+            class="btn btn-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
+          >
+            Cancel Request
+          </button>
+        )}
+        
+        {user_role === 'member' && (
+          <button 
+            id="leave-trip-btn"
+            class="btn btn-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
+          >
+            Leave Trip
+          </button>
+        )}
+      </div>
+    )}
+
+    {/* Members List */}
+    {(user_role === 'owner' || user_role === 'member') && (
+      <div class="mt-6">
+        <Member members={trip_members} />
+      </div>
+    )}
+    <Itinerary 
   server:defer
-  trip_location={(trip_location as any) || undefined}
+  trip_location={(trip_locations as any) || undefined}
   userRole={trip.user_role}
   tripId={trip.trip_id}
-/>
-</PagePlate>
+  />
+
+  </section>
+</Layout>
+
+<script>
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+  import { createConfirmModal } from '@/scripts/Modal';
+
+  const joinBtn = document.getElementById('join-btn') as HTMLButtonElement;
+  const cancelRequestBtn = document.getElementById('cancel-req-btn') as HTMLButtonElement;
+  const leaveTripBtn = document.getElementById('leave-trip-btn') as HTMLButtonElement;
+  
+  const tripId = window.location.pathname.split('/').pop();
+
+  if (joinBtn) {
+    joinBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to join this trip?',
+        confirmText: 'Join',
+        onConfirm: async () => {
+          const { data, error } = await actions.trip.joinTrip({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Joined trip successfully!', type: 'success' });
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        },
+      });
+    });
+  }
+
+  if (cancelRequestBtn) {
+    cancelRequestBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to cancel your request to join this trip?',
+        confirmText: 'Yes, cancel request',
+        onConfirm: async () => {
+          const { data, error } = await actions.trip.cancelJoinRequest({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Canceled trip request successfully!', type: 'success' });
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        },
+      });
+    });
+  }
+
+  if (leaveTripBtn) {
+    leaveTripBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to leave this trip?',
+        confirmText: 'Yes, leave trip',
+        onConfirm: async () => {
+          const { data, error } = await actions.trip.leaveTrip({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: "error.message", type: 'error' });
+          } else {
+            showToast({ message: 'Left trip successfully!', type: 'success' });
+            setTimeout(() => (window.location.href = '/trips'), 1500);
+          }
+        },
+      });
+    });
+  }
+</script>

@@ -1,0 +1,118 @@
+---
+import { Share2Icon } from '@lucide/astro';
+import TripStatusBadge from './TripStatusBadge.astro';
+import TripStatusActions from './TripStatusActions.astro';
+
+const {
+  title,
+  visibility,
+  tags,
+  userRole,
+  tripId,
+  tripStatus
+} = Astro.props;
+
+let tagsArray = [];
+if (Array.isArray(tags)) {
+  tagsArray = tags;
+} else if (typeof tags === "string") {
+  const cleaned = tags.trim();
+  if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+    try {
+      tagsArray = JSON.parse(cleaned);
+    } catch (e) {
+      tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
+    }
+  }
+}
+
+const statusColors = {
+  active: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
+  completed: 'bg-blue-100 text-blue-700 ring-blue-600/20',
+  cancelled: 'bg-red-100 text-red-700 ring-red-600/20',
+  draft: 'bg-amber-100 text-amber-700 ring-amber-600/20',
+  archived: 'bg-gray-100 text-gray-700 ring-gray-600/20',
+  private: 'bg-purple-100 text-purple-700 ring-purple-600/20',
+  public: 'bg-sky-100 text-sky-700 ring-sky-600/20',
+};
+
+const isOwner = userRole === 'owner';
+---
+
+<div class="bg-gradient-to-br from-green-50 via-white to-emerald-50 p-6 md:p-8 border-b border-gray-100">
+  <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+    
+    <!-- Title & Tags -->
+    <div class="space-y-3 flex-1">
+      <div class="flex items-start gap-3 flex-wrap">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+          {title}
+        </h1>
+        <div class="flex gap-2">
+          {visibility && (
+            <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
+              {visibility.toUpperCase()}
+            </span>
+          )}
+          {isOwner && tripStatus && (
+            <TripStatusBadge status={tripStatus} />
+          )}
+        </div>
+      </div>
+      
+      {tagsArray.length > 0 && (
+        <div class="flex flex-wrap gap-2">
+          {tagsArray.map((tag: string) => (
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-2 items-center">
+      {isOwner && tripStatus && (
+        <TripStatusActions status={tripStatus} tripId={tripId} />
+      )}
+      
+      <button 
+        id="share-trip-btn"
+        class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        aria-label="Share trip"
+      >
+        <Share2Icon class="w-4 h-4" />
+        <span class="hidden sm:inline">Share</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const shareBtn = document.getElementById('share-trip-btn');
+  
+  shareBtn?.addEventListener('click', async () => {
+    const url = window.location.href;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: document.title,
+          url: url
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        // You can add a toast notification here
+        alert('Link copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  });
+</script>

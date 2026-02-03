@@ -1,0 +1,74 @@
+---
+
+import StopCard from './StopCard.astro';
+import type { CompleteStop } from '@/types/itinerary';
+import { formatDate } from '@/utility/dateFormatter';
+
+interface Props {
+  dayIndex: number;
+  stops: CompleteStop[];
+  isOwner: boolean;
+}
+
+const { dayIndex, stops, isOwner } = Astro.props;
+const firstStop = stops[0]?.stop;
+const dayDate = firstStop ? formatDate(firstStop.scheduled_start) : '';
+---
+
+<div class="day-section mb-8" data-day-index={dayIndex}>
+  <!-- Day Header -->
+  <div class="day-header bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl p-4 mb-4 cursor-pointer hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <div>
+          <h2 class="text-xl font-bold">Day {dayIndex + 1}</h2>
+          <p class="text-emerald-100 text-sm">{dayDate}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="bg-white/20 px-3 py-1 rounded-lg text-sm font-semibold">
+          {stops.length} stops
+        </span>
+        {isOwner && (
+          <button 
+            class="add-stop-btn bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm font-semibold items-center gap-2 hidden"
+            data-day-index={dayIndex}
+          >
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Stop
+          </button>
+        )}
+        <svg class="w-5 h-5 chevron-icon transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Container -->
+  <div class="timeline-container relative ml-6" data-day={dayIndex}>
+    <!-- Vertical Line -->
+    <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-200 via-green-200 to-blue-200"></div>
+    
+    {stops.map((completeStop) => (
+      <StopCard 
+        completeStop={completeStop}
+        isOwner={isOwner}
+      />
+    ))}
+  </div>
+</div>
+
+<style>
+  .chevron-icon {
+    transition: transform 0.3s ease;
+  }
+  :global(.rotate-180) {
+    transform: rotate(180deg);
+  }
+</style>

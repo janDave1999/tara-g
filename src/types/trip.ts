@@ -1,5 +1,5 @@
 export type TripFormData = {
-  gender_preference: string;
+  gender_preference: any;
   tags: string[];
   joined_by: string;
   title: string;
@@ -15,7 +15,7 @@ export type TripFormData = {
   pickup_dates: string;
   dropoff_dates: string;
   waiting_time: number;
-  cost_sharing: string;
+  cost_sharing: 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split';
   slug: string;
   max_pax: number;
   estimated_budget: number | null;
@@ -36,16 +36,16 @@ export interface TripLocation {
   locations: Location;
 }
 
-export interface TripDetails {
-  start_date: string;
-  end_date: string;
-  gender_pref?: string;
-  cost_sharing?: string;
-  region?: string;
-  cover_image?: string;
-  tags?: string[];
-  max_pax?: number;
-}
+// export interface TripDetails {
+//   start_date: string;
+//   end_date: string;
+//   gender_pref?: string;
+//   cost_sharing?: string;
+//   region?: string;
+//   cover_image?: string;
+//   tags?: string[];
+//   max_pax?: number;
+// }
 
 // export interface TripMember {
 //   user_id: string;
@@ -69,19 +69,19 @@ export interface TripExpense {
   amount: number;
 }
 
-export interface Trip {
-  trip_id: string;
-  owner_id: string;
-  title: string;
-  description: string;
-  status: string;
-  trip_details?: TripDetails[];
-  trip_location?: TripLocation[];
-  trip_members?: TripMember[];
-  trip_pools?: TripPool[];
-  trip_pool_members?: TripPoolMember[];
-  trip_expenses?: TripExpense[];
-}
+// export interface Trip {
+//   trip_id: string;
+//   owner_id: string;
+//   title: string;
+//   description: string;
+//   status: string;
+//   trip_details?: TripDetails[];
+//   trip_location?: TripLocation[];
+//   trip_members?: TripMember[];
+//   trip_pools?: TripPool[];
+//   trip_pool_members?: TripPoolMember[];
+//   trip_expenses?: TripExpense[];
+// }
 
 
 export type TripMember = {
@@ -144,3 +144,102 @@ export type CompleteMembersData = {
   pending_invitations: PendingInvitation[];
   summary: MembersSummary;
 };
+
+
+
+
+// ============================================================================
+// FILE: Data Type Definitions (src/types/trip.ts)
+// ============================================================================
+
+export interface TripLocation {
+  id: string;
+  start_time: string;
+  end_time: string;
+  waiting_time: number;
+  type: string;
+  notes: string;
+  is_primary: boolean;
+  location: {
+    location_id: string;
+    name: string;
+    lat: string;
+    lng: string;
+  };
+  activities: Array<{
+    id: string;
+    activity_type: string;
+    description: string;
+    planned_duration_minutes: number;
+  }>;
+}
+
+// export interface TripMember {
+//   user_id: string;
+//   full_name: string;
+//   avatar_url: string;
+//   role: string;
+//   member_status: 'pending' | 'accepted' | 'declined';
+//   joined_at: string;
+// }
+
+export interface TripDetails {
+  description: string;
+  start_date: string;
+  end_date: string;
+  cover_image: string;
+  region: string;
+  max_pax: number;
+  gender_pref: string;
+  cost_sharing: string;
+  estimated_budget: number;
+  join_by: string;
+  join_by_time: string;
+  tags: string[];
+}
+
+export interface TripVisibility {
+  visibility: 'private' | 'public';
+  max_participants: number;
+  current_participants: number;
+  is_reusable: boolean;
+  share_slug: string;
+}
+
+export interface Trip {
+  trip_id: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  status: 'draft' | 'active' | 'completed' | 'archived' | 'cancelled';
+  user_role: 'owner' | 'member' | 'pending' | 'visitor';
+  trip_details: TripDetails;
+  trip_locations: TripLocation[];
+  trip_members: TripMember[];
+  trip_visibility: TripVisibility;
+  trip_pools: any;
+  trip_pool_members: any[];
+  trip_expenses: any[];
+  trip_images: any[];
+}
+
+export interface TripPageProps {
+  tripId: string;
+  title: string;
+  description: string;
+  tripStatus: string;
+  userRole: string;
+  visibility: string;
+  destination: string;
+  tripStart: string;
+  tripEnd: string;
+  joinedBy: string;
+  currentPax: number;
+  maxPax: number;
+  members: TripMember[];
+  genderPref: string;
+  costSharing: string;
+  estimatedBudget: number;
+  tags: string[];
+  locations: TripLocation[];
+}

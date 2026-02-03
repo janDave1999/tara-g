@@ -6,10 +6,10 @@ interface Location {
 }
 
 interface TripLocation {
-  start_time: string;
-  end_time: string;
+  scheduled_start: string;
+  scheduled_end: string;
   waiting_time: number;
-  type: string;
+  stop_type: string;
   location: Location | undefined;
 }
 
@@ -34,8 +34,27 @@ const formatTime = (isoStr: string) => {
 };
 
 // Helper: Human Readable Timeline Logic
-const getDisplayTime = (start: string, end: string) => {
-  const isSameDay = start.slice(0, 10) === end.slice(0, 10);
+const getDisplayTime = (start: any, end: any, waiting_time: number) => {
+  console.log("start", start, "end", end);
+
+  // if waiting time is 0 then make default to 15 minutes
+  if (waiting_time === 0) {
+    waiting_time = 15;
+  }
+
+  // if start is null then set it to end - waiting time
+  if (!start) {
+    start = new Date(end).getTime() - (waiting_time * 60000);
+    start = new Date(start).toISOString();
+  }
+
+  // if end is null then set it to start + waiting time
+  if (!end) {
+    end = new Date(start).getTime() + (waiting_time * 60000);
+    end = new Date(end).toISOString();
+  }
+  console.log("start", start, "end", end);
+  const isSameDay = start.slice(0, 10) === end?.slice(0, 10);
   if (isSameDay) {
     return `${formatDate(start)} | ${formatTime(start)} - ${formatTime(end)}`;
   }
@@ -44,7 +63,7 @@ const getDisplayTime = (start: string, end: string) => {
 
 // Sort timeline by start_time
 const sortedLocations = [...trip_location].sort((a, b) => 
-  new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+  new Date(a.scheduled_start).getTime() - new Date(b.scheduled_end).getTime()
 );
 
 // Category color mapping (green theme)
@@ -98,7 +117,7 @@ const categoryStyles = {
     <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-green-200 via-emerald-200 to-teal-200"></div>
     
     {sortedLocations.map((item) => {
-      const style = categoryStyles[item.type as keyof typeof categoryStyles] || categoryStyles.activity;
+      const style = categoryStyles[item.stop_type as keyof typeof categoryStyles] || categoryStyles.activity;
       
       return (
         <div class="timeline-item relative group pl-8 md:pl-10">
@@ -113,7 +132,7 @@ const categoryStyles = {
               <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
                 <div class="space-y-2 flex-1">
                   <span class={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
-                    {item.type}
+                    {item.stop_type}
                   </span>
                   <h3 class="text-xl font-bold text-gray-900 leading-tight">
                     {item.location?.name || 'Unnamed Stop'}
@@ -122,11 +141,11 @@ const categoryStyles = {
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {getDisplayTime(item.start_time, item.end_time)}
+                    {getDisplayTime(item.scheduled_start, item.scheduled_end, item.waiting_time)}
                   </p>
                 </div>
                 
-                {item.type !== 'destination' && item.waiting_time > 0 && (
+                {item.stop_type !== 'destination' && item.waiting_time > 0 && (
                   <div class="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
                     <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -150,11 +169,12 @@ const categoryStyles = {
                       name="type" 
                       class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     >
-                      <option value="pickup" selected={item.type === 'pickup'}>Pickup</option>
-                      <option value="transit" selected={item.type === 'transit'}>Transit</option>
-                      <option value="activity" selected={item.type === 'activity'}>Activity</option>
-                      <option value="lodging" selected={item.type === 'lodging'}>Lodging</option>
-                      <option value="destination" selected={item.type === 'destination'}>Destination</option>
+                      <option value="pickup" selected={item.stop_type === 'pickup'}>Pickup</option>
+                      <option value="transit" selected={item.stop_type === 'transit'}>Transit</option>
+                      <option value="activity" selected={item.stop_type === 'activity'}>Activity</option>
+                      <option value="lodging" selected={item.stop_type === 'lodging'}>Lodging</option>
+                      <option value="dropoff" selected={item.stop_type === 'dropoff'}>Drop-off</option>
+                      <option value="destination" selected={item.stop_type === 'destination'}>Destination</option>
                     </select>
                   </div>
                   <div class="space-y-2">
@@ -174,7 +194,7 @@ const categoryStyles = {
                     <input 
                       type="datetime-local" 
                       name="start_time" 
-                      value={item.start_time.slice(0, 16)} 
+                      value={(item?.scheduled_start || '').slice(0, 16)} 
                       class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>
@@ -183,7 +203,7 @@ const categoryStyles = {
                     <input 
                       type="datetime-local" 
                       name="end_time" 
-                      value={item.end_time.slice(0, 16)} 
+                      value={"item?.scheduled_end.slice(0, 16)"} 
                       class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>

@@ -1,0 +1,73 @@
+---
+import EditModal from '../EditModal.astro';
+
+const { costSharing, estimatedBudget, tripId } = Astro.props;
+---
+
+<EditModal modalId="edit-budget-modal" title="Edit Budget & Cost Sharing" colorScheme="amber">
+  <form id="edit-budget-form" class="space-y-4">
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Cost Sharing Method</span>
+      </label>
+      <select id="cost-sharing-input" name="cost_sharing" class="select select-bordered w-full" required>
+        <option value="split_evenly" selected={costSharing === 'split_evenly'}>Split Evenly</option>
+        <option value="organizer_shoulders_cost" selected={costSharing === 'organizer_shoulders_cost'}>Organizer Shoulders All Costs</option>
+        <option value="pay_own_expenses" selected={costSharing === 'pay_own_expenses'}>Everyone Pays Own Expenses</option>
+        <option value="custom_split" selected={costSharing === 'custom_split'}>Custom Split</option>
+      </select>
+    </div>
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Estimated Budget</span>
+      </label>
+      <input 
+        type="number" 
+        id="budget-input"
+        name="estimated_budget"
+        value={estimatedBudget || ''}
+        min="0"
+        step="100"
+        class="input input-bordered w-full" 
+        placeholder="e.g. 8500"
+      />
+      <label class="label">
+        <span class="label-text-alt text-gray-500">Per person or total, depending on cost sharing method</span>
+      </label>
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn" onclick="document.getElementById('edit-budget-modal').close()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+
+  const form = document.getElementById('edit-budget-form') as HTMLFormElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const tripId = new URLSearchParams(window.location.search).get('id') || 
+                   window.location.pathname.split('/').pop();
+
+    const budgetValue = formData.get('estimated_budget') as string;
+
+    const { data, error } = await actions.trip.updateTripBudget({
+      trip_id: tripId!,
+      cost_sharing: formData.get('cost_sharing') as string,
+      estimated_budget: budgetValue ? parseFloat(budgetValue) : null
+    });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: 'Budget updated successfully!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  });
+</script>

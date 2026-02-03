@@ -1,0 +1,91 @@
+---
+import ActivityList from './ActivityList.astro';
+import type { CompleteStop } from '@/types/itinerary';
+import { formatTime, getDuration } from '@/utility/dateFormatter';
+import { getStopColors } from '@/utility/stopColors';
+
+interface Props {
+  completeStop: CompleteStop;
+  isOwner: boolean;
+}
+
+const { completeStop, isOwner } = Astro.props;
+const { stop, activities } = completeStop;
+const colors = getStopColors(stop.stop_type);
+const stopTime = formatTime(stop.scheduled_start);
+const duration = getDuration(stop.scheduled_start, stop.scheduled_end);
+---
+
+<div class="timeline-item relative group pl-12 pb-6" data-stop-id={stop.id}>
+  <!-- Timeline Dot -->
+  <div class={`absolute -left-[9px] top-2 w-5 h-5 ${colors.dot} rounded-full border-4 border-white shadow-lg z-10 group-hover:scale-125 transition-transform`}></div>
+
+  <!-- Card -->
+  <div class={`stop-card ${colors.bg} border-2 ${colors.border} rounded-xl p-5 shadow-md hover:shadow-xl transition-all`}>
+    
+    <!-- View Mode -->
+    <div class="view-mode">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class={`px-2 py-1 ${colors.text} bg-white/70 rounded-md text-xs font-bold uppercase tracking-wider`}>
+              {stop.stop_type.replace('_', ' ')}
+            </span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-1">{stop.name}</h3>
+          {stop.location_name && (
+            <div class="flex items-center gap-2 text-gray-600 text-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>{stop.location_name}</span>
+            </div>
+          )}
+        </div>
+
+        <div class="flex items-start gap-2">
+          <div class="text-right">
+            <div class="flex items-center gap-2 justify-end text-lg font-bold text-gray-900">
+              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {stopTime}
+            </div>
+            <div class="text-sm text-gray-500 font-medium">{duration}</div>
+          </div>
+
+          {isOwner && (
+            <div class="edit-controls hidden gap-1">
+              <button class="edit-stop-btn p-2 hover:bg-white/50 rounded-lg transition-all" title="Edit stop">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button class="delete-stop-btn p-2 hover:bg-white/50 rounded-lg transition-all" title="Delete stop">
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {stop.notes && (
+        <div class="bg-white/60 rounded-lg p-3 mb-3">
+          <p class="text-sm text-gray-700 italic">{stop.notes}</p>
+        </div>
+      )}
+
+      <ActivityList 
+        activities={activities}
+        stopId={stop.id}
+        isOwner={isOwner}
+      />
+    </div>
+
+    <!-- Edit Mode (populated by JS) -->
+    <div class="edit-mode hidden"></div>
+  </div>
+</div>

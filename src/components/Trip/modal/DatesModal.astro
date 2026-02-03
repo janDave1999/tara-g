@@ -1,0 +1,62 @@
+---
+import EditModal from '../EditModal.astro';
+import DatePicker from '@/components/DatePicker.astro';
+
+const { tripStart, tripEnd, joinedBy, tripId } = Astro.props;
+---
+
+<EditModal modalId="edit-dates-modal" title="Edit Trip Dates" colorScheme="emerald">
+  <form id="edit-dates-form" class="space-y-4">
+    <DatePicker
+      label="Trip Dates"
+      nameFrom="start_date"
+      nameTo="end_date"
+      required={true}
+      id="tripDatesEdit"
+    />
+
+    <DatePicker
+      label="Join Deadline"
+      name="joined_by"
+      id="joinedByEdit"
+      mode="single"
+      enableTime={true}
+      defaultTime="23:59"
+      required={true}
+    />
+
+    <div class="modal-action">
+      <button type="button" class="btn" onclick="document.getElementById('edit-dates-modal').close()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+
+  const form = document.getElementById('edit-dates-form') as HTMLFormElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const tripId = new URLSearchParams(window.location.search).get('id') || 
+                   window.location.pathname.split('/').pop();
+
+    const { data, error } = await actions.trip.updateTripDates({
+      trip_id: tripId!,
+      start_date: formData.get('start_date') as string,
+      end_date: formData.get('end_date') as string,
+      joined_by: formData.get('joined_by') as string
+    });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: 'Dates updated successfully!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  });
+</script>

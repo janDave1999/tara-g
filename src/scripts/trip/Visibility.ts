@@ -3,7 +3,7 @@ import { actions } from "astro:actions";
 
 export async function getTripById(id: string) {
 //   astro action
-    let { data } = await actions.trip.getTripDetails({ slug: id });
+    let { data } = await actions.trip.getTripDetails({ tripId: id });
     console.log("data", data);
 
   return data;

@@ -1,0 +1,63 @@
+---
+// File: src/components/itinerary/Itinerary.astro
+// Main itinerary component (thin wrapper)
+
+import ItineraryHeader from './ItineraryHeader.astro';
+import DaySection from './DaySection.astro';
+import type { TripItinerary, CompleteStop } from '@/types/itinerary';
+
+interface Props {
+  tripId: string;
+  initialData: TripItinerary;
+  isOwner: boolean;
+}
+
+const { tripId, initialData, isOwner } = Astro.props;
+
+// Group stops by day
+const stopsByDay: CompleteStop[][] = [];
+let currentDay: CompleteStop[] = [];
+let currentDate = '';
+
+initialData?.stops?.forEach((completeStop, index) => {
+  const stopDate = new Date(completeStop.stop.scheduled_start).toDateString();
+  
+  if (index === 0) {
+    currentDate = stopDate;
+    currentDay.push(completeStop);
+  } else if (stopDate === currentDate) {
+    currentDay.push(completeStop);
+  } else {
+    stopsByDay.push([...currentDay]);
+    currentDay = [completeStop];
+    currentDate = stopDate;
+  }
+  
+  if (index === initialData.stops.length - 1) {
+    stopsByDay.push(currentDay);
+  }
+});
+---
+
+<div 
+  id="itinerary-root" 
+  class="max-w-6xl mx-auto p-4 md:p-6" 
+  data-trip-id={tripId} 
+  data-is-owner={isOwner}
+>
+  <ItineraryHeader 
+    isOwner={isOwner}
+  />
+
+  <div id="days-container" class="space-y-8">
+    {stopsByDay.map((dayStops, dayIndex) => (
+      <DaySection 
+        dayIndex={dayIndex}
+        stops={dayStops}
+        isOwner={isOwner}
+      />
+    ))}
+  </div>
+</div>
+
+<script src="../../../scripts/Itinerary/Itinerary.ts"></script>

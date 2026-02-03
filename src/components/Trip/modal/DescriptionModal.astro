@@ -1,0 +1,174 @@
+---
+import EditModal from '../EditModal.astro';
+
+const { title, description, tags, tripId } = Astro.props;
+
+let tagsArray = [];
+if (Array.isArray(tags)) {
+  tagsArray = tags;
+} else if (typeof tags === "string") {
+  const cleaned = tags.trim();
+  if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+    try {
+      tagsArray = JSON.parse(cleaned);
+    } catch (e) {
+      tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
+    }
+  }
+}
+---
+
+<EditModal modalId="edit-description-modal" title="Edit Trip Description" colorScheme="purple">
+  <form id="edit-description-form" class="space-y-4">
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Title</span>
+      </label>
+      <input 
+        type="text" 
+        id="title-input"
+        name="title"
+        value={title}
+        maxlength="100"
+        class="input input-bordered w-full" 
+        required
+      />
+      <label class="label">
+        <span class="label-text-alt text-gray-500"><span id="title-count">{title.length}</span>/100</span>
+      </label>
+    </div>
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Description</span>
+      </label>
+      <textarea 
+        id="description-input"
+        name="description"
+        rows="5"
+        maxlength="500"
+        class="textarea textarea-bordered w-full" 
+        required
+      >{description}</textarea>
+      <label class="label">
+        <span class="label-text-alt text-gray-500"><span id="desc-count">{description.length}</span>/500</span>
+      </label>
+    </div>
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Tags</span>
+      </label>
+      <div class="flex flex-wrap gap-2 mb-2" id="tags-display">
+        {tagsArray.map((tag: string) => (
+          <span class="badge badge-lg gap-2" data-tag={tag}>
+            {tag}
+            <button type="button" class="btn btn-ghost btn-xs btn-circle remove-tag">✕</button>
+          </span>
+        ))}
+      </div>
+      <div class="join w-full">
+        <input 
+          type="text" 
+          id="tag-input"
+          placeholder="Add a tag..."
+          class="input input-bordered join-item w-full"
+        />
+        <button type="button" class="btn join-item" id="add-tag-btn">Add</button>
+      </div>
+      <input type="hidden" id="tags-hidden" name="tags" value={JSON.stringify(tagsArray)} />
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn" onclick="document.getElementById('edit-description-modal').close()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+
+  const form = document.getElementById('edit-description-form') as HTMLFormElement;
+  const titleInput = document.getElementById('title-input') as HTMLInputElement;
+  const descInput = document.getElementById('description-input') as HTMLTextAreaElement;
+  const titleCount = document.getElementById('title-count') as HTMLSpanElement;
+  const descCount = document.getElementById('desc-count') as HTMLSpanElement;
+  const tagInput = document.getElementById('tag-input') as HTMLInputElement;
+  const addTagBtn = document.getElementById('add-tag-btn') as HTMLButtonElement;
+  const tagsDisplay = document.getElementById('tags-display') as HTMLDivElement;
+  const tagsHidden = document.getElementById('tags-hidden') as HTMLInputElement;
+
+  let currentTags: string[] = JSON.parse(tagsHidden.value || '[]');
+
+  // Character counters
+  titleInput?.addEventListener('input', () => {
+    titleCount.textContent = titleInput.value.length.toString();
+  });
+
+  descInput?.addEventListener('input', () => {
+    descCount.textContent = descInput.value.length.toString();
+  });
+
+  // Tag management
+  function updateTagsDisplay() {
+    tagsDisplay.innerHTML = currentTags.map(tag => `
+      <span class="badge badge-lg gap-2" data-tag="${tag}">
+        ${tag}
+        <button type="button" class="btn btn-ghost btn-xs btn-circle remove-tag">✕</button>
+      </span>
+    `).join('');
+
+    tagsHidden.value = JSON.stringify(currentTags);
+
+    // Reattach remove listeners
+    document.querySelectorAll('.remove-tag').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const badge = (e.target as HTMLElement).closest('[data-tag]');
+        const tag = badge?.getAttribute('data-tag');
+        if (tag) {
+          currentTags = currentTags.filter(t => t !== tag);
+          updateTagsDisplay();
+        }
+      });
+    });
+  }
+
+  addTagBtn?.addEventListener('click', () => {
+    const newTag = tagInput.value.trim().toLowerCase();
+    if (newTag && !currentTags.includes(newTag)) {
+      currentTags.push(newTag);
+      updateTagsDisplay();
+      tagInput.value = '';
+    }
+  });
+
+  tagInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTagBtn.click();
+    }
+  });
+
+  // Initialize remove tag listeners
+  updateTagsDisplay();
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const tripId = new URLSearchParams(window.location.search).get('id') || 
+                   window.location.pathname.split('/').pop();
+
+    const { data, error } = await actions.trip.updateTripDescription({
+      trip_id: tripId!,
+      title: titleInput.value,
+      description: descInput.value,
+      tags: currentTags
+    });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: 'Description updated successfully!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  });
+</script>

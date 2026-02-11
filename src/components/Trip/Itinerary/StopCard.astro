@@ -1,22 +1,21 @@
 ---
 import ActivityList from './ActivityList.astro';
-import type { CompleteStop } from '@/types/itinerary';
+import type { ItineraryStop } from '@/types/itinerary';
 import { formatTime, getDuration } from '@/utility/dateFormatter';
 import { getStopColors } from '@/utility/stopColors';
 
 interface Props {
-  completeStop: CompleteStop;
+  completeStop: any;
   isOwner: boolean;
 }
 
 const { completeStop, isOwner } = Astro.props;
-const { stop, activities } = completeStop;
-const colors = getStopColors(stop.stop_type);
-const stopTime = formatTime(stop.scheduled_start);
-const duration = getDuration(stop.scheduled_start, stop.scheduled_end);
+const colors = getStopColors(completeStop.stop_type);
+const stopTime = formatTime(completeStop.scheduled_start);
+const duration = getDuration(completeStop.scheduled_start, completeStop.scheduled_end);
 ---
 
-<div class="timeline-item relative group pl-12 pb-6" data-stop-id={stop.id}>
+<div class="timeline-item relative group pl-12 pb-6" data-stop-id={completeStop.id}>
   <!-- Timeline Dot -->
   <div class={`absolute -left-[9px] top-2 w-5 h-5 ${colors.dot} rounded-full border-4 border-white shadow-lg z-10 group-hover:scale-125 transition-transform`}></div>
 
@@ -29,17 +28,17 @@ const duration = getDuration(stop.scheduled_start, stop.scheduled_end);
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
             <span class={`px-2 py-1 ${colors.text} bg-white/70 rounded-md text-xs font-bold uppercase tracking-wider`}>
-              {stop.stop_type.replace('_', ' ')}
+              {completeStop.stop_type.replace('_', ' ')}
             </span>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 mb-1">{stop.name}</h3>
-          {stop.location_name && (
+          <!-- <h3 class="text-xl font-bold text-gray-900 mb-1">{completeStop.location_name}</h3> -->
+          {completeStop.location_name && (
             <div class="flex items-center gap-2 text-gray-600 text-sm">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span>{stop.location_name}</span>
+              <h5 class="text-xl font-bold text-gray-900 mb-1">{completeStop.location_name}</h5>
             </div>
           )}
         </div>
@@ -52,7 +51,7 @@ const duration = getDuration(stop.scheduled_start, stop.scheduled_end);
               </svg>
               {stopTime}
             </div>
-            <div class="text-sm text-gray-500 font-medium">{duration}</div>
+            <!-- <div class="text-sm text-gray-500 font-medium">{duration}</div> -->
           </div>
 
           {isOwner && (
@@ -72,17 +71,18 @@ const duration = getDuration(stop.scheduled_start, stop.scheduled_end);
         </div>
       </div>
 
-      {stop.notes && (
+      {completeStop.notes && (
         <div class="bg-white/60 rounded-lg p-3 mb-3">
-          <p class="text-sm text-gray-700 italic">{stop.notes}</p>
+          <p class="text-sm text-gray-700 italic">{completeStop.notes}</p>
         </div>
       )}
 
-      <ActivityList 
-        activities={activities}
-        stopId={stop.id}
-        isOwner={isOwner}
-      />
+        <ActivityList 
+          activities={(completeStop as ItineraryStop)?.activities ?? []}
+          stopId={completeStop.id}
+          isOwner={isOwner}
+        />
+  
     </div>
 
     <!-- Edit Mode (populated by JS) -->

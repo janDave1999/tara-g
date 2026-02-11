@@ -5,10 +5,11 @@ import TripDetails from '@/components/Trip/Summary.astro';
 import Member from '@/components/Trip/Member.astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import Itinerary from '@/components/Trip/Itinerary.astro';
+import Itinerary2 from '@/components/Trip/Itinerary/Itinerary2.astro';
 import Hero from '@/components/Trip/Hero.astro';
-console.log("Connecting to Supabase...");
+import type { CompleteStop, TripItinerary } from '@/types/itinerary';
+
 const slug = Astro.params.trip_id || '';
-console.log("slug", slug);
 const user = Astro.locals.user_id;
 
 // Get trip data
@@ -17,17 +18,15 @@ const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details
   p_current_user_id: user
 });
 
-console.log("Error:", error);
 
 if (error || !tripData) {
   return Astro.redirect('/404');
 }
 
-console.log("tripData", tripData);
 
 const trip = tripData;
-console.log("tripsssss", trip);
-// Extract data from the nested structure
+
+console.log("Triiiiiiiiiip", trip);
 const {
   trip_id,
   title,
@@ -136,6 +135,11 @@ const tripProps = {
   server:defer
   trip_location={(trip_locations as any) || undefined}
   userRole={trip.user_role}
+  tripId={trip.trip_id}
+  />
+  <Itinerary2 
+  initialData={(trip_locations as CompleteStop[]) || undefined}
+  isOwner={trip.user_role === 'owner'}
   tripId={trip.trip_id}
   />
 

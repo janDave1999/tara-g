@@ -1,50 +1,53 @@
 // File: src/pages/api/trips/member.ts
 import type { APIRoute } from 'astro';
 import { supabase } from '@/lib/supabase';
+import { 
+  handleApiError, 
+  ValidationError, 
+  createSuccessResponse 
+} from '../../../lib/errorHandler';
+import { validateBody, commonSchemas } from '../../../lib/validation';
+import { z } from 'zod';
+
+const memberTripsSchema = z.object({
+  userId: commonSchemas.id,
+  search: z.string().max(100).optional().nullable(),
+  memberStatus: z.enum(['pending', 'accepted', 'declined']).optional().nullable(),
+  limit: z.number().int().min(1).max(100).optional(),
+  offset: z.number().int().min(0).optional()
+});
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const body = await request.json() as {
-      userId: string;
-      search?: string;
-      memberStatus?: string;
-      limit?: number;
-      offset?: number;
-    };
-    const { userId, search, memberStatus, limit, offset } = body;
+    const body = await validateBody(memberTripsSchema)(request);
+    const { userId, search, memberStatus, limit = 12, offset = 0 } = body;
 
     const { data, error } = await supabase.rpc('get_user_member_trips', {
       p_user_id: userId,
-      p_search: search || null,
-      p_member_status: memberStatus || null,
-      p_limit: limit || 12,
-      p_offset: offset || 0,
+      p_search: search,
+      p_member_status: memberStatus,
+      p_limit: limit,
+      p_offset: offset,
     });
 
     if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      console.error('Database error fetching member trips:', error);
+      throw new Error('Failed to fetch member trips');
     }
 
-    return new Response(
-      JSON.stringify({
-        trips: data || [],
-        totalCount: data?.[0]?.total_count || 0,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+    const response = {
+      trips: data || [],
+      totalCount: Array.isArray(data) && data.length > 0 ? data[0]?.total_count || 0 : 0,
+      pagination: {
+        limit,
+        offset,
+        hasMore: (Array.isArray(data) && data.length > 0 ? data[0]?.total_count || 0 : 0) > (offset + limit)
       }
-    );
+    };
+
+    return createSuccessResponse(response);
+    
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return handleApiError(error);
   }
 };

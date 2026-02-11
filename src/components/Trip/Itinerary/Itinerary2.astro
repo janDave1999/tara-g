@@ -1,42 +1,47 @@
 ---
-// File: src/components/itinerary/Itinerary.astro
-// Main itinerary component (thin wrapper)
-
 import ItineraryHeader from './ItineraryHeader.astro';
 import DaySection from './DaySection.astro';
-import type { TripItinerary, CompleteStop } from '@/types/itinerary';
+import type { CompleteStop } from '@/types/itinerary';
 
 interface Props {
   tripId: string;
-  initialData: TripItinerary;
+  initialData: any;
   isOwner: boolean;
 }
 
 const { tripId, initialData, isOwner } = Astro.props;
-
+console.log("initialData", initialData);
 // Group stops by day
 const stopsByDay: CompleteStop[][] = [];
 let currentDay: CompleteStop[] = [];
 let currentDate = '';
+function groupStopsByDay(stops: CompleteStop[]) {
+  const stopsByDay: CompleteStop[][] = [];
+  let currentDay: CompleteStop[] = [];
+  let currentDate = '';
 
-initialData?.stops?.forEach((completeStop, index) => {
-  const stopDate = new Date(completeStop.stop.scheduled_start).toDateString();
-  
-  if (index === 0) {
-    currentDate = stopDate;
-    currentDay.push(completeStop);
-  } else if (stopDate === currentDate) {
-    currentDay.push(completeStop);
-  } else {
-    stopsByDay.push([...currentDay]);
-    currentDay = [completeStop];
-    currentDate = stopDate;
-  }
-  
-  if (index === initialData.stops.length - 1) {
-    stopsByDay.push(currentDay);
-  }
-});
+  stops.forEach((completeStop, index) => {
+    const stopDate = new Date(completeStop.stop?.scheduled_start).toDateString() || '';
+    if (index === 0) {
+      currentDate = stopDate;
+      currentDay.push(completeStop);
+    } else if (stopDate === currentDate) {
+      currentDay.push(completeStop);
+    } else {
+      stopsByDay.push([...currentDay]);
+      currentDay = [completeStop];
+      currentDate = stopDate;
+    }
+    
+    if (index === stops.length - 1) {
+      stopsByDay.push(currentDay);
+    }
+  });
+
+  return stopsByDay;
+}
+
+let groupedStops = groupStopsByDay(initialData || []);
 ---
 
 <div 
@@ -50,7 +55,7 @@ initialData?.stops?.forEach((completeStop, index) => {
   />
 
   <div id="days-container" class="space-y-8">
-    {stopsByDay.map((dayStops, dayIndex) => (
+    {groupedStops.map((dayStops, dayIndex) => (
       <DaySection 
         dayIndex={dayIndex}
         stops={dayStops}

@@ -52,6 +52,7 @@ const [ownedResult, memberResult, recentResult, suggestedResult] = await Promise
 ]);
 
 const ownedTrips = ownedResult.data || [];
+console.log("ownedTrips", ownedTrips);
 const memberTrips = memberResult.data || [];
 const recentTrips = recentResult.data || [];
 const suggestedTrips = suggestedResult.data || [];

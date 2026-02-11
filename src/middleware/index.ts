@@ -5,6 +5,7 @@
 import { defineMiddleware } from "astro:middleware";
 import { supabaseAdmin } from "@/lib/supabase";
 import micromatch from "micromatch";
+import { handleApiError } from "../lib/errorHandler";
 
 /* -------------------- Route Config -------------------- */
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**"];
@@ -41,13 +42,11 @@ const decodeJwt = (token: string) => {
 
 /* -------------------- Check Onboarding Status (RPC) -------------------- */
 async function checkOnboardingStatus(userId: string) {
-  console.log(`Checking onboarding status for ${userId}`);
   try {
     const { data, error } = await supabaseAdmin.rpc('get_onboarding_status', {
       p_user_id: userId
     });
-    console.log(`Onboarding status: ${JSON.stringify(data)}`);
-    console.log(`Onboarding error: ${error}`);
+    
     if (error) {
       console.error('Error fetching onboarding status:', error);
       return null;
@@ -58,6 +57,15 @@ async function checkOnboardingStatus(userId: string) {
     console.error('Exception in checkOnboardingStatus:', error);
     return null;
   }
+}
+
+/* -------------------- Create Standardized Error Response -------------------- */
+function createErrorResponse(message: string, status: number = 401): Response {
+  return handleApiError({
+    name: 'MiddlewareError',
+    message,
+    statusCode: status
+  });
 }
 
 /* -------------------- Middleware -------------------- */
@@ -115,7 +123,8 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
             secure: import.meta.env.PROD,
             maxAge: 60 * 60 * 24 * 30, // 30 days
           });
-        } else {
+} else {
+          console.warn('Token refresh failed:', error);
           // Refresh failed, clear cookies
           cookies.delete("sb-access-token", { path: "/" });
           cookies.delete("sb-refresh-token", { path: "/" });
@@ -128,12 +137,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     }
   }
 
-  /* -------------------- HARD ACTION GATE -------------------- */
+/* -------------------- HARD ACTION GATE -------------------- */
   if (isAction && !locals.user_id) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized Action" }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse("Unauthorized Action", 401);
   }
 
   /* -------------------- Protected Routes Guard -------------------- */
@@ -141,17 +147,14 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return redirect("/signin");
   }
 
-  /* -------------------- Protected API Routes Guard -------------------- */
+/* -------------------- Protected API Routes Guard -------------------- */
   if (
     micromatch.isMatch(pathname, protectedAPIRoutes) &&
     !locals.user_id &&
     !micromatch.isMatch(pathname, "/api/auth/**") &&
     !micromatch.isMatch(pathname, "/api/mapbox-token")
   ) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }), 
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse("Authentication required", 401);
   }
 
   /* -------------------- Guest Only Routes -------------------- */
@@ -161,15 +164,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 
   /* -------------------- ONBOARDING CHECK (Using RPC) -------------------- */
   if (locals.user_id ) {
-    // Skip onboarding check for exempt routes
+// Skip onboarding check for exempt routes
     const isExempt = onboardingExemptRoutes.some(route => 
       micromatch.isMatch(pathname, route)
-    );
-    console.log(
-      `Is exempt: ${isExempt}`
-    );
-    console.log(
-      `Onboarding routes: ${onboardingRoutes}`
     );
 
     if (!isExempt) {

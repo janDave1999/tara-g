@@ -47,7 +47,7 @@ const createAddActivityForm = (activitiesSection: HTMLElement) => {
   if (existingForm) return;
 
   const formHTML = `
-    <div class="add-activity-form bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border-2 border-dashed border-blue-400 space-y-2">
+    <form class="add-activity-form bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border-2 border-dashed border-blue-400 space-y-2">
       <h5 class="text-blue-700 font-bold text-sm">➕ New Activity</h5>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
@@ -67,7 +67,7 @@ const createAddActivityForm = (activitiesSection: HTMLElement) => {
         <button class="cancel-add-activity-btn px-3 py-1.5 text-xs text-gray-600 hover:bg-white/60 rounded font-semibold">Cancel</button>
         <button class="save-new-activity-btn px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded text-xs font-semibold">Add Activity</button>
       </div>
-    </div>
+    </form>
   `;
 
   const activitiesList = activitiesSection.querySelector('.activities-list');

@@ -7,6 +7,28 @@ import { uploadToR2 } from "@/scripts/R2/upload";
 import { defineProtectedAction } from "./utils";
 import type { JoinRequest, PendingInvitation, MembersSummary, CompleteMembersData } from "@/types/trip";
 
+// Type definition for optimized search result
+interface OptimizedSearchResult {
+  trip_id: string;
+  title: string;
+  description: string;
+  distance_km: number | null;
+  estimated_budget: number | null;
+  tags: string[];
+  available_spots: number;
+  max_participants: number;
+  current_participants: number;
+  start_date: string;
+  end_date: string;
+  region: string | null;
+  duration_days: number | null;
+  budget_per_person: number | null;
+  relevance_score: number;
+  primary_location_name: string | null;
+  primary_location_address: string | null;
+  images: string[];
+}
+
 
 // Initialize Supabase client (adjust based on your setup)
 
@@ -154,36 +176,193 @@ export interface TripFullDetails {
   }>;
 }
 
+// Enhanced validation with security and sanitization
 const createTripSchema = z.object({
-  // Basic info
-  title: z.string().min(3, 'Title must be at least 3 characters').max(100),
-  description: z.string().min(10, 'Description must be at least 10 characters').max(500),
-  slug: z.string().min(3),
+  // Basic info with enhanced validation
+  title: z.string()
+    .min(3, 'Title must be at least 3 characters')
+    .max(100, 'Title must be less than 100 characters')
+    .regex(/^[a-zA-Z0-9\s\-_!,.?]+$/, 'Title contains invalid characters')
+    .transform(val => val.trim()),
   
-  // Dates (dates only for trip duration)
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
-  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
-  joined_by: z.string(), // Full ISO timestamp
+  description: z.string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters')
+    .transform(val => val.trim()),
   
-  // Settings
-  max_pax: z.number().min(2).max(50),
-  gender_preference: z.enum(['any', 'male', 'female']),
-  cost_sharing: z.enum(['split_evenly', 'organizer_shoulders_cost', 'pay_own_expenses', 'custom_split']),
-  estimated_budget: z.number().nullable().optional(),
-  tags: z.array(z.string().min(2).max(30)).max(10),
+  slug: z.string()
+    .min(3, 'Slug must be at least 3 characters')
+    .max(100, 'Slug must be less than 100 characters')
+    .regex(/^[a-z0-9\-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
   
-  // Location data
-  region_address: z.string(),
-  region_coordinates: z.string(),
+  // Enhanced date validation
+  start_date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
+    .refine(date => {
+      const d = new Date(date);
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      return d >= now; // Not before today
+    }, 'Trip cannot start in the past'),
   
-  pickup_address: z.string(),
-  pickup_coordinates: z.string(),
-  pickup_dates: z.string(), // Full ISO timestamp
-  waiting_time: z.number().min(0).max(60).default(15),
+  end_date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   
-  dropoff_address: z.string(),
-  dropoff_coordinates: z.string(),
-  dropoff_dates: z.string(), // Full ISO timestamp
+  joined_by: z.string()
+    .datetime('Invalid datetime format')
+    .refine(datetime => {
+      const d = new Date(datetime);
+      return d >= new Date(); // Not in the past
+    }, 'Join deadline cannot be in the past'),
+  
+  // Enhanced settings validation
+  max_pax: z.number()
+    .int('Must be a whole number')
+    .min(2, 'Minimum 2 participants required')
+    .max(50, 'Maximum 50 participants allowed'),
+  
+  gender_preference: z.enum(['any', 'male', 'female'], {
+    errorMap: (issue) => ({ message: 'Invalid gender preference' })
+  }),
+  
+  cost_sharing: z.enum([
+    'split_evenly', 
+    'organizer_shoulders_cost', 
+    'pay_own_expenses', 
+    'custom_split'
+  ], {
+    errorMap: (issue) => ({ message: 'Invalid cost sharing method' })
+  }),
+  
+  estimated_budget: z.number()
+    .min(0, 'Budget cannot be negative')
+    .max(9999999, 'Budget amount too large')
+    .nullable()
+    .optional(),
+  
+  tags: z.array(z.string()
+    .min(2, 'Tag must be at least 2 characters')
+    .max(30, 'Tag must be less than 30 characters')
+    .regex(/^[a-zA-Z0-9\s\-_]+$/, 'Tag contains invalid characters')
+    .transform(tag => tag.trim().toLowerCase())
+  ).max(10, 'Maximum 10 tags allowed'),
+  
+  // Location data with coordinate validation
+  region_address: z.string()
+    .min(3, 'Region address is required')
+    .max(200, 'Region address too long')
+    .transform(val => val.trim()),
+  
+  region_coordinates: z.string()
+    .refine(coords => {
+      try {
+        const parsed = JSON.parse(coords);
+        return Array.isArray(parsed) && parsed.length === 2 && 
+               parsed.every(coord => typeof coord === 'number' && 
+               coord >= -180 && coord <= 180);
+      } catch {
+        return false;
+      }
+    }, 'Invalid region coordinates format'),
+  
+  pickup_address: z.string()
+    .min(3, 'Pickup address is required')
+    .max(200, 'Pickup address too long')
+    .transform(val => val.trim()),
+  
+  pickup_coordinates: z.string()
+    .refine(coords => {
+      try {
+        const parsed = JSON.parse(coords);
+        return Array.isArray(parsed) && parsed.length === 2 && 
+               parsed.every(coord => typeof coord === 'number' && 
+               coord >= -180 && coord <= 180);
+      } catch {
+        return false;
+      }
+    }, 'Invalid pickup coordinates format'),
+  
+  pickup_dates: z.string()
+    .datetime('Invalid pickup datetime format')
+    .refine(datetime => {
+      const d = new Date(datetime);
+      return d >= new Date(); // Not in the past
+    }, 'Pickup time cannot be in the past'),
+  
+  waiting_time: z.number()
+    .int('Waiting time must be a whole number')
+    .min(0, 'Waiting time cannot be negative')
+    .max(60, 'Waiting time cannot exceed 60 minutes')
+    .default(15),
+  
+  dropoff_address: z.string()
+    .min(3, 'Dropoff address is required')
+    .max(200, 'Dropoff address too long')
+    .transform(val => val.trim()),
+  
+  dropoff_coordinates: z.string()
+    .refine(coords => {
+      try {
+        const parsed = JSON.parse(coords);
+        return Array.isArray(parsed) && parsed.length === 2 && 
+               parsed.every(coord => typeof coord === 'number' && 
+               coord >= -180 && coord <= 180);
+      } catch {
+        return false;
+      }
+    }, 'Invalid dropoff coordinates format'),
+  
+  dropoff_dates: z.string()
+    .datetime('Invalid dropoff datetime format')
+}).superRefine((data, ctx) => {
+  // Cross-field validation
+  const startDate = new Date(data.start_date);
+  const endDate = new Date(data.end_date);
+  const joinBy = new Date(data.joined_by);
+  const pickupDate = new Date(data.pickup_dates);
+  const dropoffDate = new Date(data.dropoff_dates);
+  
+  // End date must be after start date
+  if (endDate <= startDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End date must be after start date',
+      path: ['end_date']
+    });
+    return false;
+  }
+  
+  // Join deadline must be before trip start
+  if (joinBy >= startDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Join deadline must be before trip start',
+      path: ['joined_by']
+    });
+    return false;
+  }
+  
+  // Pickup must be on or before trip start
+  if (pickupDate > startDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Pickup time must be on or before trip start',
+      path: ['pickup_dates']
+    });
+    return false;
+  }
+  
+  // Dropoff must be after pickup
+  if (dropoffDate <= pickupDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Dropoff time must be after pickup time',
+      path: ['dropoff_dates']
+    });
+    return false;
+  }
+  
+  return true;
 });
 
 export const trip = {
@@ -595,63 +774,103 @@ export const trip = {
     },
   }),
   
-  getNearbyTrips: defineAction({
+getNearbyTrips: defineAction({
     input: z.object({
-      lat: z.number(),
-      lng: z.number(),
-      radius: z.number(),
-      page: z.number().default(1),
-      tag_filter: z.array(z.string()).default([]),
-      location_filter: z.string().default("destination"),
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      radiusKm: z.number().min(0.1).max(1000).default(50),
+      tags: z.array(z.string()).optional(),
+      minBudget: z.number().min(0).optional(),
+      maxBudget: z.number().min(0).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      locationType: z.enum(['destination', 'pickup', 'all']).default('destination'),
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
     }),
     
     async handler(input) {
-      const allTrips: any[] = [];
-      let tag: string[] | null = null;
-      if (input.tag_filter.length > 0) {
-        tag = input.tag_filter;
-      } else {
-        tag = null;
-      }
-      let page = input.page;
-      const pageSize = 50;
-      let lastBatchLength = -1;
-      
-      while (true) {
-        const { data, error } = await supabaseAdmin.rpc("get_nearby_trips", {
-          user_lng: input.lng,
-          user_lat: input.lat,
-          page: page,
-          page_size: pageSize,
-          radius_meters: input.radius,
-          tag_filter: tag,
-          location_filter: input.location_filter,
-        });
-        
-        if (error) {
-          console.error(error);
+      try {
+        // Validate coordinates
+        if (!input.latitude || !input.longitude) {
           throw new ActionError({
-            message: error.message,
+            message: "Latitude and longitude are required",
+            code: "BAD_REQUEST",
+          });
+        }
+
+        // Convert date strings if provided
+        const startDate = input.startDate ? new Date(input.startDate).toISOString().split('T')[0] : null;
+        const endDate = input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : null;
+
+        // Call the optimized search function
+        const { data, error } = await supabaseAdmin.rpc('search_trips_optimized', {
+          p_latitude: input.latitude,
+          p_longitude: input.longitude,
+          p_radius_km: input.radiusKm,
+          p_tags: input.tags && input.tags.length > 0 ? input.tags : null,
+          p_min_budget: input.minBudget || null,
+          p_max_budget: input.maxBudget || null,
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_location_type: input.locationType,
+          p_limit: input.limit,
+          p_offset: input.offset,
+        });
+
+        if (error) {
+          console.error('Search trips error:', error);
+          throw new ActionError({
+            message: `Search failed: ${error.message}`,
             code: "INTERNAL_SERVER_ERROR",
           });
         }
+
+        // Transform results to match expected format
+        const transformedTrips = (data || []).map((trip: OptimizedSearchResult) => ({
+          trip_id: trip.trip_id,
+          title: trip.title,
+          description: trip.description,
+          distance_km: trip.distance_km,
+          estimated_budget: trip.estimated_budget,
+          tags: Array.isArray(trip.tags) ? trip.tags : [],
+          available_spots: trip.available_spots,
+          max_participants: trip.max_participants,
+          current_participants: trip.current_participants,
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          region: trip.region,
+          duration_days: trip.duration_days,
+          budget_per_person: trip.budget_per_person,
+          relevance_score: trip.relevance_score,
+          primary_location_name: trip.primary_location_name,
+          primary_location_address: trip.primary_location_address,
+          images: Array.isArray(trip.images) ? trip.images : [],
+        }));
+
+        return {
+          success: true,
+          trips: transformedTrips,
+          total: transformedTrips.length,
+          pagination: {
+            limit: input.limit,
+            offset: input.offset,
+            hasMore: transformedTrips.length === input.limit,
+          },
+        };
+
+      } catch (err) {
+        console.error('Trip search error:', err);
         
-        // Ensure it's an array
-        const batch = Array.isArray(data) ? data : [];
-        // Stop if no data or same length as previous batch (safety check)
-        if (batch.length === 0 || batch.length === lastBatchLength) break;
+        if (err instanceof ActionError) {
+          throw err;
+        }
         
-        allTrips.push(...batch);
-        
-        // Stop if less than pageSize (last page)
-        if (batch.length < pageSize) break;
-        
-        lastBatchLength = batch.length;
-        page++;
+        throw new ActionError({
+          message: err instanceof Error ? err.message : 'Unknown error occurred during search',
+          code: "INTERNAL_SERVER_ERROR",
+        });
       }
-      console.log("allTrips", allTrips);
-      
-      return allTrips;
     },
   }),
   
@@ -1450,7 +1669,294 @@ export const trip = {
 
       return { success: true, data };
     }
-  })
+  }),
+
+  createStop: defineAction({
+    input: z.object({
+      trip_id: z.string().uuid(),
+      name: z.string().optional(),
+      location_name: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      scheduled_start: z.string(),
+      scheduled_end: z.string(),
+      waiting_time: z.number().optional(),
+      stop_type: z.string().optional(),
+      notes: z.string().optional(),
+      is_primary: z.boolean().optional(),
+      is_mandatory: z.boolean().optional(),
+      order_index: z.number().optional(),
+      activities: z.array(z.object({
+        activity_type: z.string(),
+        description: z.string(),
+        planned_duration_minutes: z.number(),
+        order_index: z.number().optional(),
+        notes: z.string().optional(),
+      })).optional(),
+    }),
+    handler: async (input, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      // Insert the trip_location
+      const { data: stop, error: stopError } = await supabase
+        .from('trip_location')
+        .insert({
+          trip_id: input.trip_id,
+          name: input.name,
+          location_name: input.location_name,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          scheduled_start: input.scheduled_start,
+          scheduled_end: input.scheduled_end,
+          waiting_time: input.waiting_time,
+          stop_type: input.stop_type || 'activity',
+          notes: input.notes,
+          is_primary: input.is_primary || false,
+          is_mandatory: input.is_mandatory !== undefined ? input.is_mandatory : true,
+          order_index: input.order_index || 0,
+        })
+        .select()
+        .single();
+
+      if (stopError) throw new Error(`Failed to create stop: ${stopError.message}`);
+
+      // If activities provided, create them
+      if (input.activities && input.activities.length > 0 && stop) {
+        const activitiesData = input.activities.map(a => ({
+          stop_id: stop.id,
+          activity_type: a.activity_type,
+          description: a.description,
+          planned_duration_minutes: a.planned_duration_minutes,
+          order_index: a.order_index || 0,
+          notes: a.notes,
+        }));
+
+        const { error: activitiesError } = await supabase
+          .from('stop_activities')
+          .insert(activitiesData);
+
+        if (activitiesError) {
+          console.error('Failed to create activities:', activitiesError);
+        }
+      }
+
+      return { stop };
+    },
+  }),
+
+  // Update an existing trip location
+  updateStop: defineAction({
+    input: z.object({
+      stop_id: z.string().uuid(),
+      name: z.string().optional(),
+      location_name: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      scheduled_start: z.string().optional(),
+      scheduled_end: z.string().optional(),
+      actual_start: z.string().optional(),
+      actual_end: z.string().optional(),
+      waiting_time: z.number().optional(),
+      stop_type: z.string().optional(),
+      notes: z.string().optional(),
+      is_primary: z.boolean().optional(),
+      is_mandatory: z.boolean().optional(),
+      order_index: z.number().optional(),
+    }),
+    handler: async (input, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      const { stop_id, ...updateData } = input;
+      
+      // Remove undefined values
+      const cleanData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined)
+      );
+
+      const { data, error } = await supabase
+        .from('trip_location')
+        .update(cleanData)
+        .eq('id', stop_id)
+        .select()
+        .single();
+
+      if (error) throw new Error(`Failed to update stop: ${error.message}`);
+      return { stop: data };
+    },
+  }),
+
+  // Delete a trip location
+  deleteStop: defineAction({
+    input: z.object({
+      stopId: z.string().uuid(),
+    }),
+    handler: async ({ stopId }, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      // Activities will cascade delete due to FK constraint
+      const { error } = await supabase
+        .from('trip_location')
+        .delete()
+        .eq('id', stopId);
+
+      if (error) throw new Error(`Failed to delete stop: ${error.message}`);
+      return { success: true };
+    },
+  }),
+
+  // Create a new activity for a stop
+  createActivity: defineAction({
+    input: z.object({
+      stop_id: z.string().uuid(),
+      activity_type: z.string(),
+      description: z.string(),
+      planned_duration_minutes: z.number(),
+      actual_duration_minutes: z.number().optional(),
+      order_index: z.number().optional(),
+      notes: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      const { data, error } = await supabase
+        .from('stop_activities')
+        .insert({
+          stop_id: input.stop_id,
+          activity_type: input.activity_type,
+          description: input.description,
+          planned_duration_minutes: input.planned_duration_minutes,
+          actual_duration_minutes: input.actual_duration_minutes,
+          order_index: input.order_index || 0,
+          notes: input.notes,
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(`Failed to create activity: ${error.message}`);
+      return { activity: data };
+    },
+  }),
+
+  // Update an existing activity
+  updateActivity: defineAction({
+    input: z.object({
+      activity_id: z.string().uuid(),
+      activity_type: z.string().optional(),
+      description: z.string().optional(),
+      planned_duration_minutes: z.number().optional(),
+      actual_duration_minutes: z.number().optional(),
+      order_index: z.number().optional(),
+      notes: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      const { activity_id, ...updateData } = input;
+      
+      // Remove undefined values
+      const cleanData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined)
+      );
+
+      const { data, error } = await supabase
+        .from('stop_activities')
+        .update(cleanData)
+        .eq('id', activity_id)
+        .select()
+        .single();
+
+      if (error) throw new Error(`Failed to update activity: ${error.message}`);
+      return { activity: data };
+    },
+  }),
+
+  // Delete an activity
+  deleteActivity: defineAction({
+    input: z.object({
+      activityId: z.string().uuid(),
+    }),
+    handler: async ({ activityId }, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      const { error } = await supabase
+        .from('stop_activities')
+        .delete()
+        .eq('id', activityId);
+
+      if (error) throw new Error(`Failed to delete activity: ${error.message}`);
+      return { success: true };
+    },
+  }),
+
+  // Get trip itinerary with all stops and activities
+  getItinerary: defineAction({
+    input: z.object({
+      trip_id: z.string().uuid(),
+    }),
+    handler: async ({ trip_id }, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      // Fetch trip locations with activities
+      const { data: locations, error: locationsError } = await supabase
+        .from('trip_location')
+        .select(`
+          *,
+          location:locations(*),
+          activities:stop_activities(*)
+        `)
+        .eq('trip_id', trip_id)
+        .order('order_index', { ascending: true })
+        .order('scheduled_start', { ascending: true });
+
+      if (locationsError) throw new Error(`Failed to get itinerary: ${locationsError.message}`);
+
+      // Sort activities within each stop
+      const sorted = locations?.map(loc => ({
+        ...loc,
+        activities: loc.activities?.sort((a: any, b: any) => a.order_index - b.order_index) || []
+      }));
+
+      return { locations: sorted || [] };
+    },
+  }),
+
+  // Reorder stops
+  reorderStops: defineAction({
+    input: z.object({
+      updates: z.array(z.object({
+        stop_id: z.string().uuid(),
+        order_index: z.number(),
+      })),
+    }),
+    handler: async ({ updates }, context) => {
+      const accessToken = context.cookies.get('sb-access-token')?.value;
+      const supabase = getSupabaseClient(accessToken);
+
+      // Update each stop's order_index
+      const promises = updates.map(({ stop_id, order_index }) =>
+        supabase
+          .from('trip_location')
+          .update({ order_index })
+          .eq('id', stop_id)
+      );
+
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+
+      if (errors.length > 0) {
+        throw new Error('Failed to reorder some stops');
+      }
+
+      return { success: true };
+    },
+  }),
 }
 
 

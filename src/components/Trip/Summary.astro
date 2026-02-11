@@ -156,6 +156,7 @@ const paxPercentage = Math.min((currentPax / maxPax) * 100, 100);
 
   editableCards.forEach(card => {
     card.addEventListener('click', () => {
+      console.log("Editable card clicked");
       const editType = card.getAttribute('data-edit');
       const modal = document.getElementById(`edit-${editType}-modal`) as HTMLDialogElement;
       if (modal) {

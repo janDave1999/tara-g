@@ -3,7 +3,7 @@
 
 import { defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, supabaseAdmin } from '@/lib/supabase';
 
 export const activities = {
   // Create activity
@@ -16,10 +16,8 @@ export const activities = {
       order_index: z.number().optional(),
     }),
     handler: async (input, context) => {
-      const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
-
-      const { data, error } = await supabase
+      console.log("PUMASOK BA DITO?");
+      const { data, error } = await supabaseAdmin
         .from('stop_activities')
         .insert({
           stop_id: input.stop_id,
@@ -30,8 +28,10 @@ export const activities = {
         })
         .select()
         .single();
-
+      console.log("ANO YUNG ERROR", error);
       if (error) {
+        console.error(error);
+        window.alert(error.message);
         throw new Error(`Failed to create activity: ${error.message}`);
       }
 

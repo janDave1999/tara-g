@@ -1,0 +1,520 @@
+---
+// CompleteItinerary.astro
+// Vanilla Astro component for trip itinerary display and editing
+
+interface Activity {
+  id: string;
+  activity_type: string;
+  description: string;
+  planned_duration_minutes: number;
+  order_index?: number;
+}
+
+interface Stop {
+  id: string;
+  name: string;
+  stop_type: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  location_name?: string;
+  notes?: string;
+  transportation?: { vehicle_type: string };
+  activities?: Activity[];
+}
+
+interface Trip {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
+interface Props {
+  stopsByDay: Stop[][];
+}
+
+const {stopsByDay: initialStopsByDay } = Astro.props;
+
+// Color mappings for different stop types
+const stopTypeColors = {
+  pickup: { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', dot: 'bg-blue-500' },
+  dropoff: { bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', dot: 'bg-purple-500' },
+  destination: { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  activity: { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', dot: 'bg-orange-500' },
+  meal_break: { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', dot: 'bg-amber-500' },
+  rest_stop: { bg: 'bg-cyan-50', border: 'border-cyan-300', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  transit: { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-700', dot: 'bg-slate-500' },
+  checkpoint: { bg: 'bg-pink-50', border: 'border-pink-300', text: 'text-pink-700', dot: 'bg-pink-500' },
+  accommodation: { bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700', dot: 'bg-indigo-500' }
+};
+---
+
+<div class="max-w-6xl mx-auto p-6 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+
+  <!-- Days Container -->
+  <div id="days-container">
+    {initialStopsByDay.map((stops, dayIndex) => (
+      <div class="day-section mb-8" data-day-index={dayIndex}>
+        <!-- Day Header -->
+        <div
+          class="day-header bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl p-4 mb-4 cursor-pointer hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg"
+          data-day-index={dayIndex}
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <h2 class="text-xl font-bold">Day {dayIndex + 1}</h2>
+                <p class="text-emerald-100 text-sm day-date"></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="bg-white/20 px-3 py-1 rounded-lg text-sm font-semibold stop-count">
+                {stops.length} stops
+              </span>
+              <button
+                class="add-stop-btn hidden bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg text-sm font-semibold items-center gap-2"
+                data-day-index={dayIndex}
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Stop
+              </button>
+              <svg class="chevron w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-container relative ml-6">
+          <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-200 via-green-200 to-blue-200"></div>
+          
+          <div class="stops-container" data-day-index={dayIndex}>
+            {stops.map((stop) => {
+              const colors = stopTypeColors[stop.stop_type as keyof typeof stopTypeColors] || stopTypeColors.activity;
+              
+              return (
+                <div class="stop-item relative pl-12 pb-6 group" data-stop-id={stop.id}>
+                  <div class={`absolute -left-[9px] top-2 w-5 h-5 ${colors.dot} rounded-full border-4 border-white shadow-lg z-10 group-hover:scale-125 transition-transform`}></div>
+
+                  <div class={`stop-content ${colors.bg} border-2 ${colors.border} rounded-xl p-5 shadow-md hover:shadow-xl transition-all`}>
+                    <div class="stop-view">
+                      <div class="flex items-start justify-between mb-3">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class={`px-2 py-1 ${colors.text} bg-white/70 rounded-md text-xs font-bold uppercase tracking-wider`}>
+                              {stop.stop_type.replace('_', ' ')}
+                            </span>
+                            {stop.transportation && (
+                              <span class="px-2 py-1 bg-white/70 text-gray-600 rounded-md text-xs font-semibold">
+                                🚐 {stop.transportation.vehicle_type}
+                              </span>
+                            )}
+                          </div>
+                          <h3 class="text-xl font-bold text-gray-900 mb-1 stop-name">{stop.name}</h3>
+                          {stop.location_name && (
+                            <div class="flex items-center gap-2 text-gray-600 text-sm">
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span class="stop-location">{stop.location_name}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div class="flex items-start gap-2">
+                          <div class="text-right">
+                            <div class="flex items-center gap-2 justify-end text-lg font-bold text-gray-900">
+                              <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span class="stop-start-time"></span>
+                            </div>
+                            <div class="text-sm text-gray-500 font-medium stop-duration"></div>
+                          </div>
+
+                          <div class="edit-controls hidden gap-1">
+                            <button class="edit-stop-btn p-2 hover:bg-white/50 rounded-lg transition-all" title="Edit stop">
+                              <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button class="delete-stop-btn p-2 hover:bg-white/50 rounded-lg transition-all" title="Delete stop">
+                              <svg class="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {stop.notes && (
+                        <div class="bg-white/60 rounded-lg p-3 mb-3">
+                          <p class="text-sm text-gray-700 italic stop-notes">{stop.notes}</p>
+                        </div>
+                      )}
+
+                      {stop.activities && stop.activities.length > 0 && (
+                        <div class="activities-section space-y-2 mt-3">
+                          <div class="flex items-center justify-between">
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Activities:</p>
+                            <button class="add-activity-btn hidden text-xs font-semibold text-blue-600 hover:text-blue-700 items-center gap-1">
+                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add Activity
+                            </button>
+                          </div>
+                          <div class="activities-list">
+                            {stop.activities.map((activity) => (
+                              <div class="activity-item flex items-center gap-3 bg-white/70 p-2 rounded-lg group/activity" data-activity-id={activity.id}>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                <div class="flex-1">
+                                  <span class="text-sm font-semibold text-gray-800 activity-description">{activity.description}</span>
+                                </div>
+                                <span class="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded activity-duration">
+                                  {activity.planned_duration_minutes} mins
+                                </span>
+                                <div class="activity-controls hidden opacity-0 group-hover/activity:opacity-100 transition-opacity gap-1">
+                                  <button class="edit-activity-btn p-1 hover:bg-white rounded" title="Edit activity">
+                                    <svg class="w-3 h-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button class="delete-activity-btn p-1 hover:bg-white rounded" title="Delete activity">
+                                    <svg class="w-3 h-3 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div class="add-activity-placeholder hidden">
+                        <button class="add-activity-btn mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add Activity
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Edit Form (hidden by default) -->
+                    <div class="stop-edit hidden"></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <!-- Add Stop Form Placeholder -->
+          <div class="add-stop-form-container" data-day-index={dayIndex}></div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .chevron {
+    transition: transform 0.3s ease;
+  }
+  
+  .day-section.collapsed .chevron {
+    transform: rotate(180deg);
+  }
+  
+  .day-section.collapsed .timeline-container {
+    display: none;
+  }
+
+  /* Form animations */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stop-edit,
+  .add-stop-form-container > div,
+  .activity-edit {
+    animation: slideIn 0.3s ease-out;
+  }
+</style>
+
+<script>
+  // Initialize state
+  const initialStopsByDay = JSON.parse(document.getElementById('days-container')!.dataset.stops || '[]');
+  
+  let editMode = false;
+  let stopsByDay = initialStopsByDay;
+  let editingStopId: string | null = null;
+  let editingActivityId: string | null = null;
+  let showAddStopFormDay: number | null = null;
+  let showAddActivityForm: { dayIndex: number; stopId: string } | null = null;
+
+  // Utility functions
+  function formatTime(isoString: string): string {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  function formatDate(isoString: string): string {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatDateTimeLocal(isoString: string): string {
+    return isoString.slice(0, 16);
+  }
+
+  function getDuration(start: string, end: string): string {
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    const hours = Math.floor(diff / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  }
+
+  // Initialize the component
+  function init() {
+    // Set data attribute for stops
+    const container = document.getElementById('days-container');
+    if (container) {
+      container.dataset.stops = JSON.stringify(stopsByDay);
+    }
+
+    // Update all dynamic content
+    updateAllDynamicContent();
+    
+    // Attach event listeners
+    attachEventListeners();
+  }
+
+  function updateAllDynamicContent() {
+    // Update dates and times for all stops
+    document.querySelectorAll('.day-section').forEach((daySection) => {
+      const dayIndex = parseInt(daySection.getAttribute('data-day-index') || '0');
+      const stops = stopsByDay[dayIndex] || [];
+      
+      // Update day date
+      const dateEl = daySection.querySelector('.day-date');
+      if (dateEl && stops.length > 0) {
+        dateEl.textContent = formatDate(stops[0].scheduled_start);
+      }
+
+      // Update stop count
+      const countEl = daySection.querySelector('.stop-count');
+      if (countEl) {
+        countEl.textContent = `${stops.length} stops`;
+      }
+
+      // Update each stop's time and duration
+      daySection.querySelectorAll('.stop-item').forEach((stopEl) => {
+        const stopId = stopEl.getAttribute('data-stop-id');
+        const stop = stops.find((s: any) => s.id === stopId);
+        
+        if (stop) {
+          const startTimeEl = stopEl.querySelector('.stop-start-time');
+          const durationEl = stopEl.querySelector('.stop-duration');
+          
+          if (startTimeEl) startTimeEl.textContent = formatTime(stop.scheduled_start);
+          if (durationEl) durationEl.textContent = getDuration(stop.scheduled_start, stop.scheduled_end);
+        }
+      });
+    });
+  }
+
+  function attachEventListeners() {
+    // Edit mode toggle
+    const editToggle = document.getElementById('edit-mode-toggle');
+    editToggle?.addEventListener('click', toggleEditMode);
+
+    // Day header toggles
+    document.querySelectorAll('.day-header').forEach((header) => {
+      header.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.add-stop-btn')) {
+          const daySection = header.closest('.day-section');
+          daySection?.classList.toggle('collapsed');
+        }
+      });
+    });
+
+    // Add stop buttons
+    document.querySelectorAll('.add-stop-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dayIndex = parseInt(btn.getAttribute('data-day-index') || '0');
+        showAddStopForm(dayIndex);
+      });
+    });
+
+    // Edit/Delete stop buttons
+    document.querySelectorAll('.edit-stop-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stopItem = btn.closest('.stop-item');
+        const stopId = stopItem?.getAttribute('data-stop-id');
+        if (stopId) editStop(stopId);
+      });
+    });
+
+    document.querySelectorAll('.delete-stop-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stopItem = btn.closest('.stop-item');
+        const stopId = stopItem?.getAttribute('data-stop-id');
+        const daySection = btn.closest('.day-section');
+        const dayIndex = parseInt(daySection?.getAttribute('data-day-index') || '0');
+        if (stopId) deleteStop(dayIndex, stopId);
+      });
+    });
+
+    // Add/Edit/Delete activity buttons
+    document.querySelectorAll('.add-activity-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stopItem = btn.closest('.stop-item');
+        const stopId = stopItem?.getAttribute('data-stop-id');
+        const daySection = btn.closest('.day-section');
+        const dayIndex = parseInt(daySection?.getAttribute('data-day-index') || '0');
+        if (stopId) showAddActivityFormFunc(dayIndex, stopId);
+      });
+    });
+
+    document.querySelectorAll('.edit-activity-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const activityItem = btn.closest('.activity-item');
+        const activityId = activityItem?.getAttribute('data-activity-id');
+        if (activityId) editActivity(activityId);
+      });
+    });
+
+    document.querySelectorAll('.delete-activity-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const activityItem = btn.closest('.activity-item');
+        const activityId = activityItem?.getAttribute('data-activity-id');
+        const stopItem = btn.closest('.stop-item');
+        const stopId = stopItem?.getAttribute('data-stop-id');
+        const daySection = btn.closest('.day-section');
+        const dayIndex = parseInt(daySection?.getAttribute('data-day-index') || '0');
+        if (activityId && stopId) deleteActivity(dayIndex, stopId, activityId);
+      });
+    });
+  }
+
+  function toggleEditMode() {
+    editMode = !editMode;
+    const toggle = document.getElementById('edit-mode-toggle');
+    
+    if (editMode) {
+      toggle?.classList.remove('from-emerald-600', 'to-green-600', 'hover:from-emerald-700', 'hover:to-green-700', 'shadow-emerald-500/30');
+      toggle?.classList.add('from-amber-600', 'to-orange-600', 'hover:from-amber-700', 'hover:to-orange-700', 'shadow-amber-500/30');
+      if (toggle) toggle.textContent = '✓ Finish Editing';
+      
+      // Show all edit controls
+      document.querySelectorAll('.edit-controls').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.edit-controls').forEach(el => el.classList.add('flex'));
+      document.querySelectorAll('.add-stop-btn').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.add-stop-btn').forEach(el => el.classList.add('flex'));
+      document.querySelectorAll('.add-activity-btn').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.add-activity-btn').forEach(el => el.classList.add('flex'));
+      document.querySelectorAll('.activity-controls').forEach(el => el.classList.remove('hidden'));
+      document.querySelectorAll('.activity-controls').forEach(el => el.classList.add('flex'));
+      document.querySelectorAll('.add-activity-placeholder').forEach(el => el.classList.remove('hidden'));
+    } else {
+      toggle?.classList.add('from-emerald-600', 'to-green-600', 'hover:from-emerald-700', 'hover:to-green-700', 'shadow-emerald-500/30');
+      toggle?.classList.remove('from-amber-600', 'to-orange-600', 'hover:from-amber-700', 'hover:to-orange-700', 'shadow-amber-500/30');
+      if (toggle) toggle.textContent = 'Edit Itinerary';
+      
+      // Hide all edit controls
+      document.querySelectorAll('.edit-controls').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.edit-controls').forEach(el => el.classList.remove('flex'));
+      document.querySelectorAll('.add-stop-btn').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.add-stop-btn').forEach(el => el.classList.remove('flex'));
+      document.querySelectorAll('.add-activity-btn').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.add-activity-btn').forEach(el => el.classList.remove('flex'));
+      document.querySelectorAll('.activity-controls').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.activity-controls').forEach(el => el.classList.remove('flex'));
+      document.querySelectorAll('.add-activity-placeholder').forEach(el => el.classList.add('hidden'));
+      
+      // Clear any open forms
+      editingStopId = null;
+      editingActivityId = null;
+      showAddStopFormDay = null;
+      showAddActivityForm = null;
+      document.querySelectorAll('.stop-edit').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.stop-view').forEach(el => el.classList.remove('hidden'));
+    }
+  }
+
+  function editStop(stopId: string) {
+    // Implementation would go here
+    console.log('Edit stop:', stopId);
+  }
+
+  function deleteStop(dayIndex: number, stopId: string) {
+    if (confirm('Delete this stop?')) {
+      stopsByDay[dayIndex] = stopsByDay[dayIndex].filter((s: any) => s.id !== stopId);
+      // Re-render or update DOM
+      console.log('Deleted stop:', stopId);
+    }
+  }
+
+  function showAddStopForm(dayIndex: number) {
+    showAddStopFormDay = dayIndex;
+    // Implementation would go here
+    console.log('Show add stop form for day:', dayIndex);
+  }
+
+  function editActivity(activityId: string) {
+    editingActivityId = activityId;
+    // Implementation would go here
+    console.log('Edit activity:', activityId);
+  }
+
+  function deleteActivity(dayIndex: number, stopId: string, activityId: string) {
+    if (confirm('Delete this activity?')) {
+      const stopIndex = stopsByDay[dayIndex].findIndex((s: any) => s.id === stopId);
+      if (stopIndex !== -1) {
+        stopsByDay[dayIndex][stopIndex].activities = stopsByDay[dayIndex][stopIndex].activities.filter(
+          (a: any) => a.id !== activityId
+        );
+      }
+      console.log('Deleted activity:', activityId);
+    }
+  }
+
+  function showAddActivityFormFunc(dayIndex: number, stopId: string) {
+    showAddActivityForm = { dayIndex, stopId };
+    // Implementation would go here
+    console.log('Show add activity form:', dayIndex, stopId);
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<script is:inline define:vars={{ stopsByDay: initialStopsByDay }}>
+  // Pass server data to client
+  window.__INITIAL_STOPS__ = stopsByDay;
+</script>

@@ -26,19 +26,17 @@ const getStatusColor = (status: string) => {
   };
   return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
 };
-
-console.log(trip);
 ---
 
-<a 
+<a
   href={`/trips/${trip.trip_id}`}
   class="group block rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white"
 >
   <!-- Cover Image -->
   <div class="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
     {trip.cover_image ? (
-      <img 
-        src={PUBLIC_R2_URL + trip.cover_image} 
+      <img
+        src={PUBLIC_R2_URL + "/" + trip.cover_image} 
         alt={trip.title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
@@ -49,7 +47,7 @@ console.log(trip);
         </svg>
       </div>
     )}
-    
+
     <!-- Status Badge -->
     <div class="absolute top-3 right-3">
       <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>

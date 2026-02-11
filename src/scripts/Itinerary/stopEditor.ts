@@ -1,9 +1,5 @@
-// File: src/components/itinerary/scripts/stopEditor.ts
-// Stop editing functionality
-
 import type { StopType } from '@/types/itinerary';
 import { actions } from 'astro:actions';
-import type { S } from 'vitest/dist/chunks/config.d.D2ROskhv.js';
 
 const formatDateTimeLocal = (isoString: string) => isoString.slice(0, 16);
 
@@ -81,7 +77,7 @@ const createAddStopForm = (timelineContainer: HTMLElement, dayIndex: number) => 
   const defaultStart = new Date().toISOString();
   
   const formHTML = `
-    <div class="add-stop-form relative pl-12 pb-6">
+    <form class="add-stop-form relative pl-12 pb-6">
       <div class="absolute -left-[9px] top-2 w-5 h-5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full border-4 border-white shadow-lg z-10 animate-pulse"></div>
       <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-dashed border-green-400 rounded-xl p-5 shadow-lg">
         <h4 class="text-green-700 font-bold text-base mb-4">➕ New Stop</h4>
@@ -128,7 +124,7 @@ const createAddStopForm = (timelineContainer: HTMLElement, dayIndex: number) => 
           </div>
         </div>
       </div>
-    </div>
+    </form>
   `;
   
   timelineContainer.insertAdjacentHTML('beforeend', formHTML);
@@ -225,8 +221,8 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
     // Save New Stop
     if (btn.classList.contains('save-new-stop-btn')) {
       const form = btn.closest('.add-stop-form')!;
-      const formData = new FormData(form as HTMLFormElement);
-      
+      const formData = new FormData(form as any);
+      console.log(formData);
       const name = formData.get('name') as string;
       if (!name) {
         alert('Stop name is required');

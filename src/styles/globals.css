@@ -3,6 +3,7 @@
    themes: light --default, dark;
  }
 
+@import "./_brand.css";
 @import "./_blog.css";
 @import "./_layout.css";
 @import "./_cards.css";

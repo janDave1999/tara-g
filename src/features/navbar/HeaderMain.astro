@@ -5,8 +5,8 @@ let avatarUrl = Astro.locals.avatar_url || "";
 let userID = Astro.locals.user_id || "";
 ---
 
-<header class="w-full bg-white shadow-md">
-  <nav class="px-4 w-full flex justify-between items-center h-16">
+<header class="w-full bg-white shadow-md sticky top-0 z-50">
+  <nav class="px-4 sm:px-6 w-full flex justify-between items-center h-16">
     <!-- Left section: logo + burger -->
     <div class="flex items-center gap-3">
       <!-- Hamburger (mobile only) -->
@@ -18,36 +18,37 @@ let userID = Astro.locals.user_id || "";
         </svg>
       </button>
 
-      <!-- Logo -->
-      <a href="/" class="flex items-center gap-2">
+<!-- Logo -->
+      <a href="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
         <img
           src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
-          alt="Logo" class="w-8 h-8" />
-        <span class="text-2xl font-bold text-gray-800">Tara G!</span>
+          alt="Tara G! Logo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg" />
+        <span class="text-xl sm:text-2xl font-bold text-gray-800 hidden sm:inline">Tara G!</span>
+        <span class="text-xl font-bold text-gray-800 sm:hidden">TG!</span>
       </a>
     </div>
 
-    <ul class="hidden md:flex space-x-6 items-center font-medium text-gray-700">
-      <li><a href="/about" class="hover:text-blue-600">About</a></li>
-      <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
-      <li><a href="/blogs" class="hover:text-blue-600">Blogs</a></li>
+<ul class="hidden lg:flex space-x-6 xl:space-x-8 items-center font-medium text-gray-700">
+      <li><a href="/about" class="hover:text-blue-600 transition-colors">About</a></li>
+      <li><a href="/discover" class="hover:text-blue-600 transition-colors">Discover</a></li>
+      <li><a href="/blogs" class="hover:text-blue-600 transition-colors">Blogs</a></li>
     </ul>
 
     <div class="relative">
-      {userID ? (
-        <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
+{userID ? (
+        <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-1 transition-all">
 
           {avatarUrl ? (
-            <img src={avatarUrl} alt="Profile" class="w-8 h-8 rounded-full" />
+            <img src={avatarUrl} alt="Profile" class="w-8 h-8 rounded-full border-2 border-gray-200" />
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true" class="w-8 h-8 text-gray-500">
               <circle cx="12" cy="8" r="4"/>
               <path d="M4 20c0-4 3-7 8-7s8 3 8 7" />
             </svg>
           )}
         </button>
       ) : (
-        <a href="/signin" class="font-medium text-gray-700 hover:text-blue-600">Sign in</a>
+        <a href="/signin" class="font-medium text-gray-700 hover:text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors">Sign in</a>
       )}
 
       <!-- Profile dropdown -->
@@ -62,25 +63,27 @@ let userID = Astro.locals.user_id || "";
     </div>
   </nav>
 
-  <!-- Mobile Menu -->
-  <div id="mobile-menu" class="hidden md:hidden bg-gray-50 border-t border-gray-200">
-    <ul class="flex flex-col p-6 space-y-3 text-gray-700 text-lg font-semibold">
-      <li><a href="/about" class="hover:text-blue-600">About</a></li>
-      <li><a href="/discover" class="hover:text-blue-600">Discover</a></li>
-      <li><a href="/blogs" class="hover:text-blue-600">Blogs</a></li>
-      <ThemeController />
-      {userID ? (
-        <>
-          <li><a href="/dashboard" class="hover:text-blue-600">Dashboard</a></li>
-          <li><button class="text-red-500 signout hover:underline">Logout</button></li>
-        </>
-      ) : (
-        <li>
-          <a href="/signin" class="hover:text-blue-600">Sign in</a> /
-          <a href="/register" class="hover:text-blue-600">Register</a>
-        </li>
-      )}
-    </ul>
+<!-- Mobile Menu -->
+  <div id="mobile-menu" class="hidden lg:hidden bg-gray-50 border-t border-gray-200">
+    <div class="p-4 sm:p-6">
+      <ul class="flex flex-col space-y-4 text-gray-700 text-base sm:text-lg font-medium">
+        <li><a href="/about" class="hover:text-blue-600 py-2 block transition-colors">About</a></li>
+        <li><a href="/discover" class="hover:text-blue-600 py-2 block transition-colors">Discover</a></li>
+        <li><a href="/blogs" class="hover:text-blue-600 py-2 block transition-colors">Blogs</a></li>
+        <li class="pt-2 border-t border-gray-200"><ThemeController /></li>
+        {userID ? (
+          <>
+            <li class="pt-4 border-t border-gray-200"><a href="/dashboard" class="hover:text-blue-600 py-2 block transition-colors">Dashboard</a></li>
+            <li><button class="text-red-500 signout hover:text-red-600 py-2 text-left transition-colors">Logout</button></li>
+          </>
+        ) : (
+          <li class="pt-4 border-t border-gray-200 space-y-2">
+            <a href="/signin" class="hover:text-blue-600 py-2 block transition-colors">Sign in</a>
+            <a href="/register" class="hover:text-blue-600 py-2 block transition-colors">Register</a>
+          </li>
+        )}
+      </ul>
+    </div>
   </div>
 </header>
 

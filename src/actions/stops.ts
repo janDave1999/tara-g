@@ -3,7 +3,7 @@
 
 import { defineAction } from 'astro:actions';
 import { z } from 'astro:schema';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, supabaseAdmin } from '@/lib/supabase';
 import type { TripItinerary } from '@/types/itinerary';
 
 export const stops = {
@@ -62,11 +62,9 @@ export const stops = {
         notes: z.string().optional(),
       }).optional(),
     }),
-    handler: async (input, context) => {
-      const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+    handler: async (input) => {
 
-      const { data, error } = await supabase.rpc('create_itinerary_stop', {
+      const { data, error } = await supabaseAdmin.rpc('create_itinerary_stop', {
         p_trip_id: input.trip_id,
         p_name: input.name,
         p_stop_type: input.stop_type,
@@ -78,7 +76,7 @@ export const stops = {
         p_activities: input.activities ? JSON.stringify(input.activities) : '[]',
         p_transportation: input.transportation ? JSON.stringify(input.transportation) : null,
       });
-
+      console.log("ANO YUNG ERROR:", error);
       if (error) {
         throw new Error(`Failed to create stop: ${error.message}`);
       }
@@ -108,11 +106,9 @@ export const stops = {
       location_name: z.string().optional(),
       notes: z.string().optional(),
     }),
-    handler: async (input, context) => {
-      const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+    handler: async (input) => {
 
-      const { data, error } = await supabase.rpc('update_itinerary_stop', {
+      const { data, error } = await supabaseAdmin.rpc('update_itinerary_stop', {
         p_stop_id: input.stop_id,
         p_name: input.name || null,
         p_stop_type: input.stop_type || null,
@@ -135,11 +131,9 @@ export const stops = {
     input: z.object({
       stopId: z.string().uuid(),
     }),
-    handler: async ({ stopId }, context) => {
-      const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+    handler: async ({ stopId }) => {
 
-      const { data, error } = await supabase.rpc('delete_itinerary_stop', {
+      const { error } = await supabaseAdmin.rpc('delete_itinerary_stop', {
         p_stop_id: stopId,
       });
 

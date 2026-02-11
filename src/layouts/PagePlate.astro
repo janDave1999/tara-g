@@ -23,10 +23,11 @@ let {
   noFooter = false,
   noContainer = false,
   clean = false,
-  expectedHeight = "calc(100vh - 10rem)", // 5rem is header + footer height
+  expectedHeight = "min-h-screen", // Better responsive height handling
   prefetch,
   description,
   html = {},
+  containerClass = "", // Allow custom container classes
 } = Astro.props;
 
 //---> Preflight
@@ -34,8 +35,8 @@ if(description == undefined){
   description = {
     title,
     type: "WebPage",
-    description: "Walang Magawa si Dave",
-    author: "Jan D. Ave",
+    description: "Discover amazing trips and experiences with Tara G!",
+    author: "Tara G!",
     authorIs: "Organization",
   };
 }
@@ -73,15 +74,16 @@ if(description && !description.fbAppId){
     </>}
     <slot name="header" />
 
-    {noContainer ?<>
+{noContainer ?<>
       <slot />
       </>:<>
       <div
       class="
             container mx-auto
-             lg:px-8
-             lg:py-8 
+            px-4 sm:px-6 md:px-8 lg:px-12
+            py-4 sm:py-6 md:py-8 lg:py-12
             relative
+            {containerClass}
           "
       >
       <slot />

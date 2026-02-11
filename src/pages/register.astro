@@ -1,0 +1,557 @@
+---
+import AuthLayout from "@/layouts/AuthLayout.astro";
+
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if (accessToken && refreshToken) {
+  return redirect("/feeds");
+}
+---
+
+<AuthLayout title="Create your Tara G! account" noIndex>
+  <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 space-y-6">
+    <!-- Header -->
+    <div class="text-center">
+      <div class="flex justify-center mb-4">
+        <img
+          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
+          alt="Tara G! Logo" 
+          class="w-12 h-12 rounded-lg"
+        />
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-semibold text-gray-900">Join Tara G!</h1>
+      <p class="text-gray-600 mt-2 text-sm sm:text-base">
+        Already have an account? 
+        <a href="/signin" class="text-blue-600 font-medium hover:text-blue-700 transition-colors">Sign in</a>
+      </p>
+    </div>
+
+    <!-- General Error Display -->
+    <div id="generalError" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-red-800">Registration failed</p>
+          <p id="generalErrorText" class="text-sm text-red-600 mt-1"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration Form -->
+    <form id="registerForm" class="space-y-6" novalidate>
+      <!-- Email Field -->
+      <div>
+        <label for="email" id="email-label" class="block text-sm font-medium text-gray-700 mb-2">
+          Email Address
+        </label>
+        <div class="relative">
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            aria-required="true"
+            aria-describedby="email-help email-error"
+            aria-invalid="false"
+            autocomplete="email"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition pr-10 text-sm sm:text-base"
+            placeholder="you@example.com"
+          />
+          <div id="emailError" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
+            <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+        </div>
+        <div id="email-help" class="sr-only">Enter your email address</div>
+        <p id="emailErrorText" class="mt-1 text-sm text-red-600 hidden"></p>
+      </div>
+
+      <!-- Password Field -->
+      <div>
+        <label for="password" id="password-label" class="block text-sm font-medium text-gray-700 mb-2">
+          Password
+        </label>
+        <div class="relative">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            aria-required="true"
+            aria-describedby="password-help password-error"
+            aria-invalid="false"
+            autocomplete="new-password"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition pr-10 text-sm sm:text-base"
+            placeholder="Create a strong password"
+          />
+          <div id="passwordError" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
+            <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+        </div>
+        <div id="password-help" class="sr-only">Create a strong password (min 8 characters)</div>
+        <p id="passwordErrorText" class="mt-1 text-sm text-red-600 hidden"></p>
+        
+        <!-- Password Requirements -->
+        <div class="mt-2 text-xs text-gray-500 space-y-1">
+          <p>Password must contain:</p>
+          <ul class="list-disc list-inside space-y-1 ml-2">
+            <li>At least 8 characters</li>
+            <li>One uppercase letter</li>
+            <li>One lowercase letter</li>
+            <li>One number</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Confirm Password Field -->
+      <div>
+        <label for="confirmPassword" id="confirmPassword-label" class="block text-sm font-medium text-gray-700 mb-2">
+          Confirm Password
+        </label>
+        <div class="relative">
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            required
+            aria-required="true"
+            aria-describedby="confirmPassword-help confirmPassword-error"
+            aria-invalid="false"
+            autocomplete="new-password"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition pr-10 text-sm sm:text-base"
+            placeholder="Confirm your password"
+          />
+          <div id="confirmPasswordError" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
+            <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+        </div>
+        <div id="confirmPassword-help" class="sr-only">Confirm your password</div>
+        <p id="confirmPasswordErrorText" class="mt-1 text-sm text-red-600 hidden"></p>
+      </div>
+
+      <!-- Terms Agreement -->
+      <div class="space-y-3">
+        <label class="flex items-start cursor-pointer group">
+          <input 
+            type="checkbox" 
+            id="terms" 
+            name="terms"
+            required
+            aria-required="true"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 mt-0.5"
+          />
+          <span class="ml-2 text-sm text-gray-600 group-hover:text-gray-700 transition-colors">
+            I agree to the 
+            <a href="/legals/terms-and-conditions" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 transition-colors">Terms and Conditions</a> 
+            and 
+            <a href="/legals/privacy-policy" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 transition-colors">Privacy Policy</a>
+          </span>
+        </label>
+        
+        <label class="flex items-center cursor-pointer group">
+          <input 
+            type="checkbox" 
+            id="marketing" 
+            name="marketing"
+            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+          />
+          <span class="ml-2 text-sm text-gray-600 group-hover:text-gray-700 transition-colors">
+            I'd like to receive updates about new features and trips
+          </span>
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        id="registerButton"
+        class="
+          w-full py-3 bg-blue-600 text-white font-semibold rounded-lg 
+          hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all 
+          flex items-center justify-center gap-2 
+          disabled:opacity-50 disabled:cursor-not-allowed
+          min-h-[44px] sm:min-h-[48px]
+          shadow-md hover:shadow-lg
+        "
+      >
+        <span id="registerButtonText">Create Account</span>
+        <div id="registerSpinner" class="hidden">
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </button>
+    </form>
+
+    <!-- Social Login -->
+    <div class="mt-6">
+      <div class="flex items-center my-6">
+        <hr class="flex-grow border-gray-300" />
+        <span class="px-3 text-gray-500 text-sm whitespace-nowrap">or sign up with</span>
+        <hr class="flex-grow border-gray-300" />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          id="googleSignUp"
+          type="button"
+          class="
+            flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-3 
+            hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition 
+            disabled:opacity-50 disabled:cursor-not-allowed
+            min-h-[44px] sm:min-h-[48px]
+          "
+          aria-label="Sign up with Google"
+        >
+          <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/icons8-google-48.png" alt="Google" class="w-5 h-5" />
+          <span>Google</span>
+        </button>
+
+        <button
+          id="facebookSignUp"
+          type="button"
+          class="
+            flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-3 
+            hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition 
+            disabled:opacity-50 disabled:cursor-not-allowed
+            min-h-[44px] sm:min-h-[48px]
+          "
+          aria-label="Sign up with Facebook"
+        >
+          <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/icons8-facebook-48.png" alt="Facebook" class="w-5 h-5" />
+          <span>Facebook</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</AuthLayout>
+
+<script>
+  import { showToast } from "@/scripts/Toast.ts";
+  import { clientSchemas, FormValidator } from "@/lib/clientValidation.ts";
+
+  class RegisterForm {
+    private formValidator: FormValidator;
+    private elements: {
+      form: HTMLFormElement | null;
+      emailInput: HTMLInputElement | null;
+      passwordInput: HTMLInputElement | null;
+      confirmPasswordInput: HTMLInputElement | null;
+      termsCheckbox: HTMLInputElement | null;
+      submitButton: HTMLButtonElement | null;
+      submitButtonText: HTMLElement | null;
+      submitSpinner: HTMLElement | null;
+      generalError: HTMLElement | null;
+      generalErrorText: HTMLElement | null;
+      googleButton: HTMLButtonElement | null;
+      facebookButton: HTMLButtonElement | null;
+    };
+
+    constructor() {
+      this.formValidator = new FormValidator(clientSchemas.register);
+      this.elements = this.initializeElements();
+      this.attachEventListeners();
+    }
+
+    private initializeElements() {
+      return {
+        form: document.getElementById('registerForm') as HTMLFormElement,
+        emailInput: document.getElementById('email') as HTMLInputElement,
+        passwordInput: document.getElementById('password') as HTMLInputElement,
+        confirmPasswordInput: document.getElementById('confirmPassword') as HTMLInputElement,
+        termsCheckbox: document.getElementById('terms') as HTMLInputElement,
+        submitButton: document.getElementById('registerButton') as HTMLButtonElement,
+        submitButtonText: document.getElementById('registerButtonText'),
+        submitSpinner: document.getElementById('registerSpinner'),
+        generalError: document.getElementById('generalError') as HTMLElement,
+        generalErrorText: document.getElementById('generalErrorText') as HTMLElement,
+        googleButton: document.getElementById('googleSignUp') as HTMLButtonElement,
+        facebookButton: document.getElementById('facebookSignUp') as HTMLButtonElement,
+      };
+    }
+
+    private attachEventListeners() {
+      const { form, emailInput, passwordInput, confirmPasswordInput, submitButton, googleButton, facebookButton } = this.elements;
+
+      // Form submission
+      form?.addEventListener('submit', this.handleSubmit.bind(this));
+
+      // Real-time field validation
+      emailInput?.addEventListener('blur', this.handleEmailBlur.bind(this));
+      emailInput?.addEventListener('input', this.debounce(this.handleEmailInput.bind(this), 300));
+      
+      passwordInput?.addEventListener('blur', this.handlePasswordBlur.bind(this));
+      passwordInput?.addEventListener('input', this.debounce(this.handlePasswordInput.bind(this), 300));
+
+      confirmPasswordInput?.addEventListener('blur', this.handleConfirmPasswordBlur.bind(this));
+      confirmPasswordInput?.addEventListener('input', this.debounce(this.handleConfirmPasswordInput.bind(this), 300));
+
+      // Clear errors on focus
+      emailInput?.addEventListener('focus', () => this.hideFieldError('email'));
+      passwordInput?.addEventListener('focus', () => this.hideFieldError('password'));
+      confirmPasswordInput?.addEventListener('focus', () => this.hideFieldError('confirmPassword'));
+
+      // Social login
+      googleButton?.addEventListener('click', this.handleGoogleSignUp.bind(this));
+      facebookButton?.addEventListener('click', this.handleFacebookSignUp.bind(this));
+
+      // Prevent form resubmission
+      submitButton?.addEventListener('click', () => {
+        if (submitButton?.disabled) {
+          return false;
+        }
+      });
+    }
+
+    private debounce(func: Function, wait: number) {
+      let timeout: NodeJS.Timeout;
+      return (...args: any[]) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    private async handleSubmit(e: Event) {
+      e.preventDefault();
+      this.hideAllErrors();
+
+      const { form, emailInput, passwordInput, confirmPasswordInput, termsCheckbox } = this.elements;
+      
+      if (!form || !emailInput || !passwordInput || !confirmPasswordInput || !termsCheckbox) return;
+
+      const formData = new FormData(form);
+      
+      // Check terms agreement
+      if (!termsCheckbox.checked) {
+        this.showGeneralError('You must agree to the Terms and Conditions to continue');
+        termsCheckbox.focus();
+        return;
+      }
+      
+      // Client-side validation
+      if (!this.formValidator.validate(formData)) {
+        const errors = this.formValidator.getErrors();
+        
+        if (errors.email) this.showFieldError('email', errors.email);
+        if (errors.password) this.showFieldError('password', errors.password);
+        if (errors.confirmPassword) this.showFieldError('confirmPassword', errors.confirmPassword);
+        if (errors._form) this.showGeneralError(errors._form);
+        
+        return;
+      }
+
+      this.setLoading(true);
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
+
+        if (response.redirected) {
+          showToast({ 
+            message: 'Account created! Please check your email to verify.', 
+            type: 'success' 
+          });
+          
+          // Server will handle redirect
+          window.location.href = response.url;
+        } else {
+          const errorData = await response.json();
+          
+          if (errorData.code === 'VALIDATION_ERROR') {
+            // Handle field-specific validation errors
+            if (errorData.details?.email) {
+              this.showFieldError('email', errorData.details.email);
+            }
+            if (errorData.details?.password) {
+              this.showFieldError('password', errorData.details.password);
+            }
+            if (!errorData.details || Object.keys(errorData.details).length === 0) {
+              this.showGeneralError(errorData.message);
+            }
+          } else {
+            this.showGeneralError(errorData.message || 'Registration failed. Please try again.');
+          }
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        this.showGeneralError('Network error. Please check your connection and try again.');
+        showToast({ 
+          message: 'Network error. Please try again.', 
+          type: 'error' 
+        });
+      } finally {
+        this.setLoading(false);
+      }
+    }
+
+    private handleEmailBlur() {
+      const { emailInput } = this.elements;
+      if (!emailInput?.value.trim()) return;
+
+      const error = this.formValidator.validateField('email', emailInput.value.trim());
+      if (error) {
+        this.showFieldError('email', error);
+      }
+    }
+
+    private handleEmailInput() {
+      const { emailInput, emailError } = this.elements;
+      if (emailError?.classList.contains('hidden') === false) {
+        const error = this.formValidator.validateField('email', emailInput?.value.trim() || '');
+        if (!error) {
+          this.hideFieldError('email');
+        }
+      }
+    }
+
+    private handlePasswordBlur() {
+      const { passwordInput } = this.elements;
+      if (!passwordInput?.value) return;
+
+      const error = this.formValidator.validateField('password', passwordInput.value);
+      if (error) {
+        this.showFieldError('password', error);
+      }
+    }
+
+    private handlePasswordInput() {
+      const { passwordInput, passwordError } = this.elements;
+      if (passwordError?.classList.contains('hidden') === false) {
+        const error = this.formValidator.validateField('password', passwordInput?.value || '');
+        if (!error) {
+          this.hideFieldError('password');
+        }
+      }
+    }
+
+    private handleConfirmPasswordBlur() {
+      const { confirmPasswordInput } = this.elements;
+      if (!confirmPasswordInput?.value) return;
+
+      const error = this.formValidator.validateField('confirmPassword', confirmPasswordInput.value);
+      if (error) {
+        this.showFieldError('confirmPassword', error);
+      }
+    }
+
+    private handleConfirmPasswordInput() {
+      const { confirmPasswordInput, confirmPasswordError } = this.elements;
+      if (confirmPasswordError?.classList.contains('hidden') === false) {
+        const error = this.formValidator.validateField('confirmPassword', confirmPasswordInput?.value || '');
+        if (!error) {
+          this.hideFieldError('confirmPassword');
+        }
+      }
+    }
+
+    private async handleGoogleSignUp() {
+      await this.handleSocialSignUp('google');
+    }
+
+    private async handleFacebookSignUp() {
+      await this.handleSocialSignUp('facebook');
+    }
+
+    private async handleSocialSignUp(provider: string) {
+      this.setLoading(true);
+      
+      try {
+        // Note: This would need to be implemented on the backend
+        // For now, show a message
+        this.showGeneralError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-up is not available yet. Please use email registration.`);
+      } catch (error) {
+        console.error(`${provider} sign-up error:`, error);
+        this.showGeneralError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-up failed. Please try again.`);
+      } finally {
+        this.setLoading(false);
+      }
+    }
+
+    private setLoading(loading: boolean) {
+      const { submitButton, submitButtonText, submitSpinner, googleButton, facebookButton } = this.elements;
+      
+      if (submitButton) submitButton.disabled = loading;
+      if (googleButton) googleButton.disabled = loading;
+      if (facebookButton) facebookButton.disabled = loading;
+      
+      if (loading) {
+        submitButtonText?.classList.add('hidden');
+        submitSpinner?.classList.remove('hidden');
+      } else {
+        submitButtonText?.classList.remove('hidden');
+        submitSpinner?.classList.add('hidden');
+      }
+    }
+
+    private showFieldError(fieldName: string, message: string) {
+      const errorIcon = document.getElementById(`${fieldName}Error`);
+      const errorText = document.getElementById(`${fieldName}ErrorText`);
+      const input = document.getElementById(fieldName) as HTMLInputElement;
+      
+      errorIcon?.classList.remove('hidden');
+      if (errorText) errorText.textContent = message;
+      errorText?.classList.remove('hidden');
+      
+      if (input) {
+        input.classList.add('border-red-500');
+        input.classList.remove('border-gray-300');
+        input.setAttribute('aria-invalid', 'true');
+      }
+    }
+
+    private hideFieldError(fieldName: string) {
+      const errorIcon = document.getElementById(`${fieldName}Error`);
+      const errorText = document.getElementById(`${fieldName}ErrorText`);
+      const input = document.getElementById(fieldName) as HTMLInputElement;
+      
+      errorIcon?.classList.add('hidden');
+      errorText?.classList.add('hidden');
+      
+      if (input) {
+        input.classList.remove('border-red-500');
+        input.classList.add('border-gray-300');
+        input.setAttribute('aria-invalid', 'false');
+      }
+    }
+
+    private showGeneralError(message: string) {
+      const { generalError, generalErrorText } = this.elements;
+      
+      if (generalErrorText) generalErrorText.textContent = message;
+      if (generalError) generalError.classList.remove('hidden');
+      
+      // Scroll to error for accessibility
+      generalError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    private hideAllErrors() {
+      this.hideFieldError('email');
+      this.hideFieldError('password');
+      this.hideFieldError('confirmPassword');
+      
+      const { generalError } = this.elements;
+      if (generalError) generalError.classList.add('hidden');
+    }
+  }
+
+  // Initialize form when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    new RegisterForm();
+  });
+</script>

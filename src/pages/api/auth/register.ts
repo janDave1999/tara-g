@@ -1,8 +1,20 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import { 
+  handleApiError, 
+  ValidationError, 
+  createSuccessResponse 
+} from "../../../lib/errorHandler";
+import { commonSchemas } from "../../../lib/validation";
+import { z } from "zod";
+
+const registerSchema = z.object({
+  email: commonSchemas.email,
+  password: commonSchemas.password
+});
 
 // check if email already exists in custom users table
-async function emailExists(email: string) {
+async function emailExists(email: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("users")
     .select("user_id")
@@ -11,45 +23,60 @@ async function emailExists(email: string) {
 
   if (error && error.code !== "PGRST116") {
     console.error("Error checking email:", error);
-    throw new Error(error.message);
+    throw new Error('Database error while checking email');
   }
   return !!data; // true if exists
 }
 
 export const POST: APIRoute = async ({ request }) => {
-  const formData = await request.formData();
-  const email = formData.get("email")?.toString() || "";
-  const password = formData.get("password")?.toString() || "";
-
-  if (!email || !password) {
-    return new Response("Email and password are required", { status: 400 });
-  }
-
-  // ✅ Check if email already exists
   try {
-    const exists = await emailExists(email);
-    if (exists) {
-      return new Response("Email already exists", { status: 409 });
+    const formData = await request.formData();
+    const email = formData.get("email")?.toString();
+    const password = formData.get("password")?.toString();
+
+    if (!email || !password) {
+      throw new ValidationError('Email and password are required');
     }
-  } catch (err) {
-    console.error(err);
-    return new Response("Failed to check email", { status: 500 });
+
+    const validatedData = registerSchema.parse({ email, password });
+
+    // Check if email already exists
+    try {
+      const exists = await emailExists(validatedData.email);
+      if (exists) {
+        throw new ValidationError('Email already exists', { email: 'This email is already registered' });
+      }
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        throw err;
+      }
+      console.error("Database error checking email:", err);
+      throw new Error('Failed to check email availability');
+    }
+
+    // Create new user in Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: validatedData.email,
+      password: validatedData.password,
+    });
+
+    if (error) {
+      console.error("Supabase signUp error:", error);
+      
+      if (error.message.includes('User already registered')) {
+        throw new ValidationError('Email already exists', { email: 'This email is already registered' });
+      }
+      
+      throw new Error('Registration failed. Please try again.');
+    }
+
+    // Redirect to confirmation page
+    const headers = new Headers({
+      Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}`,
+    });
+    return new Response(null, { status: 302, headers });
+    
+  } catch (error) {
+    return handleApiError(error);
   }
-
-  // ✅ Create new user in Supabase Auth
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) {
-    console.error("Supabase signUp error:", error);
-    return new Response(error.message, { status: 500 });
-  }
-
-  // ✅ Redirect to confirmation page
-  const headers = new Headers({
-    Location: `/register/confirmation?email=${encodeURIComponent(email)}`,
-  });
-  return new Response(null, { status: 302, headers });
 };

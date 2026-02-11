@@ -1,7 +1,7 @@
 ---
 
 import StopCard from './StopCard.astro';
-import type { CompleteStop } from '@/types/itinerary';
+import type { CompleteStop, ItineraryStop } from '@/types/itinerary';
 import { formatDate } from '@/utility/dateFormatter';
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
 }
 
 const { dayIndex, stops, isOwner } = Astro.props;
-const firstStop = stops[0]?.stop;
+const firstStop = stops[0].stop;
 const dayDate = firstStop ? formatDate(firstStop.scheduled_start) : '';
 ---
 
@@ -55,9 +55,9 @@ const dayDate = firstStop ? formatDate(firstStop.scheduled_start) : '';
     <!-- Vertical Line -->
     <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-200 via-green-200 to-blue-200"></div>
     
-    {stops.map((completeStop) => (
+    {stops.map((completeStops ) => (
       <StopCard 
-        completeStop={completeStop}
+        completeStop={completeStops}
         isOwner={isOwner}
       />
     ))}

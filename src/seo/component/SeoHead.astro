@@ -1,0 +1,30 @@
+---
+import type { PAGE_PLATE_PROPS } from "@/types/pageplates/types";
+import PageSchema from "./PageSchema.astro";
+import HeadTagOG from "./HeadTagOG.astro";
+import HeadTagTwitter from "./HeadTagTwitter.astro";
+import HeadTagFb from "./HeadTagFb.astro";
+import HeadTagAltLanguages from "./HeadTagAltLanguages.astro";
+import HeadTagPrefetch from "./HeadTagPrefetch.astro";
+
+interface Props {
+  description?: PAGE_PLATE_PROPS["description"];
+  prefetch?: string[];
+  showAltLanguages?: boolean;
+  showFb?: boolean;
+}
+
+const {
+  description,
+  prefetch,
+  showAltLanguages = true,
+  showFb = false,
+} = Astro.props;
+---
+
+{showAltLanguages && <HeadTagAltLanguages />}
+<PageSchema description={description} />
+{showFb && <HeadTagFb appId={description?.fbAppId} />}
+<HeadTagTwitter description={description} />
+<HeadTagOG description={description} />
+{prefetch && prefetch.length > 0 && <HeadTagPrefetch links={prefetch} />}

@@ -3,17 +3,6 @@ import { getAllPosts } from '@/lib/cosmic_client'
 import BlogItemSmall from '@/components/Blog/BlogItemSmall.astro';
 import type { BlogPost } from 'src/structure/Blog';
 
-// import fetchApi from '@/lib/strapi';
-import { STRAPI_TOKEN } from 'astro:env/server';
-
-// import type Article from '@/interfaces/article';
-
-// const articles = await fetchApi<Article[]>({
-//   endpoint: 'announcement-banners', // the content type to fetch
-//   // wrappedByKey: STRAPI_TOKEN, // the key to unwrap the response
-// });
-
-// console.log(articles);
 
 let newsContentData: any;
  newsContentData = await new Promise(async(resolve)=>{

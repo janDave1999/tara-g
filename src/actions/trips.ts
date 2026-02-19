@@ -481,7 +481,6 @@ export const trip = {
     input: createTripSchema,
     handler: async (input, context) => {
       try {
-        console.log('Creating trip...', input);
         // Get current user
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser();
         
@@ -570,9 +569,7 @@ export const trip = {
     handler: defineProtectedAction(async (input, {userId}) => {
       const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: userId });
       let message = data[0].message
-      console.log(message);
       if (error) {
-        console.log(error);
         throw new ActionError({
           message: error.message,
           code: "INTERNAL_SERVER_ERROR"
@@ -635,7 +632,6 @@ export const trip = {
     }),
     
     async handler({ files, trip_id }, { locals }) {
-      console.log("locals:", locals.runtime);
       // Check if R2 binding exists
       if (!locals.runtime?.env?.TRIP_HERO) {
         throw new ActionError({
@@ -708,14 +704,13 @@ export const trip = {
           });
           
           if (error) {
-            console.error("[DB ERROR]", error);
             
             // Cleanup: delete uploaded file from R2 since DB insert failed
             try {
               await locals.runtime.env.TRIP_HERO.delete(keyname);
             } catch (deleteErr) {
-              console.error("[R2 DELETE ERROR]", deleteErr);
-            }
+              console.error(`[R2 CLEANUP ERROR] Failed to delete ${keyname}:`, deleteErr);
+             }
             
             throw new ActionError({
               message: `Database error: ${error.message}`,

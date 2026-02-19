@@ -1,10 +1,11 @@
 // File: src/pages/api/trips/owned.ts
 import type { APIRoute } from 'astro';
 import { supabase } from '@/lib/supabase';
+import { handleApiError, createSuccessResponse } from '@/lib/errorHandler';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-     const body = await request.json() as {
+    const body = await request.json() as {
       userId: string;
       search?: string;
       status?: string;
@@ -23,34 +24,14 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      throw new Error('Failed to fetch owned trips');
     }
 
-    return new Response(
-      JSON.stringify({
-        trips: data || [],
-        totalCount: data?.[0]?.total_count || 0,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return createSuccessResponse({
+      trips: data || [],
+      totalCount: data?.[0]?.total_count || 0,
+    });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return handleApiError(error);
   }
 };
-
-
-
-
-

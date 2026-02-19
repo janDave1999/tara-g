@@ -3,16 +3,10 @@ import type { PAGE_PLATE_PROPS } from "@/types/pageplates/types";
 import Layout from "./Layout.astro";
 import FooterMain from "@/features/footer/FooterMain.astro";
 import HeaderMain from "@/features/navbar/HeaderMain.astro";
-import PageSchema from "@/seo/component/PageSchema.astro";
-import HeadTagFb from "@/seo/component/HeadTagFb.astro";
-import HeadTagTwitter from "@/seo/component/HeadTagTwitter.astro";
-import HeadTagOG from "@/seo/component/HeadTagOG.astro";
-import HeadTagPrefetch from "@/seo/component/HeadTagPrefetch.astro";
-import HeadTagAltLanguages from "@/seo/component/HeadTagAltLanguages.astro";
+import SeoHead from "@/seo/component/SeoHead.astro";
 import CookiesConsent from "@/components/CookiesConsent.astro";
 import LoadModal from "@/components/LoadModal.astro";
 import BottomNav from "@/features/navbar/BottomNav.astro";
-import Header from "@/features/navbar/Header.astro";
 
 let user_id = Astro.locals.user_id;
 interface Props extends PAGE_PLATE_PROPS {}
@@ -43,29 +37,11 @@ if(description == undefined){
 if(description && !description.title){
   description.title = title;
 }
-if(description && !description.fbAppId){
-  // description.fbAppId = "__PROJECT_FB_APP_ID__";
-}
 ---
 
 <Layout title={title} html={html}>
-  <Fragment slot={`head-first`}>
-    {/* Language */}
-    <HeadTagAltLanguages />
-
-  </Fragment>
   <Fragment slot={`head-last`}>
-    {/* Schema.org JSON-LD */}
-    <PageSchema description={description} />
-    {/* FB */}
-    <HeadTagFb appId={description?.fbAppId} />
-    {/* Twitter */}
-    <HeadTagTwitter description={description} />
-    {/* OG */}
-    <HeadTagOG description={description} />
-
-    {/* Prefetches */}
-    <HeadTagPrefetch links={prefetch} />
+    <SeoHead description={description} prefetch={prefetch} showFb={!!description?.fbAppId} />
   </Fragment>
     {clean?"":<>
       {noHeader ? "":<>
@@ -78,13 +54,7 @@ if(description && !description.fbAppId){
       <slot />
       </>:<>
       <div
-      class="
-            container mx-auto
-            px-4 sm:px-6 md:px-8 lg:px-12
-            py-4 sm:py-6 md:py-8 lg:py-12
-            relative
-            {containerClass}
-          "
+        class={`container mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-6 md:py-8 lg:py-12 relative ${containerClass}`}
       >
       <slot />
     </div>

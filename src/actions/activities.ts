@@ -16,7 +16,6 @@ export const activities = {
       order_index: z.number().optional(),
     }),
     handler: async (input, context) => {
-      console.log("PUMASOK BA DITO?");
       const { data, error } = await supabaseAdmin
         .from('stop_activities')
         .insert({
@@ -28,7 +27,6 @@ export const activities = {
         })
         .select()
         .single();
-      console.log("ANO YUNG ERROR", error);
       if (error) {
         console.error(error);
         window.alert(error.message);

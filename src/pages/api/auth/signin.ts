@@ -3,13 +3,13 @@ import { supabase } from "../../../lib/supabase";
 import type { Provider } from "@supabase/supabase-js";
 import { SITE_URL } from "astro:env/server";
 import { v4 } from "uuid";
-import { 
-  handleApiError, 
-  ValidationError, 
-  AuthenticationError, 
-  createSuccessResponse 
+import {
+  handleApiError,
+  ValidationError,
+  AuthenticationError,
 } from "../../../lib/errorHandler";
-import { validateBody, commonSchemas } from "../../../lib/validation";
+import { commonSchemas } from "../../../lib/validation";
+import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 import { z } from "zod";
 const signInSchema = z.object({
   email: commonSchemas.email,
@@ -17,7 +17,7 @@ const signInSchema = z.object({
   provider: z.enum(['google', 'facebook']).optional()
 });
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   // Set CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -28,6 +28,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Handle preflight requests
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const { allowed } = checkRateLimit(getClientIp(request));
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -42,19 +50,15 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       if (!validProviders.includes(provider)) {
         throw new ValidationError('Invalid OAuth provider');
       }
-      console.log("Provider", provider)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider as Provider,
         options: {
           redirectTo: `${SITE_URL}/api/auth/callback`
         },
       });
-      console.log("ANO NAG ERROR", error)
       if (error) {
-        console.error("OAuth signin error:", error);
         throw new AuthenticationError('OAuth authentication failed');
       }
-      console.log(data)
       return Response.redirect(data.url, 302);
     }
 
@@ -70,8 +74,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
 
     if (error) {
-      console.error("Password signin error:", error);
-      
       if (error.message.includes('Invalid login credentials')) {
         throw new AuthenticationError('Invalid email or password');
       }
@@ -101,8 +103,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const cookieOptions = {
       path: "/",
       httpOnly: true,
-      secure: true,
-      sameSite: 'lax' as const,
+      secure: import.meta.env.PROD,
+      sameSite: 'strict' as const,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     };
 
     cookies.set("sb-access-token", access_token, cookieOptions);

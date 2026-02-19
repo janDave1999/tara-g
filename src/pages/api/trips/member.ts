@@ -1,11 +1,7 @@
 // File: src/pages/api/trips/member.ts
 import type { APIRoute } from 'astro';
 import { supabase } from '@/lib/supabase';
-import { 
-  handleApiError, 
-  ValidationError, 
-  createSuccessResponse 
-} from '../../../lib/errorHandler';
+import { handleApiError, createSuccessResponse } from '../../../lib/errorHandler';
 import { validateBody, commonSchemas } from '../../../lib/validation';
 import { z } from 'zod';
 
@@ -31,7 +27,6 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     if (error) {
-      console.error('Database error fetching member trips:', error);
       throw new Error('Failed to fetch member trips');
     }
 

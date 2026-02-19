@@ -21,7 +21,6 @@ export type TripFormData = {
   estimated_budget: number | null;
 }
 
-
 export interface Location {
   name: string;
   lat: number;
@@ -29,27 +28,26 @@ export interface Location {
 }
 
 export interface TripLocation {
+  id: string;
   start_time: string;
   end_time: string;
   waiting_time: number;
   type: string;
-  locations: Location;
+  notes: string;
+  is_primary: boolean;
+  location: {
+    location_id: string;
+    name: string;
+    lat: string;
+    lng: string;
+  };
+  activities: Array<{
+    id: string;
+    activity_type: string;
+    description: string;
+    planned_duration_minutes: number;
+  }>;
 }
-
-// export interface TripDetails {
-//   start_date: string;
-//   end_date: string;
-//   gender_pref?: string;
-//   cost_sharing?: string;
-//   region?: string;
-//   cover_image?: string;
-//   tags?: string[];
-//   max_pax?: number;
-// }
-
-// export interface TripMember {
-//   user_id: string;
-// }
 
 export interface TripPool {
   total_pool: number;
@@ -68,21 +66,6 @@ export interface TripExpense {
   category: string;
   amount: number;
 }
-
-// export interface Trip {
-//   trip_id: string;
-//   owner_id: string;
-//   title: string;
-//   description: string;
-//   status: string;
-//   trip_details?: TripDetails[];
-//   trip_location?: TripLocation[];
-//   trip_members?: TripMember[];
-//   trip_pools?: TripPool[];
-//   trip_pool_members?: TripPoolMember[];
-//   trip_expenses?: TripExpense[];
-// }
-
 
 export type TripMember = {
   member_id: string;
@@ -144,44 +127,6 @@ export type CompleteMembersData = {
   pending_invitations: PendingInvitation[];
   summary: MembersSummary;
 };
-
-
-
-
-// ============================================================================
-// FILE: Data Type Definitions (src/types/trip.ts)
-// ============================================================================
-
-export interface TripLocation {
-  id: string;
-  start_time: string;
-  end_time: string;
-  waiting_time: number;
-  type: string;
-  notes: string;
-  is_primary: boolean;
-  location: {
-    location_id: string;
-    name: string;
-    lat: string;
-    lng: string;
-  };
-  activities: Array<{
-    id: string;
-    activity_type: string;
-    description: string;
-    planned_duration_minutes: number;
-  }>;
-}
-
-// export interface TripMember {
-//   user_id: string;
-//   full_name: string;
-//   avatar_url: string;
-//   role: string;
-//   member_status: 'pending' | 'accepted' | 'declined';
-//   joined_at: string;
-// }
 
 export interface TripDetails {
   description: string;

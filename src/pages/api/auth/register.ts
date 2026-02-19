@@ -1,11 +1,11 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
-import { 
-  handleApiError, 
-  ValidationError, 
-  createSuccessResponse 
+import {
+  handleApiError,
+  ValidationError,
 } from "../../../lib/errorHandler";
 import { commonSchemas } from "../../../lib/validation";
+import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -22,13 +22,20 @@ async function emailExists(email: string): Promise<boolean> {
     .maybeSingle();
 
   if (error && error.code !== "PGRST116") {
-    console.error("Error checking email:", error);
     throw new Error('Database error while checking email');
   }
   return !!data; // true if exists
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  const { allowed } = checkRateLimit(getClientIp(request));
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const formData = await request.formData();
     const email = formData.get("email")?.toString();
@@ -50,7 +57,6 @@ export const POST: APIRoute = async ({ request }) => {
       if (err instanceof ValidationError) {
         throw err;
       }
-      console.error("Database error checking email:", err);
       throw new Error('Failed to check email availability');
     }
 
@@ -61,8 +67,6 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     if (error) {
-      console.error("Supabase signUp error:", error);
-      
       if (error.message.includes('User already registered')) {
         throw new ValidationError('Email already exists', { email: 'This email is already registered' });
       }

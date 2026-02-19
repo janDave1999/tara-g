@@ -4,6 +4,7 @@
 // ============================================================================
 import { defineMiddleware } from "astro:middleware";
 import { supabaseAdmin } from "@/lib/supabase";
+import { refreshSession } from "../lib/refreshSession";
 import micromatch from "micromatch";
 import { handleApiError } from "../lib/errorHandler";
 
@@ -47,14 +48,10 @@ async function checkOnboardingStatus(userId: string) {
       p_user_id: userId
     });
     
-    if (error) {
-      console.error('Error fetching onboarding status:', error);
-      return null;
-    }
+    if (error) return null;
 
     return data;
-  } catch (error) {
-    console.error('Exception in checkOnboardingStatus:', error);
+  } catch {
     return null;
   }
 }
@@ -97,18 +94,15 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
         locals.avatar_url = payload.user_metadata?.avatar_url;
         locals.email = payload.email;
       } else {
-        // Token expired, try to refresh
-        const { data, error } = await supabaseAdmin.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+        // Token expired — attempt refresh via utility
+        const refreshed = await refreshSession(accessToken, refreshToken);
 
-        if (!error && data.user) {
-          locals.user_id = data.user.id;
-          locals.avatar_url = data.user.user_metadata?.avatar_url;
-          locals.email = data.user.email;
+        if (refreshed) {
+          locals.user_id = refreshed.user_id;
+          locals.avatar_url = refreshed.avatar_url;
+          locals.email = refreshed.email;
 
-          cookies.set("sb-access-token", data.session!.access_token, {
+          cookies.set("sb-access-token", refreshed.access_token, {
             path: "/",
             httpOnly: true,
             sameSite: "strict",
@@ -116,22 +110,19 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
             maxAge: 60 * 60 * 24 * 7, // 7 days
           });
 
-          cookies.set("sb-refresh-token", data.session!.refresh_token, {
+          cookies.set("sb-refresh-token", refreshed.refresh_token, {
             path: "/",
             httpOnly: true,
             sameSite: "strict",
             secure: import.meta.env.PROD,
             maxAge: 60 * 60 * 24 * 30, // 30 days
           });
-} else {
-          console.warn('Token refresh failed:', error);
-          // Refresh failed, clear cookies
+        } else {
           cookies.delete("sb-access-token", { path: "/" });
           cookies.delete("sb-refresh-token", { path: "/" });
         }
       }
-    } catch (err) {
-      console.error('Auth error:', err);
+    } catch {
       cookies.delete("sb-access-token", { path: "/" });
       cookies.delete("sb-refresh-token", { path: "/" });
     }

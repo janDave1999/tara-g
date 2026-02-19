@@ -8,6 +8,7 @@ export interface PAGE_PLATE_PROPS {
   noContainer?: boolean,
   clean?: boolean,
   expectedHeight?: string,
+  containerClass?: string,
   prefetch?: string[],
   html?: HTMLAttributes<'html'>,
   description?:{

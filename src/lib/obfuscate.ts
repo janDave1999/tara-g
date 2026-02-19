@@ -1,4 +1,4 @@
-import { SALT } from "astro:env/client";
+import { SALT } from "astro:env/server";
 export const obfuscate = (text: string) => {
   const salted = text + "|" + SALT;
   // Convert to Base64 and swap some characters to make it non-standard

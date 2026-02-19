@@ -76,7 +76,6 @@ export const stops = {
         p_activities: input.activities ? JSON.stringify(input.activities) : '[]',
         p_transportation: input.transportation ? JSON.stringify(input.transportation) : null,
       });
-      console.log("ANO YUNG ERROR:", error);
       if (error) {
         throw new Error(`Failed to create stop: ${error.message}`);
       }

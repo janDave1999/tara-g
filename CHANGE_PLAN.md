@@ -59,13 +59,13 @@
 #### Project 82 — Province Tracking
 
 **Phase 1: Core Infrastructure**
-- [ ] Create database migration (`database-migrations/009_project82.sql`) — user_province_visits table + province_boundaries table
-- [ ] Load province geojson data into province_boundaries table
+- [x] ~~Create database migration (`database-migrations/024_project82_tables.sql`) — user_province_visits table~~
+- [ ] Load province geojson data into province_boundaries table (deferred — using local /geojson/ files)
 - [ ] Add province_key field to trips table
-- [ ] Create API: GET /api/project82 (fetch user visits)
-- [ ] Create API: POST /api/project82 (add/update visit)
-- [ ] Create API: DELETE /api/project82/[province_key] (remove visit)
-- [ ] Create frontend: /project82 page with basic choropleth map
+- [x] ~~Create API: GET /api/project82 (fetch user visits)~~
+- [x] ~~Create API: POST /api/project82 (add/update visit)~~
+- [x] ~~Create API: DELETE /api/project82/[province_key] (remove visit)~~
+- [x] ~~Create frontend: /project82 page with choropleth map, stage selection modal, progress bar~~
 
 **Phase 2: Auto-Detection**
 - [ ] Create API: POST /api/project82/sync (auto-detect from completed trips)

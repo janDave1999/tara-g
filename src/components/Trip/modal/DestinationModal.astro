@@ -1,0 +1,127 @@
+---
+import EditModal from '../EditModal.astro';
+
+interface Props {
+  destination?: string;
+  tripId: string;
+}
+
+const { destination, tripId } = Astro.props;
+---
+
+<EditModal modalId="edit-destination-modal" title="Edit Destination" colorScheme="green">
+  <form id="edit-destination-form" class="space-y-4" data-trip-id={tripId}>
+
+    <div>
+      <label class="label">
+        <span class="label-text font-medium">Destination</span>
+      </label>
+      <!-- createMapboxSearchBox wraps this input and attaches autocomplete -->
+      <input
+        type="text"
+        id="destination-input"
+        name="region_address"
+        value={destination ?? ''}
+        autocomplete="off"
+        class="input input-bordered w-full"
+        placeholder="Search city, province, or landmark..."
+        required
+      />
+    </div>
+
+    <!-- Confirmation shown once user picks from suggestions -->
+    <div id="destination-selected" style="display:none" class="text-sm text-emerald-700 flex items-center gap-1.5">
+      <span>📍</span>
+      <span id="destination-full-name"></span>
+    </div>
+
+    <!-- Populated by Mapbox onSelect as [lng, lat] JSON -->
+    <input type="hidden" id="destination-coords" name="region_coordinates" value="[0,0]" />
+
+    <div class="modal-action">
+      <button
+        type="button"
+        class="btn"
+        onclick="document.getElementById('edit-destination-modal').close()"
+      >
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { createMapboxSearchBox } from '@/scripts/mapBoxSearch';
+  import { showToast } from '@/scripts/Toast';
+  import { actions, ActionError } from 'astro:actions';
+
+  let searchInitialized = false;
+
+  function initDestinationSearch() {
+    if (searchInitialized) return;
+    searchInitialized = true;
+
+    const coordsInput  = document.getElementById('destination-coords') as HTMLInputElement | null;
+    const selectedDiv  = document.getElementById('destination-selected') as HTMLElement | null;
+    const fullNameSpan = document.getElementById('destination-full-name') as HTMLElement | null;
+
+    if (!coordsInput) return;
+
+    createMapboxSearchBox({
+      sessionTokenID: crypto.randomUUID(),
+      targetSelector: '#destination-input',
+      country: 'PH',
+      language: 'en',
+      placeholder: 'Search city, province, or landmark...',
+      onSelect: ({ name, coordinates, context }) => {
+        const region = (context as any)?.region?.name ?? (context as any)?.place?.name ?? '';
+        const fullName = region ? `${name}, ${region}` : name;
+
+        const textInput = document.getElementById('destination-input') as HTMLInputElement | null;
+        if (textInput) textInput.value = fullName;
+
+        coordsInput.value = JSON.stringify(coordinates);
+
+        if (selectedDiv && fullNameSpan) {
+          fullNameSpan.textContent = fullName;
+          selectedDiv.style.display = 'flex';
+        }
+      },
+    });
+  }
+
+  // Init on first open of the dialog
+  document.getElementById('edit-destination-modal')?.addEventListener('toggle', () => {
+    initDestinationSearch();
+  });
+
+  // Init immediately if already mounted open
+  const dialog = document.getElementById('edit-destination-modal') as HTMLDialogElement | null;
+  if (dialog?.open) initDestinationSearch();
+  else initDestinationSearch(); // safe: createMapboxSearchBox checks if target exists
+
+  // Form submit
+  const form = document.getElementById('edit-destination-form') as HTMLFormElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const tripId = form.dataset.tripId!;
+    const formData = new FormData(form);
+
+    const { error } = await actions.trip.updateTripDestination({
+      trip_id: tripId,
+      region_address: formData.get('region_address') as string,
+      region_coordinates: formData.get('region_coordinates') as string,
+    });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: 'Destination updated!', type: 'success' });
+      document.getElementById('edit-destination-modal')?.close();
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  });
+</script>

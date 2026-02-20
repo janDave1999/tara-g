@@ -9,10 +9,10 @@ const { trip, type } = Astro.props;
 
 const formatDate = (date: string | null) => {
   if (!date) return 'TBD';
-  return new Date(date).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
 };
 
@@ -26,17 +26,32 @@ const getStatusColor = (status: string) => {
   };
   return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
 };
+
+const visibilityMeta: Record<string, { label: string; classes: string }> = {
+  private: { label: '🔒 Private', classes: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+  public:  { label: '🌐 Public',  classes: 'bg-green-100 text-green-800 hover:bg-green-200' },
+  friends: { label: '👥 Friends', classes: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+};
+
+const vis = trip.visibility ?? 'private';
+const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibilityMeta['private'];
 ---
 
-<a
-  href={`/trips/${trip.trip_id}`}
-  class="group block rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white"
->
+<!-- Outer div is the card; the <a> covers it as a click-through overlay -->
+<div class="group relative rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white">
+
+  <!-- Full-card link (sits below all content via z-0) -->
+  <a
+    href={`/trips/${trip.trip_id}`}
+    class="absolute inset-0 z-0"
+    aria-label={trip.title}
+  ></a>
+
   <!-- Cover Image -->
-  <div class="relative h-48 bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
+  <div class="relative h-48 bg-linear-to-br from-blue-100 to-indigo-100 overflow-hidden">
     {trip.cover_image ? (
       <img
-        src={PUBLIC_R2_URL + "/" + trip.cover_image} 
+        src={PUBLIC_R2_URL + "/" + trip.cover_image}
         alt={trip.title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
@@ -48,16 +63,9 @@ const getStatusColor = (status: string) => {
       </div>
     )}
 
-    <!-- Status Badge -->
-    <div class="absolute top-3 right-3">
-      <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
-        {trip.status}
-      </span>
-    </div>
-
     {/* Role Badge for member trips */}
     {type === 'member' && trip.role && (
-      <div class="absolute top-3 left-3">
+      <div class="absolute top-3 left-3 z-10">
         <span class="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
           {trip.role}
         </span>
@@ -65,8 +73,26 @@ const getStatusColor = (status: string) => {
     )}
   </div>
 
-  <!-- Content -->
-  <div class="p-5 space-y-3">
+  <!-- Badges row: visibility toggle + status (above the link overlay) -->
+  <div class="absolute top-3 right-3 z-10 flex items-center gap-2">
+    {type === 'owned' && (
+      <button
+        class={`visibility-toggle px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${visClasses}`}
+        data-trip-id={trip.trip_id}
+        data-visibility={vis}
+        title="Click to change visibility"
+        type="button"
+      >
+        {visLabel}
+      </button>
+    )}
+    <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
+      {trip.status}
+    </span>
+  </div>
+
+  <!-- Content (relative z-[1] so it sits above the <a> overlay) -->
+  <div class="relative z-1 p-5 space-y-3 pointer-events-none">
     <!-- Title and Region -->
     <div>
       <h3 class="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
@@ -159,4 +185,48 @@ const getStatusColor = (status: string) => {
       </div>
     </div>
   </div>
-</a>
+</div>
+
+<script>
+  import { actions, ActionError } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+
+  type Visibility = 'private' | 'public' | 'friends';
+
+  const CYCLE: Visibility[] = ['private', 'public', 'friends'];
+  const META: Record<Visibility, { label: string; classes: string }> = {
+    private: { label: '🔒 Private', classes: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+    public:  { label: '🌐 Public',  classes: 'bg-green-100 text-green-800 hover:bg-green-200' },
+    friends: { label: '👥 Friends', classes: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+  };
+
+  function applyMeta(btn: HTMLButtonElement, vis: Visibility) {
+    const { label, classes } = META[vis];
+    btn.textContent = label;
+    btn.className = `visibility-toggle px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${classes}`;
+    btn.dataset.visibility = vis;
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('.visibility-toggle') as HTMLButtonElement | null;
+    if (!btn) return;
+
+    const tripId = btn.dataset.tripId!;
+    const current = (btn.dataset.visibility ?? 'private') as Visibility;
+    const next = CYCLE[(CYCLE.indexOf(current) + 1) % CYCLE.length];
+
+    applyMeta(btn, next);
+
+    const { error } = await actions.trip.updateTripVisibility({
+      trip_id: tripId,
+      visibility: next,
+    });
+
+    if (error instanceof ActionError) {
+      applyMeta(btn, current);
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: `Trip is now ${next}`, type: 'success' });
+    }
+  });
+</script>

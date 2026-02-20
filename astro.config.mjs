@@ -61,7 +61,6 @@ export default defineConfig({
       PUBLIC_R2_URL: envField.string({ context: "client", access: "public" }),
       STRAPI_URL: envField.string({ context: "server", access: "public" }),
       STRAPI_TOKEN: envField.string({ context: "server", access: "public" }),
-      SALT: envField.string({ context: "server", access: "secret" }),
     },
   },
   vite: {

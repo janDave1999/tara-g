@@ -35,7 +35,6 @@ const formatTime = (isoStr: string) => {
 
 // Helper: Human Readable Timeline Logic
 const getDisplayTime = (start: any, end: any, waiting_time: number) => {
-  console.log("start", start, "end", end);
 
   // if waiting time is 0 then make default to 15 minutes
   if (waiting_time === 0) {
@@ -53,14 +52,13 @@ const getDisplayTime = (start: any, end: any, waiting_time: number) => {
     end = new Date(start).getTime() + (waiting_time * 60000);
     end = new Date(end).toISOString();
   }
-  console.log("start", start, "end", end);
   const isSameDay = start.slice(0, 10) === end?.slice(0, 10);
   if (isSameDay) {
     return `${formatDate(start)} | ${formatTime(start)} - ${formatTime(end)}`;
   }
   return `${formatDate(start)}, ${formatTime(start)} — ${formatDate(end)}, ${formatTime(end)}`;
 };
-
+console.log(trip_location);
 // Sort timeline by start_time
 const sortedLocations = [...trip_location].sort((a, b) => 
   new Date(a.scheduled_start).getTime() - new Date(b.scheduled_end).getTime()
@@ -395,7 +393,6 @@ const categoryStyles = {
         target.innerText = "Saving...";
         target.setAttribute('disabled', 'true');
 
-        console.log("Submitting to Astro Action:", payload);
         
         // Example Action Call:
         // const { data, error } = await actions.trip.updateItinerary({ tripId, payload });

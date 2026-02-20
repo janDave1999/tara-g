@@ -9,7 +9,7 @@ import micromatch from "micromatch";
 import { handleApiError } from "../lib/errorHandler";
 
 /* -------------------- Route Config -------------------- */
-const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**"];
+const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/project82/**"];
 const protectedAPIRoutes = ["/api/**"];
 const guestOnlyRoutes = ["/signin(|/)", "/register(|/)", "/", "/api/auth/**"];
 const onboardingRoutes = ["/onboarding/**"];

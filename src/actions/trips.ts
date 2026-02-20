@@ -1481,6 +1481,41 @@ getNearbyTrips: defineAction({
     },
   }),
 
+  updateTripVisibility: defineAction({
+    accept: 'json',
+    input: z.object({
+      trip_id: z.string().uuid(),
+      visibility: z.enum(['private', 'public', 'friends']),
+    }),
+    handler: async ({ trip_id, visibility }, context) => {
+      const user = context.locals.user_id;
+      if (!user) {
+        throw new ActionError({ message: 'Unauthorized', code: 'UNAUTHORIZED' });
+      }
+
+      const { data: ownerCheck } = await supabaseAdmin
+        .from('trips')
+        .select('owner_id')
+        .eq('trip_id', trip_id)
+        .single();
+
+      if (!ownerCheck || ownerCheck.owner_id !== user) {
+        throw new ActionError({ message: 'Only the trip owner can change visibility', code: 'FORBIDDEN' });
+      }
+
+      const { error } = await supabaseAdmin
+        .from('trip_visibility')
+        .update({ visibility })
+        .eq('trip_id', trip_id);
+
+      if (error) {
+        throw new ActionError({ message: error.message, code: 'INTERNAL_SERVER_ERROR' });
+      }
+
+      return { success: true, visibility };
+    },
+  }),
+
   updateTripStatus: defineAction({
     accept: 'json',
     input: z.object({

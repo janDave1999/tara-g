@@ -45,7 +45,7 @@ if(description && !description.title){
   </Fragment>
     {clean?"":<>
       {noHeader ? "":<>
-        <HeaderMain client:load />
+        <HeaderMain />
       </>}
     </>}
     <slot name="header" />
@@ -59,10 +59,10 @@ if(description && !description.title){
       <slot />
     </div>
     </>}
-    <CookiesConsent client:idle />
+    <CookiesConsent />
     <LoadModal />
     {
-     user_id ? <BottomNav client:load currentPath={Astro.url.pathname} /> : ""
+     user_id ? <BottomNav currentPath={Astro.url.pathname} /> : ""
     }
     {clean?"": <>
       {noFooter ? "":<>

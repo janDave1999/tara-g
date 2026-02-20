@@ -1,0 +1,99 @@
+---
+import EditModal from '../EditModal.astro';
+
+interface Props {
+  tripId: string;
+  currentStatus: string;
+}
+
+const { tripId, currentStatus } = Astro.props;
+
+const options = [
+  {
+    value: 'draft',
+    icon: '🗒️',
+    label: 'Draft',
+    description: 'Trip is not yet published — only you can see it',
+  },
+  {
+    value: 'active',
+    icon: '✅',
+    label: 'Active',
+    description: 'Trip is live and open for members to join',
+  },
+  {
+    value: 'completed',
+    icon: '🏁',
+    label: 'Completed',
+    description: 'Trip has finished',
+  },
+  {
+    value: 'archived',
+    icon: '📦',
+    label: 'Archived',
+    description: 'Trip is hidden from listings but not deleted',
+  },
+  {
+    value: 'cancelled',
+    icon: '❌',
+    label: 'Cancelled',
+    description: 'Trip has been cancelled',
+  },
+];
+---
+
+<EditModal modalId="edit-status-modal" title="Trip Status" colorScheme="amber">
+  <form id="edit-status-form" class="space-y-4" data-trip-id={tripId}>
+    <div class="space-y-2">
+      {options.map(opt => (
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 hover:bg-amber-50 transition-colors has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50">
+          <input
+            type="radio"
+            name="status"
+            value={opt.value}
+            class="radio radio-warning mt-0.5"
+            checked={currentStatus === opt.value}
+          />
+          <div>
+            <div class="font-medium text-gray-900">{opt.icon} {opt.label}</div>
+            <div class="text-sm text-gray-500">{opt.description}</div>
+          </div>
+        </label>
+      ))}
+    </div>
+
+    <div class="modal-action">
+      <button type="button" class="btn" onclick="document.getElementById('edit-status-modal').close()">
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-warning">Save</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { actions, ActionError } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+
+  const form = document.getElementById('edit-status-form') as HTMLFormElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const tripId = form.dataset.tripId!;
+    const selected = form.querySelector('input[name="status"]:checked') as HTMLInputElement;
+    if (!selected) return;
+
+    const status = selected.value as 'draft' | 'active' | 'completed' | 'archived' | 'cancelled';
+
+    const { error } = await actions.trip.updateTripStatus({ trip_id: tripId, status });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: `Status updated to ${status}`, type: 'success' });
+      document.getElementById('edit-status-modal')?.close();
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  });
+</script>

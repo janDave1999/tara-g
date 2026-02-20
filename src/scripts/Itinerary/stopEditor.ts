@@ -139,17 +139,17 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
     // Edit Stop
     if (btn.classList.contains('edit-stop-btn')) {
       const stopCard = btn.closest('.stop-card')!;
-      const stopItem = btn.closest('.timeline-item')!;
-      
+      const stopItem = btn.closest('.timeline-item') as HTMLElement;
+
       const stopData = {
-        name: stopCard.querySelector('h3')?.textContent || '',
-        stop_type: stopCard.querySelector('.uppercase')?.textContent?.toLowerCase().replace(' ', '_') || 'activity',
-        location_name: stopCard.querySelector('.flex.items-center.gap-2.text-gray-600 span')?.textContent || '',
-        scheduled_start: new Date().toISOString(),
-        scheduled_end: new Date(Date.now() + 3600000).toISOString(),
-        notes: stopCard.querySelector('.italic')?.textContent || ''
+        name: stopItem.dataset.stopName || '',
+        stop_type: stopItem.dataset.stopType || 'activity',
+        location_name: stopItem.dataset.locationName || '',
+        scheduled_start: stopItem.dataset.scheduledStart || new Date().toISOString(),
+        scheduled_end: stopItem.dataset.scheduledEnd || new Date(Date.now() + 3600000).toISOString(),
+        notes: stopItem.dataset.notes || '',
       };
-      
+
       createStopEditor(stopCard as HTMLElement, stopData);
     }
 
@@ -205,12 +205,23 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
       }
     }
 
-    // Add Stop Button
-    if (btn.classList.contains('add-stop-btn')) {
-      const daySection = btn.closest('.day-section')! as HTMLElement;
-      const dayIndex = parseInt(daySection.dataset.dayIndex || '0');
-      const timeline = daySection.querySelector('.timeline-container')!;
-      createAddStopForm(timeline as HTMLElement, dayIndex);
+    // Add Stop Button (per-day) or Add First Stop (empty state)
+    if (btn.classList.contains('add-stop-btn') || btn.classList.contains('add-first-stop-btn')) {
+      const daysContainer = document.getElementById('days-container')!;
+      const daySection = btn.closest('.day-section') as HTMLElement | null;
+
+      if (daySection) {
+        const timeline = daySection.querySelector('.timeline-container')!;
+        createAddStopForm(timeline as HTMLElement, parseInt(daySection.dataset.dayIndex || '0'));
+      } else {
+        // Empty state — inject a standalone form directly into the days container
+        const existingForm = daysContainer.querySelector('.add-stop-form');
+        if (existingForm) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative pl-4';
+        daysContainer.appendChild(wrapper);
+        createAddStopForm(wrapper, 0);
+      }
     }
 
     // Cancel Add

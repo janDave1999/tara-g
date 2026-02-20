@@ -16,7 +16,16 @@ const colors = getStopColors(stopType);
 const stopTime = formatTime(completeStop.scheduled_start);
 ---
 
-<div class="timeline-item relative group pl-12 pb-6" data-stop-id={completeStop.id}>
+<div
+  class="timeline-item relative group pl-12 pb-6"
+  data-stop-id={completeStop.id}
+  data-stop-name={completeStop.name ?? locationName ?? ''}
+  data-stop-type={stopType ?? 'activity'}
+  data-location-name={locationName ?? ''}
+  data-scheduled-start={completeStop.scheduled_start ?? ''}
+  data-scheduled-end={completeStop.scheduled_end ?? ''}
+  data-notes={completeStop.notes ?? ''}
+>
   <!-- Timeline Dot -->
   <div class={`absolute -left-[9px] top-2 w-5 h-5 ${colors.dot} rounded-full border-4 border-white shadow-lg z-10 group-hover:scale-125 transition-transform`}></div>
 

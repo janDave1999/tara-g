@@ -1,7 +1,8 @@
 ---
 import { Share2Icon } from '@lucide/astro';
 import TripStatusBadge from './TripStatusBadge.astro';
-import TripStatusActions from './TripStatusActions.astro';
+import VisibilityModal from './modal/VisibilityModal.astro';
+import StatusModal from './modal/StatusModal.astro';
 
 const {
   title,
@@ -34,6 +35,7 @@ const statusColors = {
   archived: 'bg-gray-100 text-gray-700 ring-gray-600/20',
   private: 'bg-purple-100 text-purple-700 ring-purple-600/20',
   public: 'bg-sky-100 text-sky-700 ring-sky-600/20',
+  friends: 'bg-blue-100 text-blue-700 ring-blue-600/20',
 };
 
 const isOwner = userRole === 'owner';
@@ -50,12 +52,23 @@ const isOwner = userRole === 'owner';
         </h1>
         <div class="flex gap-2">
           {visibility && (
-            <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
-              {visibility.toUpperCase()}
-            </span>
+            isOwner ? (
+              <button
+                id="open-visibility-modal"
+                type="button"
+                class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset cursor-pointer hover:opacity-80 transition-opacity ${(statusColors as any)[visibility]}`}
+                title="Click to change visibility"
+              >
+                {visibility === 'private' ? '🔒' : visibility === 'public' ? '🌐' : '👥'} {visibility.toUpperCase()}
+              </button>
+            ) : (
+              <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
+                {visibility.toUpperCase()}
+              </span>
+            )
           )}
           {isOwner && tripStatus && (
-            <TripStatusBadge status={tripStatus} />
+            <TripStatusBadge status={tripStatus} tripId={tripId} />
           )}
         </div>
       </div>
@@ -73,11 +86,7 @@ const isOwner = userRole === 'owner';
 
     <!-- Action Buttons -->
     <div class="flex flex-wrap gap-2 items-center">
-      {isOwner && tripStatus && (
-        <TripStatusActions status={tripStatus} tripId={tripId} />
-      )}
-      
-      <button 
+      <button
         id="share-trip-btn"
         class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
         aria-label="Share trip"
@@ -89,7 +98,18 @@ const isOwner = userRole === 'owner';
   </div>
 </div>
 
+{isOwner && (
+  <VisibilityModal tripId={tripId} currentVisibility={visibility ?? 'private'} />
+)}
+{isOwner && tripStatus && (
+  <StatusModal tripId={tripId} currentStatus={tripStatus} />
+)}
+
 <script>
+  document.getElementById('open-visibility-modal')?.addEventListener('click', () => {
+    (document.getElementById('edit-visibility-modal') as HTMLDialogElement)?.showModal();
+  });
+
   const shareBtn = document.getElementById('share-trip-btn');
   
   shareBtn?.addEventListener('click', async () => {

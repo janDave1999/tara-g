@@ -63,7 +63,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | Component | Purpose |
 |-----------|---------|
 | `Trip/Hero.astro` | Cover image display |
-| `Trip/TripHeader.astro` | Trip title and status |
+| `Trip/TripHeader.astro` | Trip title, visibility button, status button |
+| `Trip/TripStatusBadge.astro` | Clickable status badge (owner) → opens StatusModal |
 | `Trip/Summary.astro` | Trip details display |
 | `Trip/Itinerary/Itinerary2.astro` | Itinerary viewer/builder (active) |
 | `Trip/Member.astro` | Member list and management |
@@ -71,6 +72,15 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | `Trip/Expenses.astro` | Expense tracking |
 | `Trip/Budget.astro` | Budget overview |
 | `Trip/UploadImages.astro` | Image upload |
+| `Trip/EditModal.astro` | DaisyUI `<dialog>` wrapper used by all edit modals |
+| `Trip/modal/VisibilityModal.astro` | Change trip visibility (private/public/friends) |
+| `Trip/modal/StatusModal.astro` | Change trip status (draft/active/completed/archived/cancelled) |
+| `Trip/modal/DestinationModal.astro` | Edit trip destination with Mapbox Searchbox autocomplete |
+| `Trip/modal/DatesModal.astro` | Edit trip dates |
+| `Trip/modal/PreferenceModal.astro` | Edit gender preference and max participants |
+| `Trip/modal/BudgetModal.astro` | Edit cost sharing and estimated budget |
+| `Trip/modal/DescriptionModal.astro` | Edit trip description and tags |
+| `TripCard.astro` | Trip card for listings; visibility toggle (owned) cycles private→public→friends |
 
 ---
 
@@ -100,7 +110,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | # | Story | Acceptance Criteria | Status |
 |---|-------|---------------------|--------|
 | US-D1 | As a user, I want to view full trip details | Shows destination, dates, member count/capacity, preferences, cost sharing, description | ✅ Pass |
-| US-D2 | As a user, I want to see the trip title, tags, and visibility | Header shows title, visibility badge (private/public), trip status badge, and tags | ✅ Pass |
+| US-D2 | As a user, I want to see the trip title, tags, and visibility | Header shows title, visibility badge (private/public/friends), trip status badge, and tags; badges are clickable buttons (owner only) | ✅ Pass |
 | US-D3 | As a user, I want to see the trip cover image | Hero image at top of page; lazy-loaded via `server:defer` | ✅ Pass |
 | US-D4 | As a trip owner, I want to edit trip details inline | Clicking editable cards opens modals for: destination, dates, preferences (gender/max pax), budget/cost sharing, description | ✅ Pass |
 | US-D5 | As a user, I want to share a trip link | Share button uses Web Share API; falls back to clipboard copy | ✅ Pass |
@@ -108,7 +118,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US-D7 | As a pending member, I want to cancel my join request | "Cancel Request" button shown for `pending` role | ✅ Pass |
 | US-D8 | As a member, I want to leave a trip I've joined | "Leave Trip" button shown for `member` role; redirects to `/trips` | ✅ Pass |
 | US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown for owners and joined members | ✅ Pass |
-| US-D10 | As a trip owner, I want to manage trip status | Status actions (activate, complete, archive, cancel) via `TripStatusActions` component | ⚠️ Partial — component exists; transitions not fully verified |
+| US-D10 | As a trip owner, I want to manage trip status | Clicking the status badge opens `StatusModal` with all 5 status options; calls `update_trip_status` RPC | ✅ Pass |
 | US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — `Itinerary2.astro` renders stops grouped by day; add-stop builder in progress |
 | US-D12 | As a visitor, I want to know when a trip is full | "Trip Full" disabled button shown when `currentPax >= maxPax` | ✅ Pass |
 
@@ -116,7 +126,9 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 | Field | Modal Component | Data Updated |
 |-------|----------------|--------------|
-| Destination | `DestinationModal.astro` | `trip_locations` (primary) |
+| Visibility | `VisibilityModal.astro` | `trip_visibility.visibility` |
+| Status | `StatusModal.astro` | `trips.status` via `update_trip_status` RPC |
+| Destination | `DestinationModal.astro` | `locations` + `trip_location` (primary) via `update_trip_destination` RPC; Mapbox Searchbox autocomplete |
 | Trip Dates | `DatesModal.astro` | `trip_details.start_date`, `end_date`, `join_by` |
 | Preferences | `PreferenceModal.astro` | `trip_details.gender_pref`, `max_pax` |
 | Cost Sharing / Budget | `BudgetModal.astro` | `trip_details.cost_sharing`, `estimated_budget` |
@@ -231,7 +243,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 |----------|-----------|---------|
 | `create_trip_with_details` | `008` | Create trip with all related records in one call |
 | `get_trip_full_details` | `015` | Fetch complete trip with all relations as JSONB |
-| `update_trip_status` | — | Change trip status with validation |
+| `update_trip_status` | `026` | Change trip status with ownership validation |
+| `update_trip_destination` | `027` | Update primary destination location + PostGIS geometry |
 | `get_nearby_trips` | `002` | Find trips within radius (PostGIS) |
 | `search_trips_optimized` | `002` | Full-text + spatial trip search with relevance score |
 
@@ -239,7 +252,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 | Function | Migration | Parameters | Returns |
 |----------|-----------|------------|---------|
-| `get_user_owned_trips` | `011` | `p_user_id, p_search, p_status, p_limit, p_offset` | Trips owned by user + `member_count`, `total_count` |
+| `get_user_owned_trips` | `011`, `025` | `p_user_id, p_search, p_status, p_limit, p_offset` | Trips owned by user + `member_count`, `visibility`, `total_count` |
 | `get_user_member_trips` | `011` | `p_user_id, p_search, p_member_status, p_limit, p_offset` | Trips user joined + `role`, `owner_name`, `owner_avatar`, `total_count` |
 | `get_recent_trips` | `011` | `p_user_id, p_search, p_tags, p_region, p_limit, p_offset` | Public active trips, block-filtered + `total_count` |
 | `get_suggested_trips` | `011` | `p_user_id, p_limit` | Preference-scored trip suggestions + `match_score` |
@@ -327,7 +340,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Fix trip creation bugs (auth session, coordinate order, PostGIS trigger, trip_id ambiguity)~~
 - [x] ~~Add Mapbox markers (destination/pickup/dropoff) to Step 5 confirmation map~~
 - [x] ~~Remove legacy Itinerary.astro; use Itinerary2 with destination in header~~
-- [ ] Ensure trip status transitions work correctly
+- [x] ~~Ensure trip status transitions work correctly — `StatusModal` + `update_trip_status` RPC (migration 026)~~
 - [ ] Verify member management works (join/leave/remove)
 - [ ] Complete trip search and filtering
 
@@ -393,7 +406,10 @@ database-migrations/
 ├── 012_fix_create_trip_with_details.sql    # Fix: removed invalid columns/constraints, DEFAULT param order
 ├── 013_fix_location_geometry_trigger.sql   # Fix: PostGIS search_path + float8 cast for ST_MakePoint
 ├── 014_fix_trip_id_ambiguity.sql           # Fix: qualify RETURNING trip_id with table name
-└── 015_create_get_trip_full_details.sql    # get_trip_full_details RPC (RETURNS JSONB)
+├── 015_create_get_trip_full_details.sql    # get_trip_full_details RPC (RETURNS JSONB)
+├── 025_add_visibility_to_owned_trips.sql   # get_user_owned_trips: add visibility from trip_visibility JOIN
+├── 026_create_update_trip_status_rpc.sql   # update_trip_status RPC with ownership validation
+└── 027_create_update_trip_destination_rpc.sql  # update_trip_destination RPC; updates locations + PostGIS geometry
 
 src/
 ├── pages/
@@ -423,8 +439,15 @@ src/
 │       ├── Budget.astro
 │       ├── Tags.astro
 │       ├── UploadImages.astro
-│   ├── EditModal.astro
-│   └── modal/                  # Various edit modals
+│   ├── EditModal.astro          # DaisyUI <dialog> wrapper for all edit modals
+│   └── modal/
+│       ├── VisibilityModal.astro   # private/public/friends selector
+│       ├── StatusModal.astro       # draft/active/completed/archived/cancelled selector
+│       ├── DestinationModal.astro
+│       ├── DatesModal.astro
+│       ├── PreferenceModal.astro
+│       ├── BudgetModal.astro
+│       └── DescriptionModal.astro
 ├── types/
 │   ├── trip.ts
 │   ├── trip-enhanced.ts        # Advanced types
@@ -473,5 +496,7 @@ src/
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
+*Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
+*Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*

@@ -1,0 +1,87 @@
+---
+import EditModal from '../EditModal.astro';
+
+interface Props {
+  tripId: string;
+  currentVisibility: string;
+}
+
+const { tripId, currentVisibility } = Astro.props;
+
+const options = [
+  {
+    value: 'private',
+    label: 'Private',
+    icon: '🔒',
+    description: 'Only you and trip members can see this trip',
+  },
+  {
+    value: 'public',
+    label: 'Public',
+    icon: '🌐',
+    description: 'Anyone can discover and view this trip',
+  },
+  {
+    value: 'friends',
+    label: 'Friends',
+    icon: '👥',
+    description: 'Only your friends can see this trip',
+  },
+];
+---
+
+<EditModal modalId="edit-visibility-modal" title="Trip Visibility" colorScheme="purple">
+  <form id="edit-visibility-form" class="space-y-4" data-trip-id={tripId}>
+    <div class="space-y-3">
+      {options.map(opt => (
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-colors has-[:checked]:border-purple-400 has-[:checked]:bg-purple-50">
+          <input
+            type="radio"
+            name="visibility"
+            value={opt.value}
+            class="radio radio-primary mt-0.5"
+            checked={currentVisibility === opt.value}
+          />
+          <div>
+            <div class="font-medium text-gray-900">{opt.icon} {opt.label}</div>
+            <div class="text-sm text-gray-500">{opt.description}</div>
+          </div>
+        </label>
+      ))}
+    </div>
+
+    <div class="modal-action">
+      <button type="button" class="btn" onclick="document.getElementById('edit-visibility-modal').close()">
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</EditModal>
+
+<script>
+  import { actions, ActionError } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+
+  const form = document.getElementById('edit-visibility-form') as HTMLFormElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const tripId = form.dataset.tripId!;
+    const selected = form.querySelector('input[name="visibility"]:checked') as HTMLInputElement;
+    if (!selected) return;
+
+    const visibility = selected.value as 'private' | 'public' | 'friends';
+
+    const { error } = await actions.trip.updateTripVisibility({ trip_id: tripId, visibility });
+
+    if (error instanceof ActionError) {
+      showToast({ message: error.message, type: 'error' });
+    } else {
+      showToast({ message: `Trip is now ${visibility}`, type: 'success' });
+      document.getElementById('edit-visibility-modal')?.close();
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  });
+</script>

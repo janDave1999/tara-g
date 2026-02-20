@@ -1,0 +1,646 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+
+// Passes auth_id to client via data attribute; middleware guarantees user is logged in
+const authId = Astro.locals.user_id ?? "";
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Project 82 — Tara G!</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+    /* ── Layout ───────────────────── */
+    #p82-shell {
+      display: flex;
+      flex-direction: column;
+      height: calc(100dvh - 64px); /* subtract header height */
+    }
+
+    #p82-header {
+      background: white;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #p82-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+      color: #111827;
+    }
+
+    #progress-bar-wrap {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    #progress-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    #progress-bar-bg {
+      background: #e5e7eb;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    #progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, #10b981, #059669);
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    #map-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    #map { width: 100%; height: 100%; }
+
+    /* ── Legend ───────────────────── */
+    #legend {
+      position: absolute;
+      bottom: 80px;
+      right: 12px;
+      background: white;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      font-size: 12px;
+      z-index: 10;
+    }
+
+    #legend h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin: 0 0 8px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Visit Modal ──────────────── */
+    #visit-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+
+    #visit-modal-overlay.open { display: flex; }
+
+    #visit-modal {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+
+    #visit-modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+
+    #visit-modal-region {
+      font-size: 13px;
+      color: #6b7280;
+      margin: 0 0 20px;
+    }
+
+    .modal-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stage-btn {
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      color: #374151;
+      transition: all 0.15s;
+    }
+
+    .stage-btn.active {
+      border-color: #10b981;
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .stage-btn span.stage-icon { display: block; font-size: 18px; margin-bottom: 4px; }
+
+    #visit-date-input, #visit-notes-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: #f9fafb;
+      margin-bottom: 16px;
+    }
+
+    #visit-date-input:focus, #visit-notes-input:focus {
+      border-color: #10b981;
+      background: white;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-delete {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save {
+      flex: 2;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(to right, #10b981, #059669);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #toast.show { opacity: 1; }
+
+    @media (min-width: 640px) {
+      #visit-modal-overlay { align-items: center; padding: 20px; }
+      #visit-modal { border-radius: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<PagePlate title="Project 82" noContainer>
+  <!-- Page shell -->
+  <div id="p82-shell" data-auth={authId}>
+
+    <!-- Header bar -->
+    <div id="p82-header">
+      <div>
+        <h1>🗺 Project 82</h1>
+      </div>
+      <div id="progress-bar-wrap">
+        <div id="progress-label">0 / 82 provinces visited</div>
+        <div id="progress-bar-bg">
+          <div id="progress-bar-fill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map-wrap">
+      <div id="map"></div>
+
+      <!-- Legend -->
+      <div id="legend">
+        <h3>Visit Stage</h3>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#E5E7EB"></div>
+          <span>Not visited</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#3B82F6"></div>
+          <span>Pass through</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#FBBF24"></div>
+          <span>Short stay</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#F97316"></div>
+          <span>Extended stay</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#EF4444"></div>
+          <span>Thorough exploration</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visit modal -->
+  <div id="visit-modal-overlay">
+    <div id="visit-modal">
+      <h2 id="visit-modal-title">Province Name</h2>
+      <p id="visit-modal-region">Region</p>
+
+      <label class="modal-label">Visit Stage</label>
+      <div class="stage-grid">
+        <button class="stage-btn" data-stage="pass_through">
+          <span class="stage-icon">✈️</span>Pass through
+        </button>
+        <button class="stage-btn" data-stage="short_stay">
+          <span class="stage-icon">🌅</span>Short stay
+        </button>
+        <button class="stage-btn" data-stage="extended_stay">
+          <span class="stage-icon">🏕️</span>Extended stay
+        </button>
+        <button class="stage-btn" data-stage="thorough_exploration">
+          <span class="stage-icon">🏆</span>Thorough exploration
+        </button>
+      </div>
+
+      <label class="modal-label" for="visit-date-input">Visit Date (optional)</label>
+      <input type="date" id="visit-date-input" />
+
+      <label class="modal-label" for="visit-notes-input">Notes (optional)</label>
+      <textarea id="visit-notes-input" rows="2" placeholder="Memorable moments…"></textarea>
+
+      <div class="modal-actions">
+        <button class="btn-delete" id="btn-delete-visit" style="display:none">Delete</button>
+        <button class="btn-cancel" id="btn-cancel-modal">Cancel</button>
+        <button class="btn-save" id="btn-save-visit">Save Visit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+</PagePlate>
+
+<script>
+  import mapboxgl from "mapbox-gl";
+  import { PH_PROVINCES } from "@/data/phProvinces";
+  import type { Province } from "@/data/phProvinces";
+
+  // ── Colour map ──────────────────────────────────────────────────────────
+  const STAGE_COLOUR: Record<string, string> = {
+    not_visited:          "#E5E7EB",
+    pass_through:         "#3B82F6",
+    short_stay:           "#FBBF24",
+    extended_stay:        "#F97316",
+    thorough_exploration: "#EF4444",
+  };
+
+  // ── State ───────────────────────────────────────────────────────────────
+  let map: mapboxgl.Map;
+  let visits: Record<string, { id: string; stage: string; visit_date?: string; notes?: string }> = {};
+  let selectedProvince: Province | null = null;
+  let selectedStage = "";
+
+  // ── DOM refs ────────────────────────────────────────────────────────────
+  const overlay   = document.getElementById("visit-modal-overlay")!;
+  const modalTitle    = document.getElementById("visit-modal-title")!;
+  const modalRegion   = document.getElementById("visit-modal-region")!;
+  const stageBtns     = document.querySelectorAll<HTMLButtonElement>(".stage-btn");
+  const dateInput     = document.getElementById("visit-date-input") as HTMLInputElement;
+  const notesInput    = document.getElementById("visit-notes-input") as HTMLTextAreaElement;
+  const btnSave       = document.getElementById("btn-save-visit") as HTMLButtonElement;
+  const btnCancel     = document.getElementById("btn-cancel-modal")!;
+  const btnDelete     = document.getElementById("btn-delete-visit") as HTMLButtonElement;
+  const progressLabel = document.getElementById("progress-label")!;
+  const progressFill  = document.getElementById("progress-bar-fill") as HTMLElement;
+  const toastEl       = document.getElementById("toast")!;
+
+  // ── Toast ───────────────────────────────────────────────────────────────
+  function showToast(msg: string) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), 2500);
+  }
+
+  // ── Progress bar ────────────────────────────────────────────────────────
+  function updateProgress() {
+    const count = Object.keys(visits).length;
+    progressLabel.textContent = `${count} / 82 provinces visited`;
+    progressFill.style.width = `${(count / 82) * 100}%`;
+  }
+
+  // ── Fetch user visits ────────────────────────────────────────────────────
+  async function loadVisits() {
+    try {
+      const res = await fetch("/api/project82");
+      if (!res.ok) return;
+      const { visits: raw } = await res.json() as { visits: Array<{ id: string; province_key: string; stage: string; visit_date?: string; notes?: string }> };
+      visits = {};
+      for (const v of raw ?? []) {
+        visits[v.province_key] = { id: v.id, stage: v.stage, visit_date: v.visit_date, notes: v.notes };
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── Paint province choropleth ─────────────────────────────────────────
+  function getProvinceColour(key: string): string {
+    const v = visits[key];
+    if (!v) return STAGE_COLOUR.not_visited;
+    return STAGE_COLOUR[v.stage] ?? STAGE_COLOUR.not_visited;
+  }
+
+  // Slugify province name to match file name (same logic as existing codebase)
+  function slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-");
+  }
+
+  // ── Load all 82 province GeoJSON layers ──────────────────────────────
+  async function loadAllProvinces() {
+    for (const province of PH_PROVINCES) {
+      const slug = slugify(province.name);
+      const sourceId = `prov-${province.key}`;
+      const fillId   = `fill-${province.key}`;
+      const lineId   = `line-${province.key}`;
+
+      try {
+        const res = await fetch(`/geojson/${slug}.geojson`);
+        if (!res.ok) continue;
+        const geojson = await res.json() as GeoJSON.Feature;
+
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, {
+            type: "geojson",
+            data: geojson.geometry as GeoJSON.Geometry,
+          });
+        }
+
+        if (!map.getLayer(fillId)) {
+          map.addLayer({
+            id: fillId,
+            type: "fill",
+            source: sourceId,
+            paint: {
+              "fill-color": getProvinceColour(province.key),
+              "fill-opacity": 0.65,
+            },
+          });
+        }
+
+        if (!map.getLayer(lineId)) {
+          map.addLayer({
+            id: lineId,
+            type: "line",
+            source: sourceId,
+            paint: {
+              "line-color": "#ffffff",
+              "line-width": 0.8,
+              "line-opacity": 0.6,
+            },
+          });
+        }
+
+        // Click on province fill → open modal
+        map.on("click", fillId, () => openModal(province));
+        map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
+      } catch { /* province geojson not found — skip */ }
+    }
+  }
+
+  // ── Re-paint after save/delete ────────────────────────────────────────
+  function repaint() {
+    for (const province of PH_PROVINCES) {
+      const fillId = `fill-${province.key}`;
+      if (map.getLayer(fillId)) {
+        map.setPaintProperty(fillId, "fill-color", getProvinceColour(province.key));
+      }
+    }
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────────
+  function openModal(province: Province) {
+    selectedProvince = province;
+    const existing = visits[province.key];
+
+    modalTitle.textContent  = province.name;
+    modalRegion.textContent = `Region ${province.region}`;
+
+    // Pre-fill from existing
+    selectedStage       = existing?.stage ?? "";
+    dateInput.value     = existing?.visit_date ?? "";
+    notesInput.value    = existing?.notes ?? "";
+    btnDelete.style.display = existing ? "" : "none";
+
+    // Highlight active stage button
+    stageBtns.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.stage === selectedStage);
+    });
+
+    overlay.classList.add("open");
+  }
+
+  function closeModal() {
+    overlay.classList.remove("open");
+    selectedProvince = null;
+    selectedStage = "";
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────
+  async function saveVisit() {
+    if (!selectedProvince || !selectedStage) {
+      showToast("Please select a visit stage.");
+      return;
+    }
+
+    btnSave.disabled = true;
+    btnSave.textContent = "Saving…";
+
+    try {
+      const res = await fetch("/api/project82", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          province_key: selectedProvince.key,
+          stage: selectedStage,
+          visit_date: dateInput.value || undefined,
+          notes: notesInput.value.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        showToast(err.error ?? "Failed to save.");
+        return;
+      }
+
+      const { visit } = await res.json() as { visit: { stage: string; visit_date?: string; notes?: string; id: string } };
+      visits[selectedProvince.key] = { id: visit.id, stage: visit.stage, visit_date: visit.visit_date, notes: visit.notes };
+      repaint();
+      updateProgress();
+      closeModal();
+      showToast(`${selectedProvince.name} saved!`);
+    } finally {
+      btnSave.disabled = false;
+      btnSave.textContent = "Save Visit";
+    }
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────
+  async function deleteVisit() {
+    if (!selectedProvince) return;
+    if (!confirm(`Remove visit to ${selectedProvince.name}?`)) return;
+
+    btnDelete.disabled = true;
+
+    try {
+      const res = await fetch(`/api/project82/${selectedProvince.key}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        showToast(err.error ?? "Failed to delete.");
+        return;
+      }
+      delete visits[selectedProvince.key];
+      repaint();
+      updateProgress();
+      closeModal();
+      showToast(`Visit removed.`);
+    } finally {
+      btnDelete.disabled = false;
+    }
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────
+  stageBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedStage = btn.dataset.stage ?? "";
+      stageBtns.forEach(b => b.classList.toggle("active", b === btn));
+    });
+  });
+
+  btnSave.addEventListener("click", saveVisit);
+  btnCancel.addEventListener("click", closeModal);
+  btnDelete.addEventListener("click", deleteVisit);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+
+  // ── Init map ──────────────────────────────────────────────────────────
+  async function getMapboxToken(): Promise<string> {
+    try {
+      const res = await fetch("/api/mapbox-token");
+      const data = await res.json() as { token?: string };
+      return data.token ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function init() {
+    const token = await getMapboxToken();
+    if (!token) { return; }
+
+    await loadVisits();
+    updateProgress();
+
+    mapboxgl.accessToken = token;
+
+    map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/light-v11",
+      center: [121.7740, 12.8797], // Philippines center
+      zoom: 5,
+      minZoom: 4,
+      maxZoom: 14,
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-left");
+
+    map.on("load", async () => {
+      await loadAllProvinces();
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+
+</body>
+</html>

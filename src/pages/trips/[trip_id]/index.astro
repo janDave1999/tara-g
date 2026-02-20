@@ -6,7 +6,6 @@ import Member from '@/components/Trip/Member.astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import Itinerary2 from '@/components/Trip/Itinerary/Itinerary2.astro';
 import Hero from '@/components/Trip/Hero.astro';
-import type { CompleteStop } from '@/types/itinerary';
 
 const slug = Astro.params.trip_id || '';
 const user = Astro.locals.user_id;
@@ -39,7 +38,15 @@ const {
 
 // Get primary location (destination)
 const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
-const destination = primaryLocation?.location?.name || 'No destination set';
+const destination = primaryLocation?.location?.name || primaryLocation?.location_name || 'No destination set';
+
+// Load itinerary stops with activities (trip_location rows with nested stop_activities)
+const { data: itineraryStops } = await supabaseAdmin
+  .from('trip_location')
+  .select('*, activities:stop_activities(*)')
+  .eq('trip_id', trip_id)
+  .order('order_index', { ascending: true })
+  .order('scheduled_start', { ascending: true });
 
 // Prepare props for components
 const tripProps = {
@@ -74,13 +81,15 @@ const tripProps = {
   // Locations
   locations: trip_locations || []
 };
+
+console.log(itineraryStops);
 ---
 
 <Layout title={`${title} | Tara G`}>
   <section class="max-w-5xl mx-auto mt-8 mb-16 px-4">
     <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
       <Hero server:defer userRole={trip.user_role} trip_images={trip_images}/>
-      <TripHeader client:visible {...tripProps} />
+      <TripHeader  {...tripProps} />
       <TripDetails {...tripProps} />
     </div>
 
@@ -122,29 +131,10 @@ const tripProps = {
       </div>
     )}
 
-    {/* Members */}
-    {(user_role === 'owner' || user_role === 'member') && (
-      <div class="mt-6">
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-sm text-gray-500">
-            {trip_members.length} of {trip_details?.max_pax || 0} members joined
-          </p>
-          <button
-            id="member-btn"
-            class="btn btn-sm bg-white border border-gray-200 hover:bg-gray-50 gap-2 shadow-sm"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            {user_role === 'owner' ? 'Manage Members' : 'View Members'}
-          </button>
-        </div>
-        <Member tripId={trip_id} />
-      </div>
-    )}
+    <Member tripId={trip_id} />
     <Itinerary2
-      client:visible
-      initialData={(trip_locations as CompleteStop[]) || undefined}
+      
+      initialData={itineraryStops || []}
       isOwner={trip.user_role === 'owner'}
       tripId={trip.trip_id}
       destination={destination}

@@ -1,0 +1,31 @@
+---
+interface Props {
+  modalId: string;
+  title: string;
+  colorScheme?: string;
+}
+
+const { modalId, title, colorScheme = 'green' } = Astro.props;
+
+const colorMap: Record<string, string> = {
+  green:   'from-green-500 to-emerald-500',
+  emerald: 'from-emerald-500 to-teal-500',
+  amber:   'from-amber-500 to-orange-500',
+  lime:    'from-lime-500 to-green-500',
+  purple:  'from-purple-500 to-violet-500',
+  blue:    'from-blue-500 to-indigo-500',
+};
+
+const gradient = colorMap[colorScheme] ?? colorMap['green'];
+---
+
+<dialog id={modalId} class="modal">
+  <div class="modal-box max-w-lg">
+    <div class={`h-1 -mt-6 -mx-6 mb-5 rounded-t-2xl bg-linear-to-r ${gradient}`}></div>
+    <h3 class="font-bold text-lg mb-4 text-gray-900">{title}</h3>
+    <slot />
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

@@ -332,7 +332,7 @@ function buildUrl(params: Record<string, string>) {
       <!-- Trips Grid -->
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {currentTrips.map((trip: any) => (
-          <TripCard client:visible trip={trip} type={currentType} />
+          <TripCard  trip={trip} type={currentType} />
         ))}
       </div>
 
@@ -505,7 +505,7 @@ function buildUrl(params: Record<string, string>) {
         </div>
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {suggestedTrips.map((trip: any) => (
-            <SuggestedTripCard client:visible trip={trip} />
+            <SuggestedTripCard  trip={trip} />
           ))}
         </div>
       </section>
@@ -514,7 +514,7 @@ function buildUrl(params: Record<string, string>) {
 
   {/* Preferences Prompt Modal */}
   {showPreferencesPrompt && (
-    <PreferencesPrompt userId={userId} client:idle />
+    <PreferencesPrompt userId={userId} />
   )}
 
   <style>

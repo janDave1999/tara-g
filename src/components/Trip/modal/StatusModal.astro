@@ -92,7 +92,7 @@ const options = [
       showToast({ message: error.message, type: 'error' });
     } else {
       showToast({ message: `Status updated to ${status}`, type: 'success' });
-      document.getElementById('edit-status-modal')?.close();
+      (document.getElementById('edit-status-modal')as HTMLDialogElement)?.close();
       setTimeout(() => window.location.reload(), 1000);
     }
   });

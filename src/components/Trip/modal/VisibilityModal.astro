@@ -80,7 +80,7 @@ const options = [
       showToast({ message: error.message, type: 'error' });
     } else {
       showToast({ message: `Trip is now ${visibility}`, type: 'success' });
-      document.getElementById('edit-visibility-modal')?.close();
+      (document.getElementById('edit-visibility-modal') as HTMLDialogElement)?.close();
       setTimeout(() => window.location.reload(), 1000);
     }
   });

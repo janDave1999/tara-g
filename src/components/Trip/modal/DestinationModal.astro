@@ -120,7 +120,7 @@ const { destination, tripId } = Astro.props;
       showToast({ message: error.message, type: 'error' });
     } else {
       showToast({ message: 'Destination updated!', type: 'success' });
-      document.getElementById('edit-destination-modal')?.close();
+      (document.getElementById('edit-destination-modal')as HTMLDialogElement)?.close();
       setTimeout(() => window.location.reload(), 1000);
     }
   });

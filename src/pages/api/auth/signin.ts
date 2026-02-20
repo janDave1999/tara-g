@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 import type { Provider } from "@supabase/supabase-js";
 import { SITE_URL } from "astro:env/server";
 import { v4 } from "uuid";
@@ -7,25 +7,25 @@ import {
   handleApiError,
   ValidationError,
   AuthenticationError,
+  RateLimitError,
 } from "../../../lib/errorHandler";
 import { commonSchemas } from "../../../lib/validation";
 import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 import { z } from "zod";
+
 const signInSchema = z.object({
   email: commonSchemas.email,
   password: z.string().min(1, 'Password is required'),
   provider: z.enum(['google', 'facebook']).optional()
 });
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-  // Set CORS headers
+export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
-  // Handle preflight requests
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -68,12 +68,34 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const validatedData = signInSchema.parse({ email, password });
 
+    // Check for login attempt cooldown BEFORE attempting login
+    const clientIp = getClientIp(request);
+    const { data: cooldownData } = await supabaseAdmin.rpc('check_login_cooldown', {
+      p_email: validatedData.email,
+      p_ip_address: clientIp
+    });
+
+    if (cooldownData && !cooldownData.allowed) {
+      const remainingMinutes = Math.ceil(cooldownData.remaining_seconds / 60);
+      throw new RateLimitError(
+        `Too many failed login attempts. Please try again in ${remainingMinutes} minute(s).`,
+        { remaining_seconds: cooldownData.remaining_seconds }
+      );
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: validatedData.email,
-      password: validatedData.password,
+      password: password,
     });
 
     if (error) {
+      // Record failed login attempt
+      await supabaseAdmin.rpc('record_login_attempt', {
+        p_email: validatedData.email,
+        p_ip_address: clientIp,
+        p_success: false
+      });
+      
       if (error.message.includes('Invalid login credentials')) {
         throw new AuthenticationError('Invalid email or password');
       }
@@ -97,6 +119,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       throw new AuthenticationError('No session created');
     }
 
+    // Record successful login attempt
+    await supabaseAdmin.rpc('record_login_attempt', {
+      p_email: validatedData.email,
+      p_ip_address: clientIp,
+      p_success: true
+    });
+
     const { access_token, refresh_token } = data.session;
     const sessionId = v4();
     
@@ -111,24 +140,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     cookies.set("sb-access-token", access_token, cookieOptions);
     cookies.set("sb-refresh-token", refresh_token, cookieOptions);
     cookies.set("sb-session-id", sessionId, cookieOptions);
-
-    const response = Response.redirect(`${SITE_URL}/feeds`, 302);
     
-    // Add CORS headers to the redirect response
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    
-    return response;
+    return redirect(`${SITE_URL}/feeds`, 302);
     
   } catch (error) {
     const errorResponse = handleApiError(error);
-    
-    // Add CORS headers to error responses too
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      errorResponse.headers.set(key, value);
-    });
-    
     return errorResponse;
   }
 };

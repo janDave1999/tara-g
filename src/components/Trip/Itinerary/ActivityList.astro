@@ -28,7 +28,13 @@ const { activities, stopId, isOwner } = Astro.props;
     </div>
     <div class="activities-list space-y-2">
       {activities.map((activity) => (
-        <div class="activity-item flex items-center gap-3 bg-white/70 p-2 rounded-lg group/activity" data-activity-id={activity.id}>
+        <div
+          class="activity-item flex items-center gap-3 bg-white/70 p-2 rounded-lg group/activity"
+          data-activity-id={activity.id}
+          data-activity-type={activity.activity_type}
+          data-activity-description={activity.description ?? ''}
+          data-duration={activity.planned_duration_minutes}
+        >
           <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
           <div class="flex-1">
             <span class="text-sm font-semibold text-gray-800">{activity.description}</span>

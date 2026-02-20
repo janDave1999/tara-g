@@ -21,7 +21,9 @@ export async function refreshSession(
     refresh_token: refreshToken,
   });
 
-  if (error || !data.user || !data.session) return null;
+  if (error || !data.user || !data.session) {
+    return null;
+  }
 
   return {
     user_id: data.user.id,

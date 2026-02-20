@@ -4,7 +4,7 @@ import TripHeader from '@/components/Trip/TripHeader.astro';
 import TripDetails from '@/components/Trip/Summary.astro';
 import Member from '@/components/Trip/Member.astro';
 import { supabaseAdmin } from '@/lib/supabase';
-import Itinerary2 from '@/components/Trip/Itinerary/Itinerary2.astro';
+import Itinerary from '@/components/Trip/Itinerary/Itinerary.astro';
 import Hero from '@/components/Trip/Hero.astro';
 
 const slug = Astro.params.trip_id || '';
@@ -40,13 +40,14 @@ const {
 const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
 const destination = primaryLocation?.location?.name || primaryLocation?.location_name || 'No destination set';
 
-// Load itinerary stops with activities (trip_location rows with nested stop_activities)
+// Load itinerary stops (exclude destination — shown in header)
+// pickup and dropoff ARE included — they anchor the timeline with trip creation datetimes
 const { data: itineraryStops } = await supabaseAdmin
   .from('trip_location')
-  .select('*, activities:stop_activities(*)')
+  .select('*, location:locations(*), activities:stop_activities(*)')
   .eq('trip_id', trip_id)
-  .order('order_index', { ascending: true })
-  .order('scheduled_start', { ascending: true });
+  .not('location_type', 'in', '(destination)')
+  .order('scheduled_start', { ascending: true, nullsFirst: false });
 
 // Prepare props for components
 const tripProps = {
@@ -86,54 +87,21 @@ console.log(itineraryStops);
 ---
 
 <Layout title={`${title} | Tara G`}>
-  <section class="max-w-5xl mx-auto mt-8 mb-16 px-4">
-    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-      <Hero server:defer userRole={trip.user_role} trip_images={trip_images}/>
-      <TripHeader  {...tripProps} />
+  <section class="max-w-5xl mx-auto mt-6 mb-20 px-4 space-y-5">
+
+    <!-- Card 1: Hero image + Trip title/meta -->
+    <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+      <Hero server:defer userRole={trip.user_role} trip_images={trip_images} />
+      <TripHeader {...tripProps} />
+    </div>
+
+    <!-- Card 2: Trip details (destination, dates, members, preferences, budget, description) -->
+    <div class="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
       <TripDetails {...tripProps} />
     </div>
 
-    {/* Action Buttons for Join/Leave */}
-    {user_role !== 'owner' && (
-      <div class="mt-6 flex justify-end gap-3">
-        {user_role === 'visitor' && trip_members.length < trip_details.max_pax && status === 'active' && (
-          <button 
-            id="join-btn" 
-            class="btn btn-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-none shadow-lg shadow-green-500/30"
-          >
-            Request to Join
-          </button>
-        )}
-        
-        {user_role === 'visitor' && trip_members.length >= trip_details.max_pax && (
-          <button class="btn btn-lg bg-gray-100 text-gray-400 cursor-not-allowed" disabled>
-            Trip Full
-          </button>
-        )}
-        
-        {user_role === 'pending' && (
-          <button 
-            id="cancel-req-btn" 
-            class="btn btn-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200"
-          >
-            Cancel Request
-          </button>
-        )}
-        
-        {user_role === 'member' && (
-          <button 
-            id="leave-trip-btn"
-            class="btn btn-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200"
-          >
-            Leave Trip
-          </button>
-        )}
-      </div>
-    )}
-
     <Member tripId={trip_id} />
-    <Itinerary2
-      
+    <Itinerary
       initialData={itineraryStops || []}
       isOwner={trip.user_role === 'owner'}
       tripId={trip.trip_id}

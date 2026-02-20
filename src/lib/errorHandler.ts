@@ -18,9 +18,16 @@ export class ValidationError extends ApiError {
 }
 
 export class AuthenticationError extends ApiError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 401, 'AUTHENTICATION_ERROR');
+  constructor(message: string = 'Authentication required', code?: string, details?: any) {
+    super(message, 401, code || 'AUTHENTICATION_ERROR', details);
     this.name = 'AuthenticationError';
+  }
+}
+
+export class RateLimitError extends ApiError {
+  constructor(message: string = 'Too many requests', details?: any) {
+    super(message, 429, 'RATE_LIMITED', details);
+    this.name = 'RateLimitError';
   }
 }
 

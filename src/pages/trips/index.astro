@@ -12,15 +12,12 @@ if (!userId) {
   return Astro.redirect("/login");
 }
 
-// Get URL parameters for pagination and filters
 const url = new URL(Astro.request.url);
 const currentTab = url.searchParams.get('tab') || 'owned';
 const currentPage = parseInt(url.searchParams.get('page') || '1');
 const searchQuery = url.searchParams.get('search') || '';
 const statusFilter = url.searchParams.get('status') || '';
 const regionFilter = url.searchParams.get('region') || '';
-
-// Preference filters for Discover tab
 const budgetFilter = url.searchParams.get('budget') || '';
 const styleFilter = url.searchParams.get('style') || '';
 const paceFilter = url.searchParams.get('pace') || '';
@@ -28,7 +25,6 @@ const paceFilter = url.searchParams.get('pace') || '';
 const itemsPerPage = 12;
 const offset = (currentPage - 1) * itemsPerPage;
 
-// Fetch user preferences and settings
 const [preferencesResult, settingsResult] = await Promise.all([
   supabaseAdmin.from('user_travel_preferences').select('*').eq('user_id', userId).single(),
   supabaseAdmin.from('user_settings').select('preferences_prompt_until').eq('user_id', userId).single()
@@ -37,10 +33,9 @@ const [preferencesResult, settingsResult] = await Promise.all([
 const userPreferences = preferencesResult.data;
 const userSettings = settingsResult.data;
 const now = new Date().toISOString();
-const showPreferencesPrompt = !userPreferences && 
+const showPreferencesPrompt = !userPreferences &&
   (!userSettings?.preferences_prompt_until || userSettings.preferences_prompt_until < now);
 
-// Get initial data for all tabs using RPC functions
 const [ownedResult, memberResult, discoverResult, suggestedResult] = await Promise.all([
   supabase.rpc('get_user_owned_trips', {
     p_user_id: userId,
@@ -72,7 +67,6 @@ const [ownedResult, memberResult, discoverResult, suggestedResult] = await Promi
   }),
 ]);
 
-console.log("Trip data:", ownedResult);
 const ownedTrips = ownedResult.data || [];
 const memberTrips = memberResult.data || [];
 const discoverTrips = discoverResult.data || [];
@@ -82,7 +76,6 @@ const ownedCount = ownedTrips[0]?.total_count || 0;
 const memberCount = memberTrips[0]?.total_count || 0;
 const discoverCount = discoverTrips[0]?.total_count || 0;
 
-// Determine which trips to show based on current tab
 let currentTrips = ownedTrips;
 let currentCount = ownedCount;
 let currentType: 'owned' | 'member' | 'discover' = 'owned';
@@ -98,193 +91,258 @@ if (currentTab === 'member') {
 }
 
 const totalPages = Math.ceil(currentCount / itemsPerPage);
+const hasActiveFilters = !!(searchQuery || statusFilter || regionFilter || budgetFilter || styleFilter || paceFilter);
+const activeFilterCount = [searchQuery, statusFilter, regionFilter, budgetFilter, styleFilter, paceFilter].filter(Boolean).length;
 
-// Helper function to build URL with params
 function buildUrl(params: Record<string, string>) {
   const newUrl = new URL(Astro.request.url);
   Object.entries(params).forEach(([key, value]) => {
-    if (value) {
-      newUrl.searchParams.set(key, value);
-    } else {
-      newUrl.searchParams.delete(key);
-    }
+    if (value) newUrl.searchParams.set(key, value);
+    else newUrl.searchParams.delete(key);
   });
   return newUrl.pathname + newUrl.search;
 }
 ---
 
 <Pageplate title="My Trips">
-  <!-- Hero Section -->
-  <section class="px-6 py-12 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-    <div class="max-w-5xl mx-auto text-center space-y-5">
-      <h1 class="text-5xl font-extrabold text-gray-900 tracking-tight">
-        Welcome back, Explorer
+
+  <!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+  <section class="relative bg-slate-950 overflow-hidden">
+    <!-- Ambient orbs -->
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div class="absolute -top-40 -left-40 w-[700px] h-[700px] bg-blue-600/20 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-32 -right-32 w-[600px] h-[600px] bg-orange-500/12 rounded-full blur-3xl"></div>
+      <div class="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/8 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
+    </div>
+    <!-- Dot grid -->
+    <div
+      class="pointer-events-none absolute inset-0 opacity-[0.035]"
+      style="background-image: radial-gradient(circle, #ffffff 1px, transparent 1px); background-size: 28px 28px;"
+      aria-hidden="true"
+    ></div>
+
+    <div class="relative z-10 max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-20">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 mb-7 rounded-full border border-white/[0.12] bg-white/[0.05] backdrop-blur-sm">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-white/50 text-xs font-medium tracking-wide">Philippine Travel Community</span>
+      </div>
+
+      <!-- Headline -->
+      <h1 class="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] tracking-tight mb-5">
+        Plan. Discover.<br />
+        <span class="bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-sky-300 to-cyan-400">
+          Go, Tara!
+        </span>
       </h1>
-      <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-        Your adventures begin here — past, present, and those waiting to happen.
+
+      <p class="text-slate-400 text-base md:text-lg leading-relaxed mb-9 max-w-lg">
+        Build itineraries, join adventures across all 82 provinces, and travel the Philippines with your crew.
       </p>
-      <a
-        href="/trips/create"
-        class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        Create New Trip
-      </a>
+
+      <!-- CTAs -->
+      <div class="flex flex-wrap items-center gap-3 mb-14">
+        <a
+          href="/trips/create"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-semibold shadow-xl shadow-orange-500/20 transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          Plan a Trip
+        </a>
+        <a
+          href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] text-white/70 hover:text-white font-semibold border border-white/[0.10] transition-all duration-200"
+        >
+          Explore Trips
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="flex flex-wrap items-center gap-6 md:gap-10 pt-8 border-t border-white/[0.07]">
+        {[
+          { value: ownedCount, label: 'My Trips' },
+          { value: memberCount, label: 'Joined' },
+          { value: `${discoverCount}+`, label: 'Discover' },
+          { value: '82', label: 'Provinces' },
+        ].map(stat => (
+          <div>
+            <div class="text-2xl md:text-3xl font-black text-white">{stat.value}</div>
+            <div class="text-xs text-slate-500 font-medium mt-0.5">{stat.label}</div>
+          </div>
+        ))}
+      </div>
     </div>
   </section>
 
-  <!-- Main Content -->
-  <section class="max-w-7xl mx-auto px-6 py-10">
-    <div id="trips-container">
-      <!-- Tab Navigation -->
-      <div class="border-b border-gray-200 mb-8">
-        <nav class="flex gap-8" aria-label="Trips tabs">
-          <a
-            href={buildUrl({ tab: 'owned', page: '1', search: '', status: '', region: '' })}
-            class={`tab-link pb-4 px-1 font-semibold transition-colors relative ${currentTab === 'owned' ? 'active-tab' : 'inactive-tab'}`}
-          >
-            My Trips
-            <span class="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 font-medium">
-              {ownedCount}
-            </span>
-          </a>
-          <a
-            href={buildUrl({ tab: 'member', page: '1', search: '', status: '', region: '' })}
-            class={`tab-link pb-4 px-1 font-semibold transition-colors relative ${currentTab === 'member' ? 'active-tab' : 'inactive-tab'}`}
-          >
-            Joined Trips
-            <span class="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-medium">
-              {memberCount}
-            </span>
-          </a>
-          <a
-            href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
-            class={`tab-link pb-4 px-1 font-semibold transition-colors relative ${currentTab === 'discover' ? 'active-tab' : 'inactive-tab'}`}
-          >
-            Discover
-            <span class="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-medium">
-              {discoverCount}
-            </span>
-          </a>
-        </nav>
-      </div>
+  <!-- ═══════════════════════════ CONTENT AREA ═══════════════════════════ -->
+  <div class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 py-7">
 
-      <!-- Search and Filter Bar -->
-      <form method="GET" class="mb-8 flex gap-4 flex-wrap items-end">
-        <input type="hidden" name="tab" value={currentTab} />
-        <input type="hidden" name="page" value="1" />
-        
-        <div class="flex-1 min-w-[300px]">
-          <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">
-            Search trips
-          </label>
+      <!-- Control Panel: Tabs + Search + Filters -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+
+        <!-- Top row: Segmented tabs + Search -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 md:p-5">
+
+          <!-- Segmented tab control -->
+          <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 self-start">
+            {[
+              { id: 'owned', label: 'My Trips', count: ownedCount },
+              { id: 'member', label: 'Joined', count: memberCount },
+              { id: 'discover', label: 'Discover', count: discoverCount },
+            ].map(tab => (
+              <a
+                href={buildUrl({ tab: tab.id, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
+                class={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 whitespace-nowrap ${
+                  currentTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm shadow-gray-200/80'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+                <span class={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                  currentTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {tab.count}
+                </span>
+              </a>
+            ))}
+          </div>
+
+          <!-- Search input -->
+          <form method="GET" class="flex-1 sm:max-w-xs" id="search-form">
+            <input type="hidden" name="tab" value={currentTab} />
+            <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="status" value={statusFilter} />
+            <input type="hidden" name="region" value={regionFilter} />
+            <input type="hidden" name="budget" value={budgetFilter} />
+            <input type="hidden" name="style" value={styleFilter} />
+            <input type="hidden" name="pace" value={paceFilter} />
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input
+                type="text"
+                id="search-input"
+                name="search"
+                value={searchQuery}
+                placeholder="Search trips…"
+                class="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all"
+              />
+              {searchQuery && (
+                <button type="submit" name="search" value="" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        <!-- Filter row (always visible, content changes per tab) -->
+        <form method="GET" id="filter-form" class="px-4 md:px-5 pb-4 md:pb-5 flex flex-wrap items-center gap-2 border-t border-gray-50 pt-3">
+          <input type="hidden" name="tab" value={currentTab} />
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="search" value={searchQuery} />
+
+          <!-- Status -->
           <div class="relative">
-            <input
-              type="text"
-              id="search-input"
-              name="search"
-              value={searchQuery}
-              placeholder="Search by title or description..."
-              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-            />
-            <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <select
+              id="status-filter"
+              name="status"
+              class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                statusFilter
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              <option value="">Status</option>
+              <option value="draft" selected={statusFilter === 'draft'}>Draft</option>
+              <option value="active" selected={statusFilter === 'active'}>Active</option>
+              <option value="completed" selected={statusFilter === 'completed'}>Completed</option>
+              <option value="archived" selected={statusFilter === 'archived'}>Archived</option>
+              <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelled</option>
+            </select>
+            <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
             </svg>
           </div>
-        </div>
-        
-        <div class="w-48">
-          <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-2">
-            Status
-          </label>
-          <select
-            id="status-filter"
-            name="status"
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="" selected={statusFilter === ''}>All Status</option>
-            <option value="planning" selected={statusFilter === 'planning'}>Planning</option>
-            <option value="upcoming" selected={statusFilter === 'upcoming'}>Upcoming</option>
-            <option value="ongoing" selected={statusFilter === 'ongoing'}>Ongoing</option>
-            <option value="completed" selected={statusFilter === 'completed'}>Completed</option>
-            <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelled</option>
-          </select>
-        </div>
 
-        {currentTab === 'discover' && (
-          <div class="w-48">
-            <label for="region-filter" class="block text-sm font-medium text-gray-700 mb-2">
-              Region
-            </label>
-            <select
-              id="region-filter"
-              name="region"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="" selected={regionFilter === ''}>All Regions</option>
-              <option value="NCR" selected={regionFilter === 'NCR'}>NCR</option>
-              <option value="CAR" selected={regionFilter === 'CAR'}>Cordillera</option>
-              <option value="I" selected={regionFilter === 'I'}>Ilocos Region</option>
-              <option value="II" selected={regionFilter === 'II'}>Cagayan Valley</option>
-              <option value="III" selected={regionFilter === 'III'}>Central Luzon</option>
-              <option value="IV-A" selected={regionFilter === 'IV-A'}>CALABARZON</option>
-              <option value="IV-B" selected={regionFilter === 'IV-B'}>MIMAROPA</option>
-              <option value="V" selected={regionFilter === 'V'}>Bicol Region</option>
-              <option value="VI" selected={regionFilter === 'VI'}>Western Visayas</option>
-              <option value="VII" selected={regionFilter === 'VII'}>Central Visayas</option>
-              <option value="VIII" selected={regionFilter === 'VIII'}>Eastern Visayas</option>
-              <option value="IX" selected={regionFilter === 'IX'}>Zamboanga Peninsula</option>
-              <option value="X" selected={regionFilter === 'X'}>Northern Mindanao</option>
-              <option value="XI" selected={regionFilter === 'XI'}>Davao Region</option>
-              <option value="XII" selected={regionFilter === 'XII'}>SOCCSKSARGEN</option>
-              <option value="XIII" selected={regionFilter === 'XIII'}>Caraga</option>
-              <option value="BARMM" selected={regionFilter === 'BARMM'}>BARMM</option>
-            </select>
-          </div>
-        )}
-
-        {/* Preference Filters - Only show when on Discover tab */}
-        {currentTab === 'discover' && (
-          <details class="group">
-            <summary class="cursor-pointer px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-gray-700 list-none flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-              </svg>
-              Preferences
-              {(budgetFilter || styleFilter || paceFilter) && (
-                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                  {(budgetFilter ? 1 : 0) + (styleFilter ? 1 : 0) + (paceFilter ? 1 : 0)}
-                </span>
-              )}
-            </summary>
-            <div class="absolute mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-10 flex gap-4">
-              <div>
-                <label for="budget-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                  Budget
-                </label>
+          {currentTab === 'discover' && (
+            <>
+              <!-- Region -->
+              <div class="relative">
+                <select
+                  id="region-filter"
+                  name="region"
+                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    regionFilter
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  <option value="">Region</option>
+                  <option value="NCR" selected={regionFilter === 'NCR'}>NCR</option>
+                  <option value="CAR" selected={regionFilter === 'CAR'}>Cordillera</option>
+                  <option value="I" selected={regionFilter === 'I'}>Ilocos</option>
+                  <option value="II" selected={regionFilter === 'II'}>Cagayan Valley</option>
+                  <option value="III" selected={regionFilter === 'III'}>Central Luzon</option>
+                  <option value="IV-A" selected={regionFilter === 'IV-A'}>CALABARZON</option>
+                  <option value="IV-B" selected={regionFilter === 'IV-B'}>MIMAROPA</option>
+                  <option value="V" selected={regionFilter === 'V'}>Bicol</option>
+                  <option value="VI" selected={regionFilter === 'VI'}>W. Visayas</option>
+                  <option value="VII" selected={regionFilter === 'VII'}>C. Visayas</option>
+                  <option value="VIII" selected={regionFilter === 'VIII'}>E. Visayas</option>
+                  <option value="IX" selected={regionFilter === 'IX'}>Zamboanga</option>
+                  <option value="X" selected={regionFilter === 'X'}>N. Mindanao</option>
+                  <option value="XI" selected={regionFilter === 'XI'}>Davao</option>
+                  <option value="XII" selected={regionFilter === 'XII'}>SOCCSKSARGEN</option>
+                  <option value="XIII" selected={regionFilter === 'XIII'}>Caraga</option>
+                  <option value="BARMM" selected={regionFilter === 'BARMM'}>BARMM</option>
+                </select>
+                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+              <!-- Budget -->
+              <div class="relative">
                 <select
                   id="budget-filter"
                   name="budget"
-                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    budgetFilter
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                  }`}
                 >
-                  <option value="" selected={budgetFilter === ''}>Any</option>
-                  <option value="budget" selected={budgetFilter === 'budget'}>Budget</option>
+                  <option value="">Budget</option>
+                  <option value="budget" selected={budgetFilter === 'budget'}>Budget-friendly</option>
                   <option value="moderate" selected={budgetFilter === 'moderate'}>Moderate</option>
                   <option value="luxury" selected={budgetFilter === 'luxury'}>Luxury</option>
                 </select>
+                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                </svg>
               </div>
-              <div>
-                <label for="style-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                  Travel Style
-                </label>
+              <!-- Style -->
+              <div class="relative">
                 <select
                   id="style-filter"
                   name="style"
-                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    styleFilter
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                  }`}
                 >
-                  <option value="" selected={styleFilter === ''}>Any</option>
+                  <option value="">Style</option>
                   <option value="adventure" selected={styleFilter === 'adventure'}>Adventure</option>
                   <option value="relax" selected={styleFilter === 'relax'}>Relax</option>
                   <option value="beach" selected={styleFilter === 'beach'}>Beach</option>
@@ -292,98 +350,139 @@ function buildUrl(params: Record<string, string>) {
                   <option value="cultural" selected={styleFilter === 'cultural'}>Cultural</option>
                   <option value="food" selected={styleFilter === 'food'}>Food Trip</option>
                 </select>
+                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                </svg>
               </div>
-              <div>
-                <label for="pace-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                  Pace
-                </label>
+              <!-- Pace -->
+              <div class="relative">
                 <select
                   id="pace-filter"
                   name="pace"
-                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    paceFilter
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                  }`}
                 >
-                  <option value="" selected={paceFilter === ''}>Any</option>
+                  <option value="">Pace</option>
                   <option value="relaxed" selected={paceFilter === 'relaxed'}>Relaxed</option>
                   <option value="moderate" selected={paceFilter === 'moderate'}>Moderate</option>
                   <option value="fast" selected={paceFilter === 'fast'}>Fast-paced</option>
                 </select>
-              </div>
-            </div>
-          </details>
-        )}
-
-        <button
-          type="submit"
-          class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-        >
-          Apply Filters
-        </button>
-
-        {(searchQuery || statusFilter || regionFilter || budgetFilter || styleFilter || paceFilter) && (
-          <a
-            href={buildUrl({ tab: currentTab, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
-            class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
-          >
-            Clear Filters
-          </a>
-        )}
-      </form>
-
-      <!-- Trips Grid -->
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        {currentTrips.map((trip: any) => (
-          <TripCard  trip={trip} type={currentType} />
-        ))}
-      </div>
-
-      <!-- Empty State -->
-      {currentTrips.length === 0 && (
-        <div class="text-center py-20">
-          {currentTab === 'owned' ? (
-            <div>
-              <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-6">
-                <svg class="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                 </svg>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">No trips yet</h3>
-              <p class="text-gray-500 mb-6">Start planning your next adventure!</p>
+            </>
+          )}
+
+          <!-- Active filter count badge + clear -->
+          {hasActiveFilters && (
+            <div class="flex items-center gap-2 ml-auto">
+              <span class="text-xs text-gray-400">{activeFilterCount} active</span>
+              <a
+                href={buildUrl({ tab: currentTab, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Clear all
+              </a>
+            </div>
+          )}
+        </form>
+      </div>
+
+      <!-- Results meta -->
+      {currentTrips.length > 0 && (
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-400">
+            <span class="font-semibold text-gray-700">{currentTrips.length}</span> of <span class="font-semibold text-gray-700">{currentCount}</span> trips
+            {searchQuery && <> — <span class="text-blue-600 font-medium">"{searchQuery}"</span></>}
+          </p>
+        </div>
+      )}
+
+      <!-- Trip Grid -->
+      {currentTrips.length > 0 && (
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8" id="trips-grid">
+          {currentTrips.map((trip: any) => (
+            <TripCard trip={trip} type={currentType} />
+          ))}
+        </div>
+      )}
+
+      <!-- ── Empty States ── -->
+      {currentTrips.length === 0 && (
+        <div class="flex flex-col items-center justify-center py-24">
+          {currentTab === 'owned' && (
+            <div class="text-center max-w-sm">
+              <div class="relative inline-flex mb-6">
+                <div class="w-24 h-24 rounded-3xl bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-xl shadow-blue-500/25">
+                  <svg class="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                  </svg>
+                </div>
+                <div class="absolute -bottom-1 -right-1 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center shadow-md">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </div>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">No trips yet</h3>
+              <p class="text-gray-500 text-sm leading-relaxed mb-7">You haven't planned any trips yet. Start building your first Philippine adventure!</p>
               <a
                 href="/trips/create"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm"
+                class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5"
               >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                </svg>
                 Create your first trip
               </a>
             </div>
-          ) : currentTab === 'member' ? (
-            <div>
-              <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-6">
-                <svg class="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+          )}
+
+          {currentTab === 'member' && (
+            <div class="text-center max-w-sm">
+              <div class="w-24 h-24 rounded-3xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-xl shadow-emerald-500/25 mx-auto mb-6">
+                <svg class="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">Not part of any trips yet</h3>
-              <p class="text-gray-500 mb-6">Explore and join trips from the Discover tab</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">No joined trips yet</h3>
+              <p class="text-gray-500 text-sm leading-relaxed mb-7">You haven't joined any trips yet. Discover open trips and request to join your crew!</p>
+              <a
+                href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
+                class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+              >
+                Browse Trips
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+              </a>
             </div>
-          ) : (
-            <div>
-              <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-6">
-                <svg class="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          )}
+
+          {currentTab === 'discover' && (
+            <div class="text-center max-w-sm">
+              <div class="w-24 h-24 rounded-3xl bg-linear-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-xl shadow-orange-500/25 mx-auto mb-6">
+                <svg class="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">No trips found</h3>
-              <p class="text-gray-500">
-                {userPreferences 
-                  ? "Try adjusting your filters to find more trips"
-                  : "Set your travel preferences to get personalized recommendations"}
+              <h3 class="text-xl font-bold text-gray-900 mb-2">No trips found</h3>
+              <p class="text-gray-500 text-sm leading-relaxed mb-7">
+                {userPreferences ? "Try adjusting your filters to find more trips." : "Set your preferences to get personalized recommendations."}
               </p>
               {!userPreferences && (
                 <button
                   id="open-preferences-from-empty"
-                  class="mt-4 inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                  class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-0.5"
                 >
-                  Set Preferences
+                  Set Travel Preferences
                 </button>
               )}
             </div>
@@ -391,206 +490,124 @@ function buildUrl(params: Record<string, string>) {
         </div>
       )}
 
-      <!-- Pagination -->
+      <!-- ── Pagination ── -->
       {totalPages > 1 && (
-        <nav class="flex justify-center items-center gap-2 mt-10" aria-label="Pagination">
-          <!-- Previous button -->
+        <nav class="flex justify-center items-center gap-1 mt-6 mb-2" aria-label="Pagination">
           {currentPage > 1 ? (
             <a
               href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class="px-4 py-2 rounded-lg font-medium transition-colors text-gray-700 hover:bg-gray-100"
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all"
+              aria-label="Previous"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
               </svg>
             </a>
           ) : (
-            <span class="px-4 py-2 rounded-lg font-medium text-gray-400 cursor-not-allowed">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-300 cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
               </svg>
             </span>
           )}
 
-          <!-- First page -->
-          <a
-            href={buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter })}
-            class={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              1 === currentPage 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            1
-          </a>
+          <a href={buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter })}
+            class={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold transition-all ${1 === currentPage ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200'}`}>1</a>
 
-          {currentPage > 3 && <span class="px-2 text-gray-400">...</span>}
+          {currentPage > 3 && <span class="text-gray-300 px-1 text-sm">···</span>}
 
-          <!-- Middle pages -->
           {currentPage - 1 > 1 && (
-            <a
-              href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class="px-4 py-2 rounded-lg font-medium transition-colors text-gray-700 hover:bg-gray-100"
-            >
-              {currentPage - 1}
-            </a>
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all">{currentPage - 1}</a>
           )}
-
           {currentPage !== 1 && currentPage !== totalPages && (
-            <a
-              href={buildUrl({ tab: currentTab, page: String(currentPage), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class="px-4 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white shadow-md"
-            >
-              {currentPage}
-            </a>
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage), search: searchQuery, status: statusFilter, region: regionFilter })}
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold bg-blue-600 text-white shadow-md shadow-blue-500/30">{currentPage}</a>
           )}
-
           {currentPage + 1 < totalPages && (
-            <a
-              href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class="px-4 py-2 rounded-lg font-medium transition-colors text-gray-700 hover:bg-gray-100"
-            >
-              {currentPage + 1}
-            </a>
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all">{currentPage + 1}</a>
           )}
 
-          {currentPage < totalPages - 2 && <span class="px-2 text-gray-400">...</span>}
+          {currentPage < totalPages - 2 && <span class="text-gray-300 px-1 text-sm">···</span>}
 
-          <!-- Last page -->
           {totalPages > 1 && (
-            <a
-              href={buildUrl({ tab: currentTab, page: String(totalPages), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                totalPages === currentPage 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {totalPages}
-            </a>
+            <a href={buildUrl({ tab: currentTab, page: String(totalPages), search: searchQuery, status: statusFilter, region: regionFilter })}
+              class={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold transition-all ${totalPages === currentPage ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200'}`}>{totalPages}</a>
           )}
 
-          <!-- Next button -->
           {currentPage < totalPages ? (
             <a
               href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter })}
-              class="px-4 py-2 rounded-lg font-medium transition-colors text-gray-700 hover:bg-gray-100"
+              class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all"
+              aria-label="Next"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </a>
           ) : (
-            <span class="px-4 py-2 rounded-lg font-medium text-gray-400 cursor-not-allowed">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-300 cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </span>
           )}
         </nav>
       )}
-    </div>
 
-    <!-- Suggested Trips Section -->
-    {ownedTrips.length < 3 && suggestedTrips.length > 0 && (
-      <section class="mt-16 pt-12 border-t border-gray-200">
-        <div class="flex items-center justify-between mb-8">
-          <div>
-            <h2 class="text-3xl font-bold text-gray-900">Suggested for You</h2>
-            <p class="text-gray-600 mt-2">Based on your interests and preferences</p>
+      <!-- ── Suggested Trips ── -->
+      {ownedTrips.length < 3 && suggestedTrips.length > 0 && (
+        <section class="mt-14 pt-10 border-t border-gray-200">
+          <div class="flex items-start justify-between mb-7">
+            <div>
+              <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Handpicked for you</p>
+              <h2 class="text-2xl font-bold text-gray-900">Suggested Trips</h2>
+              <p class="text-sm text-gray-500 mt-1">Based on your travel preferences</p>
+            </div>
+            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-full shrink-0">
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+              <span class="text-xs font-semibold text-amber-600">AI-matched</span>
+            </div>
           </div>
-          <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-          </svg>
-        </div>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {suggestedTrips.map((trip: any) => (
-            <SuggestedTripCard  trip={trip} />
-          ))}
-        </div>
-      </section>
-    )}
-  </section>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {suggestedTrips.map((trip: any) => (
+              <SuggestedTripCard trip={trip} />
+            ))}
+          </div>
+        </section>
+      )}
 
-  {/* Preferences Prompt Modal */}
-  {showPreferencesPrompt && (
-    <PreferencesPrompt userId={userId} />
-  )}
+    </div>
+  </div>
 
-  <style>
-    .active-tab {
-      border-bottom: 2px solid rgb(37, 99, 235);
-      color: rgb(37, 99, 235);
-    }
-    .inactive-tab {
-      border-bottom: 2px solid transparent;
-      color: rgb(107, 114, 128);
-      transition: all 0.2s;
-    }
-    .inactive-tab:hover {
-      color: rgb(55, 65, 81);
-      border-bottom-color: rgb(209, 213, 219);
-    }
-  </style>
+  {showPreferencesPrompt && <PreferencesPrompt userId={userId} />}
 
   <script>
-    // Auto-submit form on filter change with debounce for search
     let searchTimeout: number;
-    const form = document.querySelector('form');
-    const searchInput = document.getElementById('search-input');
-    const statusFilter = document.getElementById('status-filter');
-    const regionFilter = document.getElementById('region-filter');
-    const budgetFilter = document.getElementById('budget-filter');
-    const styleFilter = document.getElementById('style-filter');
-    const paceFilter = document.getElementById('pace-filter');
-    const openPreferencesBtn = document.getElementById('open-preferences-from-empty');
 
-    if (searchInput && form) {
-      searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = window.setTimeout(() => {
-          form.submit();
-        }, 500);
-      });
-    }
+    // Debounced search — submits the search form
+    document.getElementById('search-input')?.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = window.setTimeout(() => {
+        (document.getElementById('search-form') as HTMLFormElement)?.submit();
+      }, 480);
+    });
 
-    if (statusFilter && form) {
-      statusFilter.addEventListener('change', () => {
-        form.submit();
+    // Filter selects auto-submit the filter form
+    ['status-filter', 'region-filter', 'budget-filter', 'style-filter', 'pace-filter'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => {
+        (document.getElementById('filter-form') as HTMLFormElement)?.submit();
       });
-    }
+    });
 
-    if (regionFilter && form) {
-      regionFilter.addEventListener('change', () => {
-        form.submit();
-      });
-    }
-
-    // Preference filters
-    if (budgetFilter && form) {
-      budgetFilter.addEventListener('change', () => {
-        form.submit();
-      });
-    }
-
-    if (styleFilter && form) {
-      styleFilter.addEventListener('change', () => {
-        form.submit();
-      });
-    }
-
-    if (paceFilter && form) {
-      paceFilter.addEventListener('change', () => {
-        form.submit();
-      });
-    }
-
-    // Open preferences from empty state
-    if (openPreferencesBtn) {
-      openPreferencesBtn.addEventListener('click', () => {
-        const modal = document.getElementById('preferences-modal');
-        if (modal) modal.classList.remove('hidden');
-      });
-    }
+    // Preferences from empty state
+    document.getElementById('open-preferences-from-empty')?.addEventListener('click', () => {
+      const modal = document.getElementById('preferences-modal') as HTMLDialogElement | null;
+      modal?.showModal?.() ?? modal?.classList.remove('hidden');
+    });
   </script>
+
 </Pageplate>

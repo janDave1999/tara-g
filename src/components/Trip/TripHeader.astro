@@ -1,5 +1,5 @@
 ---
-import { Share2Icon } from '@lucide/astro';
+import { Share2Icon, MapPin } from '@lucide/astro';
 import TripStatusBadge from './TripStatusBadge.astro';
 import VisibilityModal from './modal/VisibilityModal.astro';
 import StatusModal from './modal/StatusModal.astro';
@@ -10,73 +10,106 @@ const {
   tags,
   userRole,
   tripId,
-  tripStatus
+  tripStatus,
+  destination,
+  currentPax,
+  maxPax,
 } = Astro.props;
 
-let tagsArray = [];
+let tagsArray: string[] = [];
 if (Array.isArray(tags)) {
   tagsArray = tags;
-} else if (typeof tags === "string") {
+} else if (typeof tags === 'string') {
   const cleaned = tags.trim();
-  if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+  if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
     try {
       tagsArray = JSON.parse(cleaned);
-    } catch (e) {
-      tagsArray = cleaned.split(",").map((t) => t.trim()).filter(Boolean);
+    } catch {
+      tagsArray = cleaned.split(',').map((t) => t.trim()).filter(Boolean);
     }
   }
 }
 
-const statusColors = {
-  active: 'bg-emerald-100 text-emerald-700 ring-emerald-600/20',
-  completed: 'bg-blue-100 text-blue-700 ring-blue-600/20',
-  cancelled: 'bg-red-100 text-red-700 ring-red-600/20',
-  draft: 'bg-amber-100 text-amber-700 ring-amber-600/20',
-  archived: 'bg-gray-100 text-gray-700 ring-gray-600/20',
-  private: 'bg-purple-100 text-purple-700 ring-purple-600/20',
-  public: 'bg-sky-100 text-sky-700 ring-sky-600/20',
-  friends: 'bg-blue-100 text-blue-700 ring-blue-600/20',
+const isOwner = userRole === 'owner';
+const isFull = (currentPax ?? 0) >= (maxPax ?? 1);
+
+const visibilityIcon: Record<string, string> = {
+  private: '🔒',
+  public: '🌐',
+  friends: '👥',
 };
 
-const isOwner = userRole === 'owner';
+const statusBadgeClass: Record<string, string> = {
+  active:    'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  draft:     'bg-amber-50   text-amber-700   ring-amber-600/20',
+  completed: 'bg-blue-50    text-blue-700    ring-blue-600/20',
+  cancelled: 'bg-red-50     text-red-600     ring-red-500/20',
+  archived:  'bg-gray-100   text-gray-600    ring-gray-400/20',
+};
 ---
 
-<div class="bg-gradient-to-br from-green-50 via-white to-emerald-50 p-6 md:p-8 border-b border-gray-100">
-  <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-    
-    <!-- Title & Tags -->
-    <div class="space-y-3 flex-1">
-      <div class="flex items-start gap-3 flex-wrap">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
-          {title}
-        </h1>
-        <div class="flex gap-2">
-          {visibility && (
-            isOwner ? (
-              <button
-                id="open-visibility-modal"
-                type="button"
-                class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset cursor-pointer hover:opacity-80 transition-opacity ${(statusColors as any)[visibility]}`}
-                title="Click to change visibility"
-              >
-                {visibility === 'private' ? '🔒' : visibility === 'public' ? '🌐' : '👥'} {visibility.toUpperCase()}
-              </button>
-            ) : (
-              <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${(statusColors as any)[visibility]}`}>
-                {visibility.toUpperCase()}
-              </span>
-            )
-          )}
-          {isOwner && tripStatus && (
-            <TripStatusBadge status={tripStatus} tripId={tripId} />
-          )}
-        </div>
+<div class="px-6 md:px-8 py-6 md:py-7">
+  <div class="flex items-start justify-between gap-4">
+
+    <!-- Left: Trip info -->
+    <div class="flex-1 min-w-0 space-y-2.5">
+
+      <!-- Title -->
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight leading-snug">
+        {title}
+      </h1>
+
+      <!-- Meta row -->
+      <div class="flex flex-wrap items-center gap-2">
+        {destination && (
+          <span class="flex items-center gap-1.5 text-sm text-gray-500">
+            <MapPin class="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            {destination}
+          </span>
+        )}
+
+        <!-- Status: owner gets clickable TripStatusBadge, non-owner gets static chip -->
+        {isOwner && tripStatus ? (
+          <TripStatusBadge status={tripStatus} tripId={tripId} />
+        ) : tripStatus && (
+          <span class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${statusBadgeClass[tripStatus] ?? statusBadgeClass.draft}`}>
+            {tripStatus.charAt(0).toUpperCase() + tripStatus.slice(1)}
+          </span>
+        )}
+
+        <!-- Visibility: owner gets clickable, non-owner gets static -->
+        {visibility && (isOwner ? (
+          <button
+            id="open-visibility-modal"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+            title="Click to change visibility"
+          >
+            {visibilityIcon[visibility]} {visibility.charAt(0).toUpperCase() + visibility.slice(1)}
+          </button>
+        ) : (
+          <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+            {visibilityIcon[visibility]} {visibility.charAt(0).toUpperCase() + visibility.slice(1)}
+          </span>
+        ))}
+
+        {!isOwner && userRole === 'member' && (
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+            ✓ Member
+          </span>
+        )}
+        {!isOwner && userRole === 'pending' && (
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            ⏳ Pending
+          </span>
+        )}
       </div>
-      
+
+      <!-- Tags -->
       {tagsArray.length > 0 && (
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1.5">
           {tagsArray.map((tag: string) => (
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
               {tag}
             </span>
           ))}
@@ -84,26 +117,54 @@ const isOwner = userRole === 'owner';
       )}
     </div>
 
-    <!-- Action Buttons -->
-    <div class="flex flex-wrap gap-2 items-center">
+    <!-- Right: Action buttons -->
+    <div class="flex items-center gap-2 shrink-0 pt-0.5">
       <button
         id="share-trip-btn"
-        class="btn btn-sm bg-white/60 backdrop-blur-sm hover:bg-white border border-gray-200 gap-2 transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none"
+        class="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all focus:ring-2 focus:ring-gray-300 focus:outline-none"
         aria-label="Share trip"
       >
-        <Share2Icon class="w-4 h-4" />
-        <span class="hidden sm:inline">Share</span>
+        <Share2Icon class="w-5 h-5" />
       </button>
+
+      {userRole === 'visitor' && !isFull && tripStatus === 'active' && (
+        <button
+          id="join-btn"
+          class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+        >
+          Request to Join
+        </button>
+      )}
+
+      {userRole === 'visitor' && isFull && (
+        <span class="px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
+          Trip Full
+        </span>
+      )}
+
+      {userRole === 'pending' && (
+        <button
+          id="cancel-req-btn"
+          class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+        >
+          Cancel Request
+        </button>
+      )}
+
+      {userRole === 'member' && (
+        <button
+          id="leave-trip-btn"
+          class="px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+        >
+          Leave Trip
+        </button>
+      )}
     </div>
   </div>
 </div>
 
-{isOwner && (
-  <VisibilityModal tripId={tripId} currentVisibility={visibility ?? 'private'} />
-)}
-{isOwner && tripStatus && (
-  <StatusModal tripId={tripId} currentStatus={tripStatus} />
-)}
+{isOwner && <VisibilityModal tripId={tripId} currentVisibility={visibility ?? 'private'} />}
+{isOwner && tripStatus && <StatusModal tripId={tripId} currentStatus={tripStatus} />}
 
 <script>
   document.getElementById('open-visibility-modal')?.addEventListener('click', () => {
@@ -111,28 +172,12 @@ const isOwner = userRole === 'owner';
   });
 
   const shareBtn = document.getElementById('share-trip-btn');
-  
   shareBtn?.addEventListener('click', async () => {
     const url = window.location.href;
-    
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: document.title,
-          url: url
-        });
-      } catch (err) {
-        // User cancelled or error occurred
-      }
+      try { await navigator.share({ title: document.title, url }); } catch {}
     } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-        // You can add a toast notification here
-        alert('Link copied to clipboard!');
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
+      try { await navigator.clipboard.writeText(url); } catch {}
     }
   });
 </script>

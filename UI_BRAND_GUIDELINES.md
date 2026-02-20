@@ -2,7 +2,7 @@
 
 ## Tara G!
 
-Version 1.0 | Last Updated: February 2026
+Version 1.1 | Last Updated: February 2026
 
 ---
 
@@ -130,6 +130,20 @@ The secondary palette adds energy, warmth, and call-to-action emphasis.
   font-semibold text-gray-800 text-sm md:text-base;
 }
 ```
+
+### 3.5 Property Row Typography (Data Display)
+
+Used in property-sheet / detail views (e.g. trip summary rows):
+
+| Role | Tailwind Classes | Example |
+|------|-----------------|---------|
+| Field label | `text-xs font-semibold text-gray-500 uppercase tracking-wide` | "DESTINATION", "TRIP DATES" |
+| Field value | `text-sm font-semibold text-gray-900` | "Cebu City", "Mar 1 – Mar 5, 2025" |
+| Sub-value / note | `text-xs text-gray-500 mt-0.5` | "Join by Feb 28", "Max 6 people" |
+| Section heading | `text-sm font-semibold text-gray-700` | "About this trip" |
+| Empty / placeholder | `text-sm text-gray-400 italic` | "No description yet." |
+
+**Rule:** Field labels must always be `uppercase tracking-wide font-semibold` to maintain scannability. Never use `text-gray-400` for labels — minimum `text-gray-500`.
 
 ---
 
@@ -425,6 +439,23 @@ The project uses `@jsarmyknife/native--icon` for custom icons and `@lucide/astro
 - Hover: `text-brand-primary`
 - Active: `text-brand-primary-dark`
 - Disabled: `text-gray-400`
+
+### 12.4 Contextual Icon Color Conventions (Property Rows)
+
+When icons appear inside rounded icon wells in property/detail rows, apply semantic color based on category:
+
+| Category | Icon Well | Icon Color | Usage |
+|----------|-----------|------------|-------|
+| Informational (default) | `bg-blue-50` | `text-blue-600` | Destination, Dates, Members, Preferences |
+| Financial / Cost | `bg-orange-50` | `text-orange-500` | Budget, Cost Sharing |
+| Danger / Destructive | `bg-red-50` | `text-red-500` | Delete actions |
+| Success | `bg-green-50` | `text-green-600` | Confirmations |
+
+**Rule:** Do NOT mix multiple accent colors across informational rows. Keep all informational icons blue and only deviate for semantically distinct categories (cost = orange, danger = red).
+
+Icon well size in rows: `w-9 h-9 rounded-xl` (slightly rounded square, not circle).
+
+Icon well size in `EditableCard` component: `p-3 rounded-xl bg-linear-to-br` with gradient.
 
 ---
 
@@ -827,6 +858,157 @@ import { $user } from '@/stores/auth';
   }
 </script>
 ```
+
+---
+
+---
+
+## 19. Trip Detail Page Patterns
+
+These patterns were established during the trip detail UI overhaul (v1.1) and should be used as the reference for all detail/profile-style pages.
+
+### 19.1 Two-Card Page Layout
+
+Detail pages use a **two-card stacked layout** inside a constrained container:
+
+```astro
+<section class="max-w-5xl mx-auto mt-6 mb-20 px-4 space-y-5">
+
+  <!-- Card 1: Hero media + entity header (title, meta, actions) -->
+  <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+    <Hero ... />
+    <TripHeader ... />
+  </div>
+
+  <!-- Card 2: Structured property details -->
+  <div class="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+    <Summary ... />
+  </div>
+
+  <!-- Full-width cards below (members, itinerary, etc.) -->
+  <Member ... />
+  <Itinerary2 ... />
+
+</section>
+```
+
+- Card 1 border: `border-gray-200` (slightly more visible — anchors the hero)
+- Card 2+ borders: `border-gray-100` (subtle, recedes)
+- `overflow-hidden` on the outer wrapper prevents inner elements from bleeding outside `rounded-2xl`
+- Do NOT apply `rounded-*` or `shadow-*` to direct children of these cards — the parent card handles shaping
+
+### 19.2 Property Row Layout (divide-y Pattern)
+
+For metadata/details sections, use a vertical property-sheet layout rather than a grid of cards:
+
+```astro
+<div class="divide-y divide-gray-100">
+
+  <!-- Text-only section (e.g. description) -->
+  <div class="px-6 py-5 ...">
+    <p class="text-sm font-semibold text-gray-700">Section heading</p>
+    <p class="text-sm text-gray-700 leading-relaxed">Content</p>
+  </div>
+
+  <!-- Icon row (e.g. destination, dates) -->
+  <div class="flex items-center gap-4 px-6 py-4 ...">
+    <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+      <Icon class="w-4 h-4 text-blue-600" />
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Label</p>
+      <p class="text-sm font-semibold text-gray-900">Value</p>
+      <p class="text-xs text-gray-500 mt-0.5">Sub-value</p>
+    </div>
+    <!-- Edit pencil (owners only, opacity-0 group-hover:opacity-100) -->
+  </div>
+
+</div>
+```
+
+Row padding: `px-6 py-4` for icon rows, `px-6 py-5` for text-only sections.
+
+**Editable rows** add `cursor-pointer hover:bg-gray-50 group` and reveal a pencil icon on hover via `opacity-0 group-hover:opacity-100`.
+
+### 19.3 Entity Header (TripHeader) Conventions
+
+The header area below the hero image follows this structure:
+
+```astro
+<div class="px-6 md:px-8 py-6 md:py-7 bg-white">
+  <!-- Row 1: Title + action buttons -->
+  <div class="flex items-start justify-between gap-4 mb-3">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">Title</h1>
+    <!-- Join / Leave / Share buttons -->
+  </div>
+  <!-- Row 2: Meta chips (destination, status badge, visibility) -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <!-- chips -->
+  </div>
+  <!-- Row 3: Tags -->
+  <div class="flex flex-wrap gap-1.5">
+    <!-- tag pills: px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 -->
+  </div>
+</div>
+```
+
+- Title: `text-2xl md:text-3xl font-bold text-gray-900`
+- Tag chips: `px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600`
+- Status badge: use `TripStatusBadge` component for owners; static colored chip for non-owners
+- Join button: `bg-blue-600 hover:bg-blue-700 text-white`
+- Cancel/Leave buttons: ghost border variant (`border border-gray-200` or `border border-red-200 text-red-600`)
+
+### 19.4 Hero Carousel Conventions
+
+- No `rounded-*` or `shadow-*` on the carousel div itself — the parent card wrapper handles shape
+- Navigation arrows: semi-transparent pill buttons with `focus:ring-blue-500`
+- Indicator dots: absolute overlay at `bottom-4`, hidden when `totalSlides <= 1`
+- Active dot: `bg-linear-to-r from-blue-500 to-blue-600`
+- Upload slide (owner): dark bg `from-slate-900 to-blue-950`, dashed blue upload border
+
+### 19.5 Itinerary Component Conventions
+
+```
+Itinerary2 (container card)
+└── rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white
+    └── ItineraryHeader (title + edit mode toggle)
+    └── DaySection (per day)
+        └── Day header: numbered circle + day label + date chip + chevron
+        └── Timeline: thin vertical line w-px bg-gray-200 (neutral, no gradient)
+        └── StopCard (per stop)
+            └── Colored timeline dot (from stopColors.ts — dot only, not card bg)
+            └── Card: bg-white border-gray-100 rounded-xl shadow-sm hover:shadow-md
+```
+
+- **Timeline line**: `w-px bg-gray-200` — always neutral gray, never colored
+- **Stop type colors**: applied only to the dot and type label text (via `stopColors.ts`), NOT the card background
+- **Day number circle**: `w-7 h-7 rounded-full bg-gray-100` with `text-xs font-bold text-gray-600`
+- **Add Stop button**: `text-xs font-semibold text-blue-600 hover:bg-blue-50` — hidden by default, shown in edit mode
+- **Edit mode toggle button**: `border border-gray-200 text-gray-700 hover:bg-gray-50`
+
+### 19.6 Tailwind v4 Syntax Notes
+
+Always use Tailwind v4 canonical class names:
+
+| v3 (incorrect) | v4 (correct) |
+|----------------|--------------|
+| `bg-gradient-to-r` | `bg-linear-to-r` |
+| `bg-gradient-to-br` | `bg-linear-to-br` |
+
+### 19.7 Date Formatting Safety
+
+Always guard date formatting against null/undefined/invalid values:
+
+```typescript
+const fmt = (d: string | null | undefined): string => {
+  if (!d) return 'Not set';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return 'Invalid date';
+  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+};
+```
+
+Never call `Intl.DateTimeFormat.format()` without first checking `isNaN(date.getTime())`.
 
 ---
 

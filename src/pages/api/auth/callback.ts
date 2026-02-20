@@ -48,12 +48,6 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const next = url.searchParams.get("next") || "/feeds";
   const safeNext = next.startsWith("/") ? next : "/feeds"; // only allow relative paths
 
-  const response = Response.redirect(`${SITE_URL}${safeNext}`, 302);
-  
-  // Add CORS headers to the redirect response
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  
-  return response;
+  // Use redirect() from context instead of Response.redirect() to properly handle cookies
+  return redirect(`${SITE_URL}${safeNext}`, 302);
 };

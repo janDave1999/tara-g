@@ -25,9 +25,8 @@ function initItinerary() {
       : 'px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-500/30 focus:ring-2 focus:ring-emerald-500 focus:outline-none';
     
     // Show/hide all edit controls
-    document.querySelectorAll('.edit-controls, .activity-controls, .add-stop-btn, .add-activity-btn').forEach(el => {
-      el.classList.toggle('hidden', !isEditing);
-      if (isEditing) el.classList.add('flex');
+    document.querySelectorAll<HTMLElement>('.edit-controls, .activity-controls, .add-stop-btn, .add-activity-btn').forEach(el => {
+      el.style.display = isEditing ? 'flex' : 'none';
     });
   });
 

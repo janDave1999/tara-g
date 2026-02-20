@@ -11,63 +11,34 @@ interface Props extends HTMLAttributes<'div'> {
 
 const { editType, icon: Icon, label, isEditable, colorScheme, class: className, ...rest } = Astro.props;
 
-const colorClasses = {
-  green: {
-    bg: 'from-green-50',
-    border: 'border-green-200',
-    icon: 'from-green-500 to-green-600',
-    shadow: 'shadow-green-500/30',
-    edit: 'text-green-600'
-  },
-  emerald: {
-    bg: 'from-emerald-50',
-    border: 'border-emerald-200',
-    icon: 'from-emerald-500 to-emerald-600',
-    shadow: 'shadow-emerald-500/30',
-    edit: 'text-emerald-600'
-  },
-  teal: {
-    bg: 'from-teal-50',
-    border: 'border-teal-200',
-    icon: 'from-teal-500 to-teal-600',
-    shadow: 'shadow-teal-500/30',
-    edit: 'text-teal-600'
-  },
-  lime: {
-    bg: 'from-lime-50',
-    border: 'border-lime-200',
-    icon: 'from-lime-500 to-lime-600',
-    shadow: 'shadow-lime-500/30',
-    edit: 'text-lime-600'
-  },
-  amber: {
-    bg: 'from-amber-50',
-    border: 'border-amber-200',
-    icon: 'from-amber-500 to-amber-600',
-    shadow: 'shadow-amber-500/30',
-    edit: 'text-amber-600'
-  }
+// Icon gradient only — card bg is always clean white
+const iconGradient = {
+  green:   { icon: 'from-green-500 to-green-600',   shadow: 'shadow-green-500/20' },
+  emerald: { icon: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/20' },
+  teal:    { icon: 'from-teal-500 to-teal-600',     shadow: 'shadow-teal-500/20' },
+  lime:    { icon: 'from-lime-500 to-lime-600',     shadow: 'shadow-lime-500/20' },
+  amber:   { icon: 'from-amber-500 to-amber-600',   shadow: 'shadow-amber-500/20' },
 };
 
-const colors = colorClasses[colorScheme];
+const colors = iconGradient[colorScheme];
 ---
 
-<div 
-  class={`flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br ${colors.bg} to-transparent border border-transparent transition-all ${isEditable ? `cursor-pointer hover:shadow-lg hover:border-${colors.border} hover:-translate-y-1 group` : 'hover:shadow-md'} ${className}`}
+<div
+  class={`flex items-start gap-4 p-4 rounded-xl bg-white border border-transparent transition-all ${isEditable ? 'cursor-pointer hover:bg-gray-50 hover:border-gray-200 group' : 'hover:bg-gray-50'} ${className}`}
   data-edit={editType}
   data-editable={isEditable}
   {...rest}
 >
-  <div class={`flex-shrink-0 p-3 bg-gradient-to-br ${colors.icon} rounded-xl shadow-lg ${colors.shadow}`}>
+  <div class={`flex-shrink-0 p-3 bg-linear-to-br ${colors.icon} rounded-xl shadow-sm ${colors.shadow}`}>
     <Icon class="w-5 h-5 text-white" />
   </div>
-  <div class="flex-1">
-    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{label}</p>
+  <div class="flex-1 min-w-0">
+    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
     <slot />
   </div>
   {isEditable && (
-    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-      <svg class={`w-4 h-4 ${colors.edit}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
       </svg>
     </div>

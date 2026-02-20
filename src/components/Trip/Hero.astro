@@ -32,10 +32,10 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
   role="region" 
   aria-label="Image carousel"
   aria-live="polite"
-  class="relative mx-auto w-full mt-6 md:mt-8"
+  class="relative mx-auto w-full"
 >
   <!-- Main Carousel -->
-  <div class="carousel w-full shadow-2xl rounded-2xl overflow-hidden bg-gray-100">
+  <div class="carousel w-full overflow-hidden bg-gray-100">
     <!-- IMAGE SLIDES -->
     {heroImages?.map((image, index) => {
       const slideNum = index + 1;
@@ -76,14 +76,14 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
           <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
             <a 
               href={`#${prevId}`} 
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-white font-bold shadow-lg"
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
               aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
             >
               ❮
             </a>
-            <a 
-              href={`#${nextId}`} 
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-white font-bold shadow-lg"
+            <a
+              href={`#${nextId}`}
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
               aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
             >
               ❯
@@ -103,21 +103,21 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
       return (
         <div 
           id={slideId} 
-          class="carousel-item relative w-full flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh]"
+          class="carousel-item relative w-full flex items-center justify-center bg-linear-to-br from-slate-900 to-blue-950 min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh]"
         >
           <!-- Upload Card -->
-          <div class="border-2 border-dashed border-green-300 bg-white/90 backdrop-blur-sm rounded-2xl p-8 md:p-12 max-w-md mx-4 shadow-xl">
+          <div class="border-2 border-dashed border-blue-500/40 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-8 md:p-12 max-w-md mx-4 shadow-2xl shadow-black/40">
             <div class="text-center space-y-4">
               <!-- Icon -->
-              <div class="w-16 h-16 mx-auto bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center shadow-lg">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mx-auto bg-linear-to-br from-blue-500/25 to-blue-600/25 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20 border border-blue-500/20">
+                <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
               </div>
-              
+
               <!-- Text -->
-              <h2 class="text-xl md:text-2xl font-bold text-gray-900">Add Hero Image</h2>
-              <p class="text-gray-600 text-sm md:text-base">Upload stunning photos of your adventure</p>
+              <h2 class="text-xl md:text-2xl font-bold text-white">Add Hero Image</h2>
+              <p class="text-blue-200/70 text-sm md:text-base">Upload stunning photos of your adventure</p>
               
               <!-- Upload Component -->
               <UploadImages  />
@@ -126,16 +126,16 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
 
           <!-- Navigation Buttons -->
           <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
-            <a 
-              href={`#${prevId}`} 
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-md hover:bg-white/50 border-2 border-green-300/60 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-green-700 font-bold shadow-lg"
+            <a
+              href={`#${prevId}`}
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
               aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
             >
               ❮
             </a>
-            <a 
-              href={`#${nextId}`} 
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-md hover:bg-white/50 border-2 border-green-300/60 transition-all focus:ring-4 focus:ring-green-500 focus:outline-none text-green-700 font-bold shadow-lg"
+            <a
+              href={`#${nextId}`}
+              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
               aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
             >
               ❯
@@ -146,21 +146,23 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
     })()}
   </div>
 
-  <!-- Slide Indicators (Dots) -->
-  <div class="flex justify-center gap-2.5 mt-6" role="tablist" aria-label="Slide navigation">
-    {Array.from({ length: totalSlides }).map((_, i) => {
-      const slideNum = i + 1;
-      return (
-        <a 
-          href={`#slide${slideNum}`}
-          role="tab"
-          aria-label={`Go to slide ${slideNum} of ${totalSlides}`}
-          class="indicator-dot w-2.5 h-2.5 rounded-full bg-gray-300 hover:bg-gray-500 transition-all hover:scale-125 focus:ring-2 focus:ring-green-500 focus:outline-none shadow-sm"
-          data-slide={slideNum}
-        />
-      );
-    })}
-  </div>
+  <!-- Slide Indicators (absolute overlay at bottom of carousel) -->
+  {totalSlides > 1 && (
+    <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2 pointer-events-none" role="tablist" aria-label="Slide navigation">
+      {Array.from({ length: totalSlides }).map((_, i) => {
+        const slideNum = i + 1;
+        return (
+          <a
+            href={`#slide${slideNum}`}
+            role="tab"
+            aria-label={`Go to slide ${slideNum} of ${totalSlides}`}
+            class="indicator-dot pointer-events-auto w-2 h-2 rounded-full bg-white/40 hover:bg-white/70 transition-all hover:scale-125 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm"
+            data-slide={slideNum}
+          />
+        );
+      })}
+    </div>
+  )}
 </div>
 
 <!-- Keyboard Navigation & Touch Gestures -->
@@ -190,11 +192,11 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
       indicators.forEach((dot) => {
         const slideNum = parseInt(dot.getAttribute('data-slide') || '0');
         if (slideNum === currentSlide) {
-          dot.classList.remove('bg-gray-300', 'hover:bg-gray-500');
-          dot.classList.add('bg-gradient-to-br', 'from-green-500', 'to-emerald-600', 'scale-125', 'shadow-md');
+          dot.classList.remove('bg-white/25', 'hover:bg-white/50');
+          dot.classList.add('bg-linear-to-br', 'from-blue-500', 'to-blue-600', 'scale-125', 'shadow-md', 'shadow-blue-500/30');
         } else {
-          dot.classList.add('bg-gray-300', 'hover:bg-gray-500');
-          dot.classList.remove('bg-gradient-to-br', 'from-green-500', 'to-emerald-600', 'scale-125', 'shadow-md');
+          dot.classList.add('bg-white/25', 'hover:bg-white/50');
+          dot.classList.remove('bg-linear-to-br', 'from-blue-500', 'to-blue-600', 'scale-125', 'shadow-md', 'shadow-blue-500/30');
         }
       });
     };

@@ -1,0 +1,92 @@
+---
+import ItineraryHeader from './ItineraryHeader.astro';
+import DaySection from './DaySection.astro';
+
+interface Props {
+  tripId: string;
+  initialData: any;
+  isOwner: boolean;
+  destination?: string;
+}
+
+const { tripId, initialData, isOwner, destination } = Astro.props;
+function groupStopsByDay(stops: any[]) {
+  const stopsByDay: any[][] = [];
+  let currentDay: any[] = [];
+  let currentDate = '';
+
+  stops.forEach((completeStop, index) => {
+    const stopDate = completeStop.scheduled_start
+      ? new Date(completeStop.scheduled_start).toDateString()
+      : '';
+    if (index === 0) {
+      currentDate = stopDate;
+      currentDay.push(completeStop);
+    } else if (stopDate === currentDate) {
+      currentDay.push(completeStop);
+    } else {
+      stopsByDay.push([...currentDay]);
+      currentDay = [completeStop];
+      currentDate = stopDate;
+    }
+
+    if (index === stops.length - 1) {
+      stopsByDay.push(currentDay);
+    }
+  });
+
+  return stopsByDay;
+}
+
+let groupedStops = groupStopsByDay(initialData || []);
+---
+
+<div class="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+  <div
+    id="itinerary-root"
+    class="p-6 md:p-8"
+    data-trip-id={tripId}
+    data-is-owner={isOwner}
+  >
+    <ItineraryHeader
+      isOwner={isOwner}
+      destination={destination}
+    />
+
+    <div id="days-container" class="space-y-2">
+      {groupedStops.map((dayStops, dayIndex) => (
+        <DaySection
+          dayIndex={dayIndex}
+          stops={dayStops}
+          isOwner={isOwner}
+        />
+      ))}
+
+      {groupedStops.length === 0 && (
+        <div id="empty-itinerary" class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+            <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-gray-700 mb-1">No stops yet</h3>
+          <p class="text-sm text-gray-400 mb-6 max-w-xs">
+            {isOwner
+              ? 'Start building your itinerary by adding the first stop.'
+              : "The trip organizer hasn't added any stops yet."}
+          </p>
+          {isOwner && (
+            <button
+              id="add-first-stop-btn"
+              class="add-first-stop-btn px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-sm shadow-blue-500/20 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              + Add First Stop
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
+<script src="../../../scripts/Itinerary/Itinerary.ts"></script>

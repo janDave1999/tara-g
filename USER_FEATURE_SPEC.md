@@ -253,6 +253,7 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 ### 5.2 P1 — Should Fix Soon
 
 - [x] ~~**Global middleware**~~ — Implemented in `src/middleware/index.ts`. Protects routes, handles auth, redirects to onboarding if incomplete.
+- [x] ~~**Login attempt protection**~~ — Rate limit failed logins with progressive cooldown (5min/15min/30min). Migration 025 created, signin.ts and signin.astro updated.
 - [ ] **Profile edit page** — `/profile/index.astro` is nearly empty.
 - [ ] **Social login** (Google/Facebook) — Buttons render but handlers show "not available yet".
 - [ ] **Username uniqueness enforcement on trigger** — If email prefix collides, auto-append suffix (e.g., `dave_32f`).
@@ -326,6 +327,44 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 - [ ] MFA (TOTP) — uncomment and complete existing code
 - [ ] Social login (Google/Facebook) — complete OAuth handlers
 - [ ] Account deletion
+- [x] ~~**Login attempt protection**~~ — Rate limiting for failed login attempts (Migration 025)
+
+---
+
+## 7.1 Login Attempt Protection ✅ COMPLETED
+
+### Problem
+
+Brute force attacks can attempt to guess user passwords. Without protection, attackers can make unlimited attempts.
+
+### Solution
+
+Implemented login attempt tracking with progressive cooldown:
+
+| Failed Attempts | Cooldown Period |
+|-----------------|-----------------|
+| 1-4 attempts   | No cooldown     |
+| 5 attempts      | 5 minutes       |
+| 6 attempts      | 15 minutes      |
+| 7+ attempts     | 30 minutes      |
+
+### Implementation Complete
+
+**Database:**
+- Migration `025_login_attempt_protection.sql` created
+- `login_attempts` table tracks failed attempts
+- RPC functions: `check_login_cooldown`, `record_login_attempt`
+
+**Backend (`signin.ts`):**
+- Checks cooldown before attempting login
+- Records failed/successful attempts
+- Returns 429 with `RATE_LIMITED` code when in cooldown
+
+**Frontend (`signin.astro`):**
+- Handles 429 status and rate limit errors
+- Shows countdown timer on submit button
+- Disables button during cooldown period
+- Prevents form submission while in cooldown
 
 ---
 
@@ -342,18 +381,19 @@ database-migrations/
 ├── 018_onboarding_rpcs.sql             # ✅ all 9 onboarding RPC functions
 ├── 021_trigger_with_logging.sql         # ✅ debug trigger with RAISE LOG statements
 ├── 022_fix_profile_completion_recursion.sql  # ✅ fix infinite recursion
-└── 023_fix_onboarding_status_field.sql  # ✅ fix onboarding_completed field name
+├── 023_fix_onboarding_status_field.sql  # ✅ fix onboarding_completed field name
+└── 025_login_attempt_protection.sql     # ✅ rate limiting for failed logins
 
 src/
 ├── pages/
 │   ├── register.astro
-│   ├── signin.astro
+│   ├── signin.astro                    # ✅ Cooldown UI implemented
 │   ├── logout.astro
 │   ├── forgot-password.astro           # ✅ Migration 019 (Phase 3)
 │   ├── reset-password.astro           # ✅ Migration 019 (Phase 3)
 │   ├── api/auth/
 │   │   ├── register.ts
-│   │   ├── signin.ts
+│   │   ├── signin.ts                  # ✅ Attempt tracking implemented
 │   │   ├── callback.ts
 │   │   ├── signout.ts
 │   │   └── resend-confirmation.ts
@@ -414,4 +454,4 @@ User fills /register
 ---
 
 *Last updated: 2026-02-20*
-*Updated: Migration 021-023 fixes, Global middleware implemented, Onboarding flow complete*
+*Updated: Login attempt protection fully implemented and tested*

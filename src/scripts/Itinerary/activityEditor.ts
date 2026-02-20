@@ -2,6 +2,8 @@
 // Activity editing functionality
 
 import { actions } from 'astro:actions';
+import { showToast } from '@/scripts/Toast';
+import { createConfirmModal } from '@/scripts/Modal';
 
 const showLoading = (element: HTMLButtonElement, message = 'Saving...') => {
   const originalText = element.textContent;
@@ -52,7 +54,7 @@ const createAddActivityForm = (activitiesSection: HTMLElement) => {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Activity Type</label>
-          <input type="text" name="activity_type" value="photo_op" class="w-full px-2 py-1.5 bg-white border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-500" />
+          <input type="text" name="activity_type" value="other" class="w-full px-2 py-1.5 bg-white border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Duration (mins)</label>
@@ -86,7 +88,7 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
     if (btn.classList.contains('add-activity-btn')) {
       const stopCard = btn.closest('.stop-card')!;
       let activitiesSection = stopCard.querySelector('.activities-section');
-      
+
       if (!activitiesSection) {
         const viewMode = stopCard.querySelector('.view-mode')!;
         viewMode.insertAdjacentHTML('beforeend', `
@@ -99,7 +101,7 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
         `);
         activitiesSection = stopCard.querySelector('.activities-section')!;
       }
-      
+
       createAddActivityForm(activitiesSection as HTMLElement);
     }
 
@@ -114,10 +116,10 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
       const formData = new FormData(form as HTMLFormElement);
       const stopItem = btn.closest('.timeline-item')! as HTMLElement;
       const stopId = stopItem.dataset.stopId!;
-      
+
       const description = formData.get('description') as string;
       if (!description) {
-        alert('Activity description is required');
+        showToast({ message: 'Activity description is required', type: 'error' });
         return;
       }
 
@@ -135,22 +137,22 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
         window.location.reload();
       } catch (error) {
         console.error('Failed to create activity:', error);
-        alert('Failed to create activity');
+        showToast({ message: 'Failed to create activity', type: 'error' });
         hideLoading(btn as HTMLButtonElement, originalText);
       }
     }
 
     // Edit Activity
     if (btn.classList.contains('edit-activity-btn')) {
-      const activityItem = btn.closest('.activity-item')!;
-      
+      const activityItem = btn.closest('.activity-item')! as HTMLElement;
+
       const activityData = {
-        activity_type: 'photo_op',
-        description: activityItem.querySelector('.text-sm')?.textContent || '',
-        planned_duration_minutes: parseInt(activityItem.querySelector('.bg-gray-100')?.textContent?.replace(' mins', '') || '30')
+        activity_type: activityItem.dataset.activityType || 'other',
+        description: activityItem.dataset.activityDescription || '',
+        planned_duration_minutes: parseInt(activityItem.dataset.duration || '30'),
       };
-      
-      createActivityEditor(activityItem as HTMLElement, activityData);
+
+      createActivityEditor(activityItem, activityData);
     }
 
     // Cancel Activity Edit
@@ -162,7 +164,7 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
     if (btn.classList.contains('save-activity-btn')) {
       const activityItem = btn.closest('.activity-item')! as HTMLElement;
       const activityId = activityItem.dataset.activityId!;
-      
+
       const formData = new FormData(activityItem as HTMLFormElement);
       const updateData = {
         activity_id: activityId,
@@ -178,7 +180,7 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
         window.location.reload();
       } catch (error) {
         console.error('Failed to update activity:', error);
-        alert('Failed to update activity');
+        showToast({ message: 'Failed to update activity', type: 'error' });
         hideLoading(btn as HTMLButtonElement, originalText);
       }
     }
@@ -187,16 +189,20 @@ export function initActivityEditor(root: HTMLElement, tripId: string) {
     if (btn.classList.contains('delete-activity-btn')) {
       const activityItem = btn.closest('.activity-item')! as HTMLElement;
       const activityId = activityItem.dataset.activityId!;
-      
-      if (confirm('Delete this activity?')) {
-        try {
-          await actions.activities.deleteActivity({ activityId });
-          activityItem.remove();
-        } catch (error) {
-          console.error('Failed to delete activity:', error);
-          alert('Failed to delete activity');
-        }
-      }
+
+      createConfirmModal({
+        message: 'Delete this activity?',
+        confirmText: 'Delete',
+        onConfirm: async () => {
+          try {
+            await actions.activities.deleteActivity({ activityId });
+            activityItem.remove();
+          } catch (error) {
+            console.error('Failed to delete activity:', error);
+            showToast({ message: 'Failed to delete activity', type: 'error' });
+          }
+        },
+      });
     }
   });
 }

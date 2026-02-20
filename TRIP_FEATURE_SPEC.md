@@ -66,7 +66,11 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | `Trip/TripHeader.astro` | Trip title, visibility button, status button |
 | `Trip/TripStatusBadge.astro` | Clickable status badge (owner) → opens StatusModal |
 | `Trip/Summary.astro` | Trip details display |
-| `Trip/Itinerary/Itinerary2.astro` | Itinerary viewer/builder (active) |
+| `Trip/Itinerary/Itinerary2.astro` | Itinerary orchestrator — groups stops by day, renders DaySection per group |
+| `Trip/Itinerary/ItineraryHeader.astro` | Itinerary header — destination badge, Edit Itinerary toggle |
+| `Trip/Itinerary/DaySection.astro` | One day group — collapsible; renders StopCards |
+| `Trip/Itinerary/StopCard.astro` | Individual stop — view/edit modes, shows location name, type badge, time, activities |
+| `Trip/Itinerary/ActivityList.astro` | Activities within a stop — rendered with data-* attrs for JS editor |
 | `Trip/Member.astro` | Member list and management |
 | `Trip/JoinTrip.astro` | Join request flow |
 | `Trip/Expenses.astro` | Expense tracking |
@@ -119,7 +123,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US-D8 | As a member, I want to leave a trip I've joined | "Leave Trip" button shown for `member` role; redirects to `/trips` | ✅ Pass |
 | US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown for owners and joined members | ✅ Pass |
 | US-D10 | As a trip owner, I want to manage trip status | Clicking the status badge opens `StatusModal` with all 5 status options; calls `update_trip_status` RPC | ✅ Pass |
-| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — `Itinerary2.astro` renders stops grouped by day; add-stop builder in progress |
+| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete stop forms with Mapbox location search done; pickup/dropoff limit + time overlap validation pending |
 | US-D12 | As a visitor, I want to know when a trip is full | "Trip Full" disabled button shown when `currentPax >= maxPax` | ✅ Pass |
 
 **Editable fields (owner only, non-completed trips):**
@@ -161,7 +165,9 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 | # | Story | Acceptance Criteria |
 |---|-------|---------------------|
-| US18 | As a trip owner, I want to build an itinerary | Add stops with dates/times |
+| US18 | As a trip owner, I want to build an itinerary | Add stops with dates/times; Mapbox location search on location name field (suggest + retrieve with coordinates) |
+| US18a | As a trip owner, I want to add multiple pickup and dropoff stops | Pickup and Dropoff available in stop type selector for "Add Stop" form; max **3 pickup** and **3 dropoff** stops per trip enforced — adding a 4th of either type shows an error and prevents save |
+| US18b | As a trip owner, I want stop times to not overlap within a day | On save (create or edit), validate that the new stop's scheduled_start–scheduled_end range does not overlap any existing stop on the same day; if overlap detected, show an inline error and block save; end time is optional — if omitted, only start time collision (same start as another stop) is checked |
 | US19 | As a trip owner, I want to add activities to stops | Activity types: hiking, diving, etc. |
 | US20 | As a trip owner, I want to mark actual arrival/departure | Actual times vs scheduled |
 | US21 | As a participant, I want to view the itinerary | Read-only for non-owners |
@@ -265,15 +271,21 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 #### Itinerary Management
 
+> **Note:** The old itinerary RPCs (`create_stop_with_activities`, `update_itinerary_stop`, `delete_itinerary_stop`, `reorder_itinerary_stops`) were removed from `stops.ts` — they used wrong column names (`stop_type`, `name`, `location_name` which don't exist on `trip_location`). Actions now use **direct table operations** against `locations` + `trip_location`.
+
 | Function | Migration | Purpose |
 |----------|-----------|---------|
 | `get_complete_itinerary` | `004` | Fetch all stops + nested activities as JSONB |
-| `create_stop_with_activities` | `004` | Atomically create a stop with its activities |
-| `update_itinerary_stop` | `004` | Update stop details with validation |
-| `delete_itinerary_stop` | `004` | Delete stop and auto-reorder remaining |
-| `reorder_itinerary_stops` | `004` | Batch reorder operation |
 | `get_itinerary_with_metrics` | `005` | Stops with completion/time-accuracy metrics |
 | `get_itinerary_performance_analytics` | `005` | Trip-level analytics (completion rates, time accuracy) |
+
+**Direct table ops used by `stops` actions (no RPC):**
+
+| Action | Operation | Tables |
+|--------|-----------|--------|
+| `stops.createStop` | INSERT locations → INSERT trip_location | `locations`, `trip_location` |
+| `stops.updateStop` | UPDATE locations + UPDATE trip_location | `locations`, `trip_location` |
+| `stops.deleteStop` | DELETE trip_location; DELETE locations if orphaned | `trip_location`, `locations` |
 
 ### 3.2 Key Validation Rules
 
@@ -345,8 +357,22 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [ ] Complete trip search and filtering
 
 ### Phase 2: Itinerary Enhancement (P1)
+- [x] ~~Fix DaySection crash (`stops[0].stop` → `stops[0]`)~~
+- [x] ~~Fix itinerary query: add `location:locations(*)` join; exclude only `destination` (pickup/dropoff are shown in timeline)~~
+- [x] ~~Rewrite `createStop`/`updateStop` actions: correct DB columns (`location_type`, `location_id`); two-step INSERT into `locations` then `trip_location`~~
+- [x] ~~Fix `deleteStop`: cleans up orphaned `locations` rows~~
+- [x] ~~Fix `activityEditor.ts`: read `data-activity-type`/`data-activity-description`/`data-duration` from DOM instead of hardcoded `'photo_op'`~~
+- [x] ~~Add `data-activity-type`, `data-activity-description`, `data-duration` to `ActivityList.astro` items~~
+- [x] ~~Replace all `alert()`/`confirm()` in `stopEditor.ts` and `activityEditor.ts` with `showToast`/`createConfirmModal`~~
+- [x] ~~Fix `hidden`+`flex` edit mode toggle conflict in `Itinerary.ts` — use `style.display` instead~~
+- [x] ~~Fix `stopEditor.ts` field names: `name`→`location_name`, `stop_type`→`location_type` to match DB~~
+- [x] ~~Delete dead files: `CompleteItinerary.astro` (520 lines, unused), `FormTemplates.astro` (309 lines, orphaned)~~
+- [x] ~~Integrate Mapbox Search Box (suggest + retrieve) into inline add/edit stop forms; coordinates saved to `locations` table~~
+- [x] ~~Fix DaySection.astro type mismatch: `CompleteStop[]` → `ItineraryStop[]`; `firstStop.stop?.scheduled_start` → `firstStop?.scheduled_start`~~
+- [ ] Pickup/Dropoff stop type in Add Stop form; enforce max 3 pickup + 3 dropoff per trip (US18a)
+- [ ] Time overlap validation on stop create/edit within a day (US18b)
 - [ ] Full drag-drop itinerary builder
-- [ ] Activity management per stop
+- [ ] Activity type as `<select>` (PH-specific presets) instead of free-text input
 - [ ] Actual vs scheduled time tracking
 - [ ] Itinerary sharing/export (PDF)
 - [ ] Add boat/ferry transport type
@@ -432,7 +458,6 @@ src/
 │       ├── Hero.astro
 │       ├── TripHeader.astro
 │       ├── Summary.astro
-│       ├── Itinerary.astro
 │       ├── Member.astro
 │       ├── JoinTrip.astro
 │       ├── Expenses.astro
@@ -452,6 +477,16 @@ src/
 │   ├── trip.ts
 │   ├── trip-enhanced.ts        # Advanced types
 │   └── itinerary.ts
+├── actions/
+│   ├── index.ts
+│   ├── stops.ts                # createStop/updateStop/deleteStop — direct table ops (locations + trip_location)
+│   ├── activities.ts           # createActivity/updateActivity/deleteActivity
+│   └── trips.ts
+├── scripts/
+│   └── Itinerary/
+│       ├── Itinerary.ts        # Edit mode toggle, day collapse, coordinates stop+activity editors
+│       ├── stopEditor.ts       # Add/edit/delete stop inline forms; uses showToast + createConfirmModal
+│       └── activityEditor.ts   # Add/edit/delete activity inline forms; reads data-* attrs
 └── data/
     └── phProvinces.ts           # Used for destination autocomplete
 ```
@@ -500,3 +535,5 @@ src/
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
 *Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
+*Updated: Itinerary Phase 1–3 complete — crash fixes, query fix (location join + correct filter), `stops.ts` rewritten with correct DB columns (direct table ops), `activityEditor.ts` data-\* reading fixed, alert/confirm replaced with showToast/createConfirmModal, hidden+flex toggle fixed, dead files removed (CompleteItinerary.astro, FormTemplates.astro). Design decision: pickup/dropoff included in itinerary timeline; only destination excluded.*
+*Updated: Mapbox Search Box (suggest+retrieve) integrated into inline add/edit stop forms (US18); DaySection type mismatch fixed (CompleteStop → ItineraryStop). New requirements added: US18a (pickup/dropoff in Add Stop, max 3 each per trip), US18b (time overlap validation within a day).*

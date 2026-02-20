@@ -213,6 +213,9 @@ if (accessToken && refreshToken) {
       facebookButton: null as HTMLButtonElement | null,
     };
 
+    private isInCooldown = false;
+    private cooldownInterval: NodeJS.Timeout | null = null;
+
     constructor() {
       this.formValidator = new FormValidator(clientSchemas.signIn);
       this.initializeElements();
@@ -275,6 +278,12 @@ if (accessToken && refreshToken) {
 
     private async handleSubmit(e: Event) {
       e.preventDefault();
+      
+      // Check if in cooldown
+      if (this.isInCooldown) {
+        return;
+      }
+      
       this.hideAllErrors();
 
       const { form, emailInput, passwordInput } = this.elements;
@@ -302,8 +311,19 @@ if (accessToken && refreshToken) {
           body: formData,
           headers: {
             'Accept': 'application/json',
-          }
+          },
+          redirect: 'manual'
         });
+
+        // Handle redirect manually
+        if (response.type === 'opaqueredirect' || response.status === 302 || response.status === 301) {
+          showToast({ 
+            message: 'Login successful! Redirecting...', 
+            type: 'success' 
+          });
+          window.location.href = '/feeds';
+          return;
+        }
 
         if (response.ok) {
           showToast({ 
@@ -315,8 +335,27 @@ if (accessToken && refreshToken) {
           setTimeout(() => {
             window.location.href = '/feeds';
           }, 1500);
+        } else if (response.status === 429) {
+          // Handle rate limit (429 Too Many Requests)
+          try {
+            const errorData: any = await response.json();
+            const remainingSeconds = errorData.details?.remaining_seconds || 60;
+            this.showGeneralError(errorData.message || 'Too many login attempts. Please wait before trying again.');
+            this.startCooldown(remainingSeconds);
+          } catch {
+            this.showGeneralError('Too many login attempts. Please wait before trying again.');
+            this.startCooldown(60);
+          }
         } else {
           const errorData: any = await response.json();
+          
+          // Handle rate limiting (login attempt cooldown)
+          if (errorData.code === 'RATE_LIMITED') {
+            const remainingSeconds = errorData.details?.remaining_seconds || 60;
+            this.showGeneralError(errorData.message);
+            this.startCooldown(remainingSeconds);
+            return;
+          }
           
           if (errorData.code === 'AUTHENTICATION_ERROR') {
             this.showGeneralError(errorData.message);
@@ -484,6 +523,51 @@ if (accessToken && refreshToken) {
       
       const { generalError } = this.elements;
       if (generalError) generalError.classList.add('hidden');
+    }
+
+    private startCooldown(seconds: number) {
+      const { submitButton } = this.elements;
+      
+      // Set cooldown state
+      this.isInCooldown = true;
+      
+      if (this.cooldownInterval) {
+        clearInterval(this.cooldownInterval);
+      }
+
+      const updateButton = () => {
+        if (seconds <= 0) {
+          if (this.cooldownInterval) {
+            clearInterval(this.cooldownInterval);
+            this.cooldownInterval = null;
+          }
+          // Reset cooldown state
+          this.isInCooldown = false;
+          if (submitButton) {
+            submitButton.textContent = 'Sign In';
+            submitButton.removeAttribute('disabled');
+            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+          return;
+        }
+
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        const timeStr = minutes > 0 
+          ? `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+          : `${remainingSeconds}s`;
+        
+        if (submitButton) {
+          submitButton.textContent = `Try again in ${timeStr}`;
+          submitButton.setAttribute('disabled', 'true');
+          submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        
+        seconds--;
+      };
+
+      updateButton();
+      this.cooldownInterval = setInterval(updateButton, 1000);
     }
   }
 

@@ -1,6 +1,6 @@
 // ============================================================================
 // FILE: src/middleware.ts
-// Updated middleware with RPC-based onboarding check
+// Global middleware for authentication and onboarding
 // ============================================================================
 import { defineMiddleware } from "astro:middleware";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -48,7 +48,9 @@ async function checkOnboardingStatus(userId: string) {
       p_user_id: userId
     });
     
-    if (error) return null;
+    if (error) {
+      return null;
+    }
 
     return data;
   } catch {
@@ -128,7 +130,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     }
   }
 
-/* -------------------- HARD ACTION GATE -------------------- */
+  /* -------------------- HARD ACTION GATE -------------------- */
   if (isAction && !locals.user_id) {
     return createErrorResponse("Unauthorized Action", 401);
   }
@@ -138,7 +140,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return redirect("/signin");
   }
 
-/* -------------------- Protected API Routes Guard -------------------- */
+  /* -------------------- Protected API Routes Guard -------------------- */
   if (
     micromatch.isMatch(pathname, protectedAPIRoutes) &&
     !locals.user_id &&
@@ -154,14 +156,13 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   }
 
   /* -------------------- ONBOARDING CHECK (Using RPC) -------------------- */
-  if (locals.user_id ) {
-// Skip onboarding check for exempt routes
+  if (locals.user_id) {
+    // Skip onboarding check for exempt routes
     const isExempt = onboardingExemptRoutes.some(route => 
       micromatch.isMatch(pathname, route)
     );
 
     if (!isExempt) {
-      // Use RPC to get onboarding status
       const onboardingStatus = await checkOnboardingStatus(locals.user_id);
       if (onboardingStatus) {
         // Store in locals for use in pages

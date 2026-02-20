@@ -191,44 +191,49 @@ if (accessToken && refreshToken) {
   </div>
 </AuthLayout>
 
-<script>
-  import { showToast } from "@/scripts/Toast.ts";
-  import { clientSchemas, FormValidator } from "@/lib/clientValidation.ts";
-
+<script >
+  import { showToast } from "@/scripts/Toast";
+  import { clientSchemas, FormValidator } from "@/lib/clientValidation";
   class SignInForm {
     private formValidator: FormValidator;
-    private elements: {
-      form: HTMLFormElement | null;
-      emailInput: HTMLInputElement | null;
-      passwordInput: HTMLInputElement | null;
-      submitButton: HTMLButtonElement | null;
-      submitButtonText: HTMLElement | null;
-      submitSpinner: HTMLElement | null;
-      generalError: HTMLElement | null;
-      generalErrorText: HTMLElement | null;
-      googleButton: HTMLButtonElement | null;
-      facebookButton: HTMLButtonElement | null;
+    private elements = {
+      form: null as HTMLFormElement | null,
+      emailInput: null as HTMLInputElement | null,
+      emailError: null as HTMLElement | null,
+      emailErrorText: null as HTMLElement | null,
+      passwordInput: null as HTMLInputElement | null,
+      passwordError: null as HTMLElement | null,
+      passwordErrorText: null as HTMLElement | null,
+      submitButton: null as HTMLButtonElement | null,
+      submitButtonText: null as HTMLElement | null,
+      submitSpinner: null as HTMLElement | null,
+      generalError: null as HTMLElement | null,
+      generalErrorText: null as HTMLElement | null,
+      googleButton: null as HTMLButtonElement | null,
+      facebookButton: null as HTMLButtonElement | null,
     };
 
     constructor() {
       this.formValidator = new FormValidator(clientSchemas.signIn);
-      this.elements = this.initializeElements();
+      this.initializeElements();
       this.attachEventListeners();
     }
 
     private initializeElements() {
-      return {
-        form: document.getElementById('signinForm') as HTMLFormElement,
-        emailInput: document.getElementById('email') as HTMLInputElement,
-        passwordInput: document.getElementById('password') as HTMLInputElement,
-        submitButton: document.getElementById('signinButton') as HTMLButtonElement,
-        submitButtonText: document.getElementById('signinButtonText'),
-        submitSpinner: document.getElementById('signinSpinner'),
-        generalError: document.getElementById('generalError') as HTMLElement,
-        generalErrorText: document.getElementById('generalErrorText') as HTMLElement,
-        googleButton: document.getElementById('googleSignIn') as HTMLButtonElement,
-        facebookButton: document.getElementById('facebookSignIn') as HTMLButtonElement,
-      };
+      this.elements.form = document.getElementById('signinForm') as HTMLFormElement;
+      this.elements.emailInput = document.getElementById('email') as HTMLInputElement;
+      this.elements.emailError = document.getElementById('emailError') as HTMLElement;
+      this.elements.emailErrorText = document.getElementById('emailErrorText') as HTMLElement;
+      this.elements.passwordInput = document.getElementById('password') as HTMLInputElement;
+      this.elements.passwordError = document.getElementById('passwordError') as HTMLElement;
+      this.elements.passwordErrorText = document.getElementById('passwordErrorText') as HTMLElement;
+      this.elements.submitButton = document.getElementById('signinButton') as HTMLButtonElement;
+      this.elements.submitButtonText = document.getElementById('signinButtonText') as HTMLElement;
+      this.elements.submitSpinner = document.getElementById('signinSpinner') as HTMLElement;
+      this.elements.generalError = document.getElementById('generalError') as HTMLElement;
+      this.elements.generalErrorText = document.getElementById('generalErrorText') as HTMLElement;
+      this.elements.googleButton = document.getElementById('googleSignIn') as HTMLButtonElement;
+      this.elements.facebookButton = document.getElementById('facebookSignIn') as HTMLButtonElement;
     }
 
     private attachEventListeners() {

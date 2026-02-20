@@ -143,11 +143,11 @@ const paxPercentage = Math.min((currentPax / maxPax) * 100, 100);
 <!-- Modals (Only render for owners) -->
 {canEdit && (
   <>
-    <DestinationModal destination={destination} tripId={tripId} />
-    <DatesModal tripStart={tripStart} tripEnd={tripEnd} joinedBy={joinedBy} tripId={tripId} />
-    <PreferencesModal genderPref={genderPref} maxPax={maxPax} currentPax={currentPax} tripId={tripId} />
-    <BudgetModal costSharing={costSharing} estimatedBudget={estimatedBudget} tripId={tripId} />
-    <DescriptionModal title={title} description={description} tags={tags} tripId={tripId} />
+    <DestinationModal destination={destination} tripId={tripId} client:visible />
+    <DatesModal tripStart={tripStart} tripEnd={tripEnd} joinedBy={joinedBy} tripId={tripId} client:visible />
+    <PreferencesModal genderPref={genderPref} maxPax={maxPax} currentPax={currentPax} tripId={tripId} client:visible />
+    <BudgetModal costSharing={costSharing} estimatedBudget={estimatedBudget} tripId={tripId} client:visible />
+    <DescriptionModal title={title} description={description} tags={tags} tripId={tripId} client:visible />
   </>
 )}
 

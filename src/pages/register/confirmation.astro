@@ -1,0 +1,154 @@
+---
+import AuthLayout from "@/layouts/AuthLayout.astro";
+
+const { cookies, redirect } = Astro;
+
+// Already logged-in users don't need to be here
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+if (accessToken && refreshToken) {
+  return redirect("/feeds");
+}
+
+const email = Astro.url.searchParams.get("email") || "";
+const displayEmail = email ? decodeURIComponent(email) : "";
+---
+
+<AuthLayout title="Check your email — Tara G!" noIndex>
+  <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 space-y-6 text-center">
+    <!-- Icon -->
+    <div class="flex justify-center">
+      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Heading -->
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-semibold text-gray-900">Check your email</h1>
+      <p class="text-gray-600 mt-2 text-sm sm:text-base">
+        We sent a confirmation link to
+        {displayEmail && (
+          <span class="font-medium text-gray-900 block mt-1">{displayEmail}</span>
+        )}
+      </p>
+    </div>
+
+    <!-- Instructions -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+      <p class="text-sm text-blue-800 font-medium mb-2">What to do next:</p>
+      <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+        <li>Open the email we just sent you</li>
+        <li>Click the <strong>Confirm your email</strong> link</li>
+        <li>You'll be taken to set up your profile</li>
+      </ol>
+    </div>
+
+    <!-- Resend link -->
+    <div class="space-y-3">
+      <p class="text-sm text-gray-500">Didn't get the email? Check your spam folder, or</p>
+      <button
+        id="resendButton"
+        class="
+          w-full py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg
+          hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition
+          text-sm disabled:opacity-50 disabled:cursor-not-allowed
+        "
+      >
+        <span id="resendText">Resend confirmation email</span>
+        <div id="resendSpinner" class="hidden flex justify-center">
+          <svg class="animate-spin h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </button>
+
+      <div id="resendFeedback" class="hidden text-sm"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="pt-4 border-t border-gray-100">
+      <p class="text-sm text-gray-500">
+        Wrong email?
+        <a href="/register" class="text-blue-600 font-medium hover:text-blue-700 transition-colors">
+          Create a new account
+        </a>
+        &nbsp;·&nbsp;
+        <a href="/signin" class="text-blue-600 font-medium hover:text-blue-700 transition-colors">
+          Sign in
+        </a>
+      </p>
+    </div>
+  </div>
+</AuthLayout>
+
+<script>
+  const email = new URLSearchParams(window.location.search).get('email') || '';
+  const resendButton = document.getElementById('resendButton') as HTMLButtonElement;
+  const resendText = document.getElementById('resendText')!;
+  const resendSpinner = document.getElementById('resendSpinner')!;
+  const resendFeedback = document.getElementById('resendFeedback')!;
+
+  let cooldown = false;
+
+  resendButton.addEventListener('click', async () => {
+    if (cooldown || !email) return;
+
+    resendButton.disabled = true;
+    resendText.classList.add('hidden');
+    resendSpinner.classList.remove('hidden');
+    resendFeedback.classList.add('hidden');
+
+    try {
+      const formData = new FormData();
+      formData.set('email', decodeURIComponent(email));
+
+      const response = await fetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      resendFeedback.textContent = result.message || 'Confirmation email resent!';
+      resendFeedback.className = response.ok
+        ? 'text-sm text-green-600'
+        : 'text-sm text-red-600';
+      resendFeedback.classList.remove('hidden');
+
+      if (response.ok) {
+        // 60-second cooldown after successful resend
+        cooldown = true;
+        let seconds = 60;
+        resendText.textContent = `Resend again in ${seconds}s`;
+        resendText.classList.remove('hidden');
+        resendSpinner.classList.add('hidden');
+
+        const timer = setInterval(() => {
+          seconds--;
+          resendText.textContent = `Resend again in ${seconds}s`;
+          if (seconds <= 0) {
+            clearInterval(timer);
+            cooldown = false;
+            resendButton.disabled = false;
+            resendText.textContent = 'Resend confirmation email';
+          }
+        }, 1000);
+      } else {
+        resendButton.disabled = false;
+      }
+    } catch {
+      resendFeedback.textContent = 'Network error. Please try again.';
+      resendFeedback.className = 'text-sm text-red-600';
+      resendFeedback.classList.remove('hidden');
+      resendButton.disabled = false;
+    } finally {
+      resendSpinner.classList.add('hidden');
+      resendText.classList.remove('hidden');
+    }
+  });
+</script>

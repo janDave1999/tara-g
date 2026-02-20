@@ -7,10 +7,10 @@ interface Props {
   tripId: string;
   initialData: any;
   isOwner: boolean;
+  destination?: string;
 }
 
-const { tripId, initialData, isOwner } = Astro.props;
-console.log("initialData", initialData);
+const { tripId, initialData, isOwner, destination } = Astro.props;
 // Group stops by day
 const stopsByDay: CompleteStop[][] = [];
 let currentDay: CompleteStop[] = [];
@@ -50,8 +50,9 @@ let groupedStops = groupStopsByDay(initialData || []);
   data-trip-id={tripId} 
   data-is-owner={isOwner}
 >
-  <ItineraryHeader 
+  <ItineraryHeader
     isOwner={isOwner}
+    destination={destination}
   />
 
   <div id="days-container" class="space-y-8">

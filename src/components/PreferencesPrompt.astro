@@ -1,0 +1,224 @@
+---
+interface Props {
+  userId: string;
+}
+
+const { userId } = Astro.props;
+---
+
+<div id="preferences-modal" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="preferences-backdrop"></div>
+  
+  <!-- Modal -->
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg">
+    <div class="bg-white rounded-2xl shadow-2xl mx-4 overflow-hidden">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-white">Set Your Travel Preferences</h2>
+            <p class="text-blue-100 text-sm mt-1">Get personalized trip recommendations</p>
+          </div>
+          <button 
+            type="button" 
+            id="close-preferences-modal"
+            class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <form id="preferences-form" class="p-6 space-y-6">
+        <input type="hidden" name="user_id" value={userId} />
+        
+        <!-- Budget -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-900 mb-3">Budget Range</label>
+          <div class="grid grid-cols-3 gap-3">
+            {[
+              { value: 'budget', label: 'Budget', emoji: '💰' },
+              { value: 'moderate', label: 'Moderate', emoji: '💳' },
+              { value: 'luxury', label: 'Luxury', emoji: '💎' }
+            ].map(budget => (
+              <label class="cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="budget_range" 
+                  value={budget.value}
+                  class="hidden peer"
+                />
+                <div class="p-3 border-2 border-gray-200 rounded-xl transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:border-gray-300 text-center">
+                  <span class="text-xl block">{budget.emoji}</span>
+                  <p class="text-sm font-medium mt-1">{budget.label}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Travel Style -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-900 mb-3">Travel Style</label>
+          <div class="grid grid-cols-3 gap-3">
+            {[
+              { value: 'adventure', label: 'Adventure', emoji: '🏔️' },
+              { value: 'relax', label: 'Relax', emoji: '🏖️' },
+              { value: 'beach', label: 'Beach', emoji: '🌊' },
+              { value: 'mountain', label: 'Mountain', emoji: '⛰️' },
+              { value: 'cultural', label: 'Cultural', emoji: '🏛️' },
+              { value: 'food', label: 'Food Trip', emoji: '🍜' }
+            ].map(style => (
+              <label class="cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="travel_style" 
+                  value={style.value}
+                  class="hidden peer"
+                />
+                <div class="p-3 border-2 border-gray-200 rounded-xl transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:border-gray-300 text-center">
+                  <span class="text-xl block">{style.emoji}</span>
+                  <p class="text-xs font-medium mt-1">{style.label}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Pace -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-900 mb-3">Trip Pace</label>
+          <div class="grid grid-cols-3 gap-3">
+            {[
+              { value: 'relaxed', label: 'Relaxed', emoji: '🐢' },
+              { value: 'moderate', label: 'Moderate', emoji: '🚶' },
+              { value: 'fast', label: 'Fast-paced', emoji: '🏃' }
+            ].map(pace => (
+              <label class="cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="pace_preference" 
+                  value={pace.value}
+                  class="hidden peer"
+                />
+                <div class="p-3 border-2 border-gray-200 rounded-xl transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:border-gray-300 text-center">
+                  <span class="text-xl block">{pace.emoji}</span>
+                  <p class="text-sm font-medium mt-1">{pace.label}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              name="dont_show_again" 
+              id="dont-show-again"
+              class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <span class="text-sm text-gray-600">Don't show for 7 days</span>
+          </label>
+          
+          <div class="flex gap-3">
+            <button 
+              type="button" 
+              id="skip-preferences"
+              class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+            >
+              Skip
+            </button>
+            <button 
+              type="submit"
+              class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Save Preferences
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const modal = document.getElementById('preferences-modal');
+  const backdrop = document.getElementById('preferences-backdrop');
+  const closeBtn = document.getElementById('close-preferences-modal');
+  const skipBtn = document.getElementById('skip-preferences');
+  const form = document.getElementById('preferences-form') as HTMLFormElement;
+  const dontShowAgain = document.getElementById('dont-show-again') as HTMLInputElement;
+
+  function closeModal() {
+    modal?.classList.add('hidden');
+  }
+
+  function openModal() {
+    modal?.classList.remove('hidden');
+  }
+
+  // Expose openModal globally so it can be called from other scripts
+  (window as any).openPreferencesModal = openModal;
+
+  backdrop?.addEventListener('click', closeModal);
+  closeBtn?.addEventListener('click', closeModal);
+  skipBtn?.addEventListener('click', async () => {
+    if (dontShowAgain.checked) {
+      // Save the "don't show again" preference
+      const userId = (form.querySelector('input[name="user_id"]') as HTMLInputElement).value;
+      
+      try {
+        await actions.settings.updateSettings({
+          user_id: userId,
+          preferences_prompt_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        });
+      } catch (e) {
+        console.error('Failed to save preferences prompt setting:', e);
+      }
+    }
+    closeModal();
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const userId = formData.get('user_id') as string;
+    const budgetRange = formData.get('budget_range') as string;
+    const travelStyle = formData.get('travel_style') as string;
+    const pacePreference = formData.get('pace_preference') as string;
+
+    try {
+      // Save travel preferences
+      await actions.travelPreferences.update({
+        user_id: userId,
+        budget_range: (budgetRange as 'budget' | 'moderate' | 'luxury' | 'any') || 'any',
+        travel_style: travelStyle ? [travelStyle] : [],
+        pace_preference: (pacePreference as 'relaxed' | 'moderate' | 'fast' | 'any') || 'moderate'
+      });
+
+      // If "don't show again" is checked, update settings
+      if (dontShowAgain.checked) {
+        await actions.settings.updateSettings({
+          user_id: userId,
+          preferences_prompt_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        });
+      }
+
+      closeModal();
+      // Reload to reflect new preferences
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      alert('Failed to save preferences. Please try again.');
+    }
+  });
+</script>

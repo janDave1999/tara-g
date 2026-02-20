@@ -1,0 +1,445 @@
+---
+interface Props {
+  fieldId: string;
+  fieldLabel: string;
+  currentValue?: string;
+  currentCoordinates?: string;
+}
+
+const { fieldId, fieldLabel, currentValue = '', currentCoordinates = '' } = Astro.props;
+---
+
+<div 
+  id={`${fieldId}-map-modal`}
+  class="fixed inset-0 z-50 hidden"
+  data-field-id={fieldId}
+  data-current-value={currentValue}
+  data-current-coordinates={currentCoordinates}
+>
+  <!-- Backdrop -->
+  <div 
+    class={`${fieldId}-modal-backdrop absolute inset-0 bg-black/60 backdrop-blur-sm`}
+  ></div>
+  
+  <!-- Modal Container -->
+  <div class="absolute inset-4 sm:inset-8 lg:inset-16 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Pick Location on Map</h2>
+        <p class="text-sm text-gray-600 mt-0.5">
+          Click on the map to select {fieldLabel.toLowerCase()} location
+        </p>
+      </div>
+      <button 
+        type="button"
+        class={`${fieldId}-close-modal p-2 rounded-lg hover:bg-gray-200 transition-colors`}
+      >
+        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Map Container -->
+    <div class="flex-1 relative">
+      <div id={`${fieldId}-picker-map`} class="w-full h-full"></div>
+      
+      <!-- Search Box Overlay -->
+      <div class="absolute top-4 left-4 right-4 max-w-md z-10">
+        <div class="relative">
+          <input 
+            type="text"
+            id={`${fieldId}-picker-search`}
+            placeholder="Search for a place..."
+            class="w-full px-4 py-3 pl-12 rounded-xl border-0 shadow-lg focus:ring-2 focus:ring-blue-500"
+          />
+          <svg class="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <!-- Search Results -->
+          <ul 
+            id={`${fieldId}-picker-results`}
+            class="hidden absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg max-h-60 overflow-auto z-20"
+          ></ul>
+        </div>
+      </div>
+
+      <!-- Selected Location Info -->
+      <div class="absolute bottom-4 left-4 right-4 max-w-md">
+        <div 
+          id={`${fieldId}-picker-info`}
+          class="hidden bg-white rounded-xl shadow-lg p-4"
+        >
+          <div class="flex items-start gap-3">
+            <div class="p-2 bg-blue-100 rounded-lg">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p id={`${fieldId}-picker-address`} class="text-sm font-medium text-gray-900 truncate"></p>
+              <p id={`${fieldId}-picker-coords`} class="text-xs text-gray-500 mt-0.5"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <button 
+        type="button"
+        class={`${fieldId}-clear-selection text-sm text-gray-500 hover:text-gray-700 underline`}
+      >
+        Clear selection
+      </button>
+      <div class="flex gap-3">
+        <button 
+          type="button"
+          class={`${fieldId}-cancel-btn px-5 py-2.5 rounded-lg font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors`}
+        >
+          Cancel
+        </button>
+        <button 
+          type="button"
+          class={`${fieldId}-confirm-btn px-5 py-2.5 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+          disabled
+        >
+          Confirm Location
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Load MapBox globally -->
+<script is:inline src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
+
+<!-- Initialize modals -->
+<script is:inline>
+(function() {
+  let MAPBOX_TOKEN = null;
+
+  async function fetchToken() {
+    try {
+      const response = await fetch('/api/mapbox-token');
+      const data = await response.json();
+      MAPBOX_TOKEN = data.token;
+    } catch (error) {
+      console.error('Failed to fetch Mapbox token:', error);
+    }
+  }
+
+  // Get all map modals
+  const modals = document.querySelectorAll('[id$="-map-modal"]');
+  
+  // Search config by field type - different priority for destination vs pickup/dropoff
+  const searchConfig = {
+    region: { // Destination - broader search (cities, areas)
+      types: 'place,locality,neighborhood,district,region',
+      placeholder: 'Search city, area, or destination...'
+    },
+    pickup: { // Pickup point - precise address/POI
+      types: 'address,poi',
+      placeholder: 'Search exact address, terminal, or landmark...'
+    },
+    dropoff: { // Dropoff point - precise address/POI
+      types: 'address,poi',
+      placeholder: 'Search exact address, terminal, or landmark...'
+    }
+  };
+
+  async function initMapPicker(modal) {
+    const fieldId = modal.getAttribute('data-field-id');
+    const config = searchConfig[fieldId] || searchConfig.region;
+    
+    const mapContainer = document.getElementById(fieldId + '-picker-map');
+    const searchInput = document.getElementById(fieldId + '-picker-search');
+    
+    // Set placeholder based on field type
+    if (searchInput) {
+      searchInput.placeholder = config.placeholder;
+    }
+    
+    const resultsList = document.getElementById(fieldId + '-picker-results');
+    const infoBox = document.getElementById(fieldId + '-picker-info');
+    const addressText = document.getElementById(fieldId + '-picker-address');
+    const coordsText = document.getElementById(fieldId + '-picker-coords');
+    const confirmBtn = modal.querySelector('.' + fieldId + '-confirm-btn');
+    const clearBtn = modal.querySelector('.' + fieldId + '-clear-selection');
+    const cancelBtn = modal.querySelector('.' + fieldId + '-cancel-btn');
+    const closeBtn = modal.querySelector('.' + fieldId + '-close-modal');
+    const backdrop = modal.querySelector('.' + fieldId + '-modal-backdrop');
+
+    if (!mapContainer) return;
+
+    let map = null;
+    let marker = null;
+    let selectedCoordinates = null;
+    let selectedAddress = '';
+
+    // Initialize map
+    function initMap(initialCoords) {
+      if (!window.mapboxgl) {
+        console.error('MapboxGL not loaded');
+        return;
+      }
+
+      if (!MAPBOX_TOKEN) {
+        console.error('Mapbox token not available');
+        return;
+      }
+
+      const centerCoords = initialCoords || [120.9842, 14.5995];
+      const zoom = initialCoords ? 14 : 5;
+
+      map = new window.mapboxgl.Map({
+        container: mapContainer,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: centerCoords,
+        zoom: zoom,
+        accessToken: MAPBOX_TOKEN
+      });
+
+      map.addControl(new window.mapboxgl.NavigationControl(), 'top-right');
+
+      map.on('click', function(e) {
+        const lng = e.lngLat.lng;
+        const lat = e.lngLat.lat;
+        selectedCoordinates = [lng, lat];
+        reverseGeocode(lng, lat);
+        updateMarker(lng, lat);
+        if (confirmBtn) confirmBtn.disabled = false;
+      });
+
+      if (initialCoords) {
+        updateMarker(initialCoords[0], initialCoords[1]);
+        if (confirmBtn) confirmBtn.disabled = false;
+      }
+    }
+
+    async function reverseGeocode(lng, lat) {
+      const url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + lng + ',' + lat + '.json?access_token=' + MAPBOX_TOKEN + '&language=en';
+      
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          selectedAddress = data.features[0].place_name;
+          updateInfoBox(selectedAddress, lng, lat);
+        }
+      } catch (error) {
+        selectedAddress = lat.toFixed(6) + ', ' + lng.toFixed(6);
+        updateInfoBox(selectedAddress, lng, lat);
+      }
+    }
+
+    async function searchPlaces(query) {
+      if (!query || query.length < 2) {
+        if (resultsList) resultsList.classList.add('hidden');
+        return;
+      }
+
+      // Use config-based types for different field purposes
+      // Add proximity to Philippines center for more relevant results
+      const typesParam = '&types=' + config.types;
+      const proximityParam = '&proximity=121.7740,12.8797'; // Philippines center
+      const url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(query) + '.json?access_token=' + MAPBOX_TOKEN + '&country=PH&limit=5' + typesParam + proximityParam;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          renderResults(data.features);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+      }
+    }
+
+    function renderResults(features) {
+      if (!resultsList) return;
+      
+      resultsList.innerHTML = '';
+      resultsList.classList.remove('hidden');
+
+      features.forEach(function(feature) {
+        const li = document.createElement('li');
+        li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0';
+        li.innerHTML = '<p class="text-sm font-medium text-gray-900 truncate">' + feature.text + '</p><p class="text-xs text-gray-500 truncate">' + feature.place_name + '</p>';
+        
+        li.addEventListener('click', function() {
+          const lng = feature.center[0];
+          const lat = feature.center[1];
+          selectedCoordinates = [lng, lat];
+          selectedAddress = feature.place_name;
+          
+          map.flyTo({ center: [lng, lat], zoom: 15 });
+          updateMarker(lng, lat);
+          updateInfoBox(selectedAddress, lng, lat);
+          
+          if (confirmBtn) confirmBtn.disabled = false;
+          
+          resultsList.classList.add('hidden');
+          if (searchInput) searchInput.value = feature.place_name;
+        });
+        
+        resultsList.appendChild(li);
+      });
+    }
+
+    function updateMarker(lng, lat) {
+      if (marker) {
+        marker.setLngLat([lng, lat]);
+      } else {
+        const markerEl = document.createElement('div');
+        markerEl.className = 'marker';
+        markerEl.innerHTML = '<div class="w-8 h-8 bg-blue-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-bounce"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg></div>';
+        
+        marker = new window.mapboxgl.Marker(markerEl)
+          .setLngLat([lng, lat])
+          .addTo(map);
+      }
+    }
+
+    function updateInfoBox(address, lng, lat) {
+      if (infoBox && addressText && coordsText) {
+        addressText.textContent = address;
+        coordsText.textContent = 'Lat: ' + lat.toFixed(6) + ', Lng: ' + lng.toFixed(6);
+        infoBox.classList.remove('hidden');
+      }
+    }
+
+    function clearSelection() {
+      selectedCoordinates = null;
+      selectedAddress = '';
+      
+      if (marker) {
+        marker.remove();
+        marker = null;
+      }
+      
+      if (infoBox) infoBox.classList.add('hidden');
+      if (searchInput) searchInput.value = '';
+      
+      if (confirmBtn) confirmBtn.disabled = true;
+    }
+
+    function closeModalFn() {
+      modal.classList.add('hidden');
+      
+      if (map) {
+        map.remove();
+        map = null;
+      }
+      marker = null;
+      selectedCoordinates = null;
+      selectedAddress = '';
+    }
+
+    function openModalFn() {
+      modal.classList.remove('hidden');
+      
+      const coordsInput = document.querySelector('input[name="' + fieldId + '_coordinates"]');
+      let initialCoords;
+      
+      if (coordsInput && coordsInput.value) {
+        try {
+          const parsed = JSON.parse(coordsInput.value);
+          if (Array.isArray(parsed) && parsed.length === 2) {
+            initialCoords = [parsed[0], parsed[1]];
+          }
+        } catch (e) {}
+      }
+      
+      setTimeout(function() {
+        initMap(initialCoords);
+      }, 100);
+    }
+
+    // Expose globally
+    const fnName = 'open' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1) + 'MapPicker';
+    window[fnName] = openModalFn;
+
+    // Event listeners
+    if (closeBtn) closeBtn.addEventListener('click', closeModalFn);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModalFn);
+    if (backdrop) backdrop.addEventListener('click', closeModalFn);
+    if (clearBtn) clearBtn.addEventListener('click', clearSelection);
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function() {
+        if (!selectedCoordinates) return;
+
+        const event = new CustomEvent('locationSelected', {
+          detail: {
+            fieldId: fieldId,
+            coordinates: selectedCoordinates,
+            address: selectedAddress
+          }
+        });
+        document.dispatchEvent(event);
+        closeModalFn();
+      });
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+          searchPlaces(searchInput.value);
+        }, 300);
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (resultsList && !resultsList.contains(e.target) && e.target !== searchInput) {
+        resultsList.classList.add('hidden');
+      }
+    });
+  }
+
+  // Initialize each modal when DOM is ready
+  function initAll() {
+    modals.forEach(function(modal) {
+      initMapPicker(modal);
+    });
+  }
+
+  // Wait for mapboxgl and token to load then initialize
+  function waitAndInit() {
+    if (window.mapboxgl && MAPBOX_TOKEN) {
+      initAll();
+    } else if (window.mapboxgl && !MAPBOX_TOKEN) {
+      fetchToken().then(() => {
+        if (MAPBOX_TOKEN) initAll();
+      });
+    } else {
+      setTimeout(waitAndInit, 100);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitAndInit);
+  } else {
+    waitAndInit();
+  }
+})();
+</script>
+
+<style is:global>
+  .mapboxgl-ctrl-group {
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  }
+  
+  .mapboxgl-ctrl-group button {
+    border-radius: 8px !important;
+  }
+</style>

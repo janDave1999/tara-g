@@ -2,12 +2,14 @@ import { activities } from "./activities";
 import { auth } from "./auth";
 import { stops } from "./stops";
 import { trip } from "./trips";
-import { onboarding } from "./user";
+import { onboarding, settings, travelPreferences } from "./user";
 
 export const server = {
     activities,
     trip,
     auth,
     onboarding,
-    stops
+    stops,
+    settings,
+    travelPreferences
 };

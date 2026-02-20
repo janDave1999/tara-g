@@ -4,10 +4,9 @@ import TripHeader from '@/components/Trip/TripHeader.astro';
 import TripDetails from '@/components/Trip/Summary.astro';
 import Member from '@/components/Trip/Member.astro';
 import { supabaseAdmin } from '@/lib/supabase';
-import Itinerary from '@/components/Trip/Itinerary.astro';
 import Itinerary2 from '@/components/Trip/Itinerary/Itinerary2.astro';
 import Hero from '@/components/Trip/Hero.astro';
-import type { CompleteStop, TripItinerary } from '@/types/itinerary';
+import type { CompleteStop } from '@/types/itinerary';
 
 const slug = Astro.params.trip_id || '';
 const user = Astro.locals.user_id;
@@ -18,7 +17,6 @@ const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details
   p_current_user_id: user
 });
 
-
 if (error || !tripData) {
   return Astro.redirect('/404');
 }
@@ -26,7 +24,6 @@ if (error || !tripData) {
 
 const trip = tripData;
 
-console.log("Triiiiiiiiiip", trip);
 const {
   trip_id,
   title,
@@ -125,23 +122,32 @@ const tripProps = {
       </div>
     )}
 
-    {/* Members List */}
+    {/* Members */}
     {(user_role === 'owner' || user_role === 'member') && (
       <div class="mt-6">
-        <Member members={trip_members} />
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm text-gray-500">
+            {trip_members.length} of {trip_details?.max_pax || 0} members joined
+          </p>
+          <button
+            id="member-btn"
+            class="btn btn-sm bg-white border border-gray-200 hover:bg-gray-50 gap-2 shadow-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {user_role === 'owner' ? 'Manage Members' : 'View Members'}
+          </button>
+        </div>
+        <Member tripId={trip_id} />
       </div>
     )}
-    <Itinerary 
-  server:defer
-  trip_location={(trip_locations as any) || undefined}
-  userRole={trip.user_role}
-  tripId={trip.trip_id}
-  />
-  <Itinerary2 
-  initialData={(trip_locations as CompleteStop[]) || undefined}
-  isOwner={trip.user_role === 'owner'}
-  tripId={trip.trip_id}
-  />
+    <Itinerary2
+      initialData={(trip_locations as CompleteStop[]) || undefined}
+      isOwner={trip.user_role === 'owner'}
+      tripId={trip.trip_id}
+      destination={destination}
+    />
 
   </section>
 </Layout>
@@ -163,7 +169,7 @@ const tripProps = {
         message: 'Are you sure you want to join this trip?',
         confirmText: 'Join',
         onConfirm: async () => {
-          const { data, error } = await actions.trip.joinTrip({ trip_id: tripId! });
+          const { error } = await actions.trip.joinTrip({ trip_id: tripId! });
           if (error instanceof ActionError) {
             showToast({ message: error.message, type: 'error' });
           } else {
@@ -181,7 +187,7 @@ const tripProps = {
         message: 'Are you sure you want to cancel your request to join this trip?',
         confirmText: 'Yes, cancel request',
         onConfirm: async () => {
-          const { data, error } = await actions.trip.cancelJoinRequest({ trip_id: tripId! });
+          const { error } = await actions.trip.cancelJoinRequest({ trip_id: tripId! });
           if (error instanceof ActionError) {
             showToast({ message: error.message, type: 'error' });
           } else {
@@ -199,9 +205,9 @@ const tripProps = {
         message: 'Are you sure you want to leave this trip?',
         confirmText: 'Yes, leave trip',
         onConfirm: async () => {
-          const { data, error } = await actions.trip.leaveTrip({ trip_id: tripId! });
+          const { error } = await actions.trip.leaveTrip({ trip_id: tripId! });
           if (error instanceof ActionError) {
-            showToast({ message: "error.message", type: 'error' });
+            showToast({ message: error.message, type: 'error' });
           } else {
             showToast({ message: 'Left trip successfully!', type: 'success' });
             setTimeout(() => (window.location.href = '/trips'), 1500);

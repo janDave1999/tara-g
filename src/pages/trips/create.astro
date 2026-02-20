@@ -1,7 +1,8 @@
 ---
 import Layout from "@/layouts/PagePlate.astro";
 import DatePicker from "@/components/DatePicker.astro";
-import { Plane, CalendarDays, MapPin, Users, Clock, DollarSign, AlertCircle, Info } from "@lucide/astro";
+import MapPickerModal from "@/components/MapPickerModal.astro";
+import { Plane, CalendarDays, MapPin, Users, Clock, DollarSign, AlertCircle, Info, CheckCircle } from "@lucide/astro";
 import Tags from "@/components/Trip/Tags.astro";
 ---
 
@@ -16,12 +17,13 @@ import Tags from "@/components/Trip/Tags.astro";
     <!-- STEP PROGRESS BAR -->
     <div class="relative mb-10 mt-4">
       <div class="h-1 bg-slate-200 rounded-full"></div>
-      <div id="progressBar" class="absolute top-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out w-[25%]"></div>
+      <div id="progressBar" class="absolute top-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out w-[20%]"></div>
       <div class="flex justify-between text-xs mt-2 font-medium">
         <span data-step="1" class="step-label text-blue-600 transition-all duration-300">Schedule</span>
         <span data-step="2" class="step-label text-slate-400 transition-all duration-300">Details</span>
-        <span data-step="3" class="step-label text-slate-400 transition-all duration-300">Budget & Rules</span>
+        <span data-step="3" class="step-label text-slate-400 transition-all duration-300">Budget</span>
         <span data-step="4" class="step-label text-slate-400 transition-all duration-300">Logistics</span>
+        <span data-step="5" class="step-label text-slate-400 transition-all duration-300">Confirm</span>
       </div>
     </div>
 
@@ -54,17 +56,29 @@ import Tags from "@/components/Trip/Tags.astro";
               Destination
               <span class="text-red-500 ml-1">*</span>
             </label>
-            <div class="relative group">
-              <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500 group-focus-within:text-purple-500 transition-colors" />
-              <input 
-                type="text" 
-                name="region_address"
-                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                id="regionInput"
-                placeholder="Where are you headed?"
-                required
-              />
-              <input type="hidden" name="region_coordinates" id="regionCoordinates" />
+            <div class="flex gap-2">
+              <div class="relative group flex-1">
+                <MapPin class="absolute left-3 top-3 w-4 h-4 text-blue-500 group-focus-within:text-purple-500 transition-colors" />
+                <input 
+                  type="text" 
+                  name="region_address"
+                  class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                  id="regionInput"
+                  placeholder="Where are you headed?"
+                  required
+                />
+                <input type="hidden" name="region_coordinates" id="regionCoordinates" />
+              </div>
+              <button 
+                type="button"
+                id="region-pick-map-btn"
+                class="px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span class="hidden sm:inline">Pick on Map</span>
+              </button>
             </div>
           </div>
 
@@ -254,17 +268,29 @@ import Tags from "@/components/Trip/Tags.astro";
               Pickup Point
               <span class="text-red-500 ml-1">*</span>
             </label>
-            <div class="relative">
-              <MapPin class="absolute left-3 top-3 w-4 h-4 text-green-500" />
-              <input 
-                type="text"
-                name="pickup_address"
-                class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                id="pickupInput" 
-                placeholder="e.g. MOA Globe, Ayala Cebu Terminal"
-                required
-              />
-              <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <MapPin class="absolute left-3 top-3 w-4 h-4 text-green-500" />
+                <input 
+                  type="text"
+                  name="pickup_address"
+                  class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                  id="pickupInput" 
+                  placeholder="e.g. MOA Globe, Ayala Cebu Terminal"
+                  required
+                />
+                <input type="hidden" name="pickup_coordinates" id="pickupCoordinates" />
+              </div>
+              <button 
+                type="button"
+                id="pickup-pick-map-btn"
+                class="px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span class="hidden sm:inline">Pick on Map</span>
+              </button>
             </div>
           </div>
 
@@ -295,49 +321,59 @@ import Tags from "@/components/Trip/Tags.astro";
               class="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
             />
             <label for="sameLocation" class="text-sm text-slate-700 cursor-pointer">
-              <span class="font-medium">Drop-off at same location and time as pickup</span>
-              <p class="text-xs text-slate-600 mt-1">Uncheck if you're planning a one-way trip or ending at a different location/time</p>
+              <span class="font-medium">Drop-off at same location as pickup</span>
+              <p class="text-xs text-slate-600 mt-1">Uncheck if the trip ends at a different location</p>
             </label>
           </div>
 
-          <!-- Drop-off Section (conditional) -->
-          <div id="dropoffWrapper" class="hidden space-y-4">
-            <div class="border-t border-slate-200 pt-4">
-              <h3 class="font-medium text-slate-700 mb-4 flex items-center gap-2">
-                <MapPin class="w-4 h-4 text-red-500" />
-                Drop-off Details
-              </h3>
-              
-              <!-- Drop-off Location -->
-              <div class="mb-4">
-                <label class="font-medium mb-2 block text-slate-700">
-                  Drop-off Point
-                  <span class="text-red-500 ml-1">*</span>
-                </label>
-                <div class="relative">
+          <!-- Drop-off Location (conditional — hidden when same location as pickup) -->
+          <div id="dropoffWrapper" class="hidden border-t border-slate-200 pt-4">
+            <h3 class="font-medium text-slate-700 mb-4 flex items-center gap-2">
+              <MapPin class="w-4 h-4 text-red-500" />
+              Drop-off Location
+            </h3>
+            <div class="mb-4">
+              <label class="font-medium mb-2 block text-slate-700">
+                Drop-off Point
+                <span class="text-red-500 ml-1">*</span>
+              </label>
+              <div class="flex gap-2">
+                <div class="relative flex-1">
                   <MapPin class="absolute left-3 top-3 w-4 h-4 text-red-500" />
-                  <input 
+                  <input
                     type="text"
                     name="dropoff_address"
-                    class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                    id="dropoffInput" 
+                    class="border border-gray-300 rounded-lg w-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    id="dropoffInput"
                     placeholder="Where will the trip end?"
                   />
                   <input type="hidden" name="dropoff_coordinates" id="dropoffCoordinates" />
                 </div>
+                <button
+                  type="button"
+                  id="dropoff-pick-map-btn"
+                  class="px-4 py-2.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                  </svg>
+                  <span class="hidden sm:inline">Pick on Map</span>
+                </button>
               </div>
-
-              <!-- Drop-off Date & Time -->
-              <DatePicker
-                label="Drop-off Date & Time (Estimated)"
-                name="dropoff_dates"
-                id="dropoffDates"
-                mode="single"
-                enableTime={true}
-                defaultTime="18:00"
-                helperText="When do you expect to arrive at the drop-off point?"
-              />
             </div>
+          </div>
+
+          <!-- Drop-off Date & Time (always required) -->
+          <div class="border-t border-slate-200 pt-4">
+            <DatePicker
+              label="Drop-off Date & Time (Estimated)"
+              name="dropoff_dates"
+              id="dropoffDates"
+              mode="single"
+              enableTime={true}
+              defaultTime="18:00"
+              helperText="When do you expect to arrive at the drop-off point?"
+            />
           </div>
 
           <!-- Info Box -->
@@ -347,6 +383,95 @@ import Tags from "@/components/Trip/Tags.astro";
               <p class="font-medium mb-1">Additional Stops & Itinerary</p>
               <p class="text-xs text-amber-800">After creating your trip, you can add more pickup/drop-off points and finalize your complete itinerary in the trip dashboard.</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: CONFIRM -->
+      <div class="step hidden transition-opacity duration-300" data-step="5">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="p-2 bg-green-50 rounded-lg">
+            <CheckCircle class="w-5 h-5 text-green-500" />
+          </div>
+          <h2 class="font-semibold text-lg">Confirm Your Trip</h2>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Trip Summary -->
+          <div class="bg-gray-50 rounded-xl p-5 space-y-4">
+            <h3 class="font-semibold text-gray-900">Trip Overview</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p class="text-gray-500">Trip Title</p>
+                <p id="confirm-title" class="font-medium text-gray-900">-</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Dates</p>
+                <p id="confirm-dates" class="font-medium text-gray-900">-</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Destination</p>
+                <p id="confirm-destination" class="font-medium text-gray-900">-</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Max Participants</p>
+                <p id="confirm-pax" class="font-medium text-gray-900">-</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Budget</p>
+                <p id="confirm-budget" class="font-medium text-gray-900">-</p>
+              </div>
+              <div>
+                <p class="text-gray-500">Cost Sharing</p>
+                <p id="confirm-costsharing" class="font-medium text-gray-900">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Map Preview -->
+          <div class="bg-gray-50 rounded-xl p-5">
+            <h3 class="font-semibold text-gray-900 mb-4">Location Preview</h3>
+            <div id="confirm-map" class="w-full h-64 rounded-lg overflow-hidden bg-gray-200">
+              <div class="w-full h-full flex items-center justify-center text-gray-500">
+                <div class="text-center">
+                  <MapPin class="w-8 h-8 mx-auto mb-2" />
+                  <p class="text-sm">Map will appear here</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                <span class="text-gray-600">Destination</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                <span class="text-gray-600">Pickup</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span class="text-gray-600">Dropoff</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Edit Links -->
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="text-sm text-blue-600 hover:underline" data-goto-step="1">
+              Edit Schedule
+            </button>
+            <span class="text-gray-300">|</span>
+            <button type="button" class="text-sm text-blue-600 hover:underline" data-goto-step="2">
+              Edit Details
+            </button>
+            <span class="text-gray-300">|</span>
+            <button type="button" class="text-sm text-blue-600 hover:underline" data-goto-step="3">
+              Edit Budget
+            </button>
+            <span class="text-gray-300">|</span>
+            <button type="button" class="text-sm text-blue-600 hover:underline" data-goto-step="4">
+              Edit Logistics
+            </button>
           </div>
         </div>
       </div>
@@ -377,6 +502,11 @@ import Tags from "@/components/Trip/Tags.astro";
       </div>
     </form>
 
+    <!-- Map Picker Modals -->
+    <MapPickerModal fieldId="region" fieldLabel="Destination" />
+    <MapPickerModal fieldId="pickup" fieldLabel="Pickup Point" />
+    <MapPickerModal fieldId="dropoff" fieldLabel="Drop-off Point" />
+
     <!-- Tips Section -->
     <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
       <h3 class="font-semibold text-sm text-blue-900 mb-2">💡 Pro Tips</h3>
@@ -402,7 +532,7 @@ import Tags from "@/components/Trip/Tags.astro";
 
     // ==================== GLOBAL STATE ====================
     let currentStep = 1;
-    const totalSteps = 4;
+    const totalSteps = 5;
 
     // ==================== DOM ELEMENTS ====================
     const steps = document.querySelectorAll(".step");
@@ -435,6 +565,26 @@ import Tags from "@/components/Trip/Tags.astro";
 
     // ==================== UTILITY FUNCTIONS ====================
     
+    /**
+     * Parse date string as local time (not UTC)
+     * This ensures dates like "2025-02-20 23:59" are interpreted in local timezone
+     */
+    function parseLocalDate(dateStr: string): Date | null {
+      if (!dateStr) return null;
+      
+      // Handle both date-only and datetime formats
+      const [datePart, timePart] = dateStr.split(' ');
+      const [year, month, day] = datePart.split('-').map(Number);
+      
+      let hour = 0, minute = 0;
+      if (timePart) {
+        [hour, minute] = timePart.split(':').map(Number);
+      }
+      
+      // Create date in local timezone
+      return new Date(year, month - 1, day, hour, minute);
+    }
+
     /**
      * Get date/time value from various input types
      * Handles both single date pickers and date ranges
@@ -533,12 +683,17 @@ import Tags from "@/components/Trip/Tags.astro";
         return true;
       }
       
-      const start = new Date(tripDates.start);
-      const end = new Date(tripDates.end);
-      const joinBy = new Date(joinedByDateTime);
+      // Parse as local time to avoid UTC conversion issues
+      const start = parseLocalDate(tripDates.start);
+      const end = parseLocalDate(tripDates.end);
+      const joinBy = parseLocalDate(joinedByDateTime);
       
-      // Trip cannot start in the past
-      if (start < now) {
+      if (!start || !end || !joinBy) return true;
+      
+      // Trip cannot start in the past (compare dates only, not time)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      if (startDateOnly < today) {
         showDateTimeError('tripDates', 'Trip cannot start in the past');
         isValid = false;
       }
@@ -549,8 +704,8 @@ import Tags from "@/components/Trip/Tags.astro";
         isValid = false;
       }
       
-      // Join deadline validations
-      if (joinBy < now) {
+      // Join deadline validations - compare date+time
+      if (joinBy <= now) {
         showDateTimeError('joinedBy', 'Join deadline cannot be in the past');
         isValid = false;
       } else if (joinBy >= start) {
@@ -577,18 +732,19 @@ import Tags from "@/components/Trip/Tags.astro";
         return true; // Let HTML5 validation handle empty required fields
       }
       
-      const meetingTime = new Date(pickupDateTime);
+      const meetingTime = parseLocalDate(pickupDateTime);
+      if (!meetingTime) return true;
       
-      // Meeting time cannot be in the past
-      if (meetingTime < now) {
+      // Meeting time cannot be in the past (compare date+time)
+      if (meetingTime <= now) {
         showDateTimeError('pickupDates', 'Meeting time cannot be in the past');
         isValid = false;
       }
       
       // Meeting should be on or before trip start
       if (tripDates.start) {
-        const tripStart = new Date(tripDates.start);
-        if (meetingTime > tripStart) {
+        const tripStart = parseLocalDate(tripDates.start);
+        if (tripStart && meetingTime > tripStart) {
           showDateTimeError('pickupDates', 'Meeting time should be on or before trip start');
           isValid = false;
         }
@@ -598,8 +754,19 @@ import Tags from "@/components/Trip/Tags.astro";
     }
 
     function toDateOnly(value: string | Date): DateOnlyString {
-      const d = typeof value === 'string' ? new Date(value) : value;
-      return d.toISOString().split('T')[0] as DateOnlyString;
+      let d: Date;
+      if (typeof value === 'string') {
+        // Parse as local date to avoid UTC issues
+        const parsed = parseLocalDate(value);
+        d = parsed || new Date();
+      } else {
+        d = value;
+      }
+      // Format as YYYY-MM-DD in local timezone
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}` as DateOnlyString;
     }
 
     /**
@@ -609,37 +776,39 @@ import Tags from "@/components/Trip/Tags.astro";
       const dropoffDateTime = getDateTimeValue('dropoffDates') as any;
       const pickupDateTime = getDateTimeValue('pickupDates') as any;
       const tripDates = getDateTimeValue('tripDates') as any;
-      
+
       let isValid = true;
-      
       hideDateTimeError('dropoffDates');
-      
-      // Only validate if dropoff section is visible and has value
-      if (dropoffWrapper && !dropoffWrapper.classList.contains('hidden') && dropoffDateTime) {
-        const dropoffTime = new Date(dropoffDateTime);
-        
+
+      // Validate dropoff time whenever a value is set
+      if (dropoffDateTime) {
+        const dropoffTime = parseLocalDate(dropoffDateTime);
+        if (!dropoffTime) return true;
+
         // Drop-off must be after pickup
         if (pickupDateTime) {
-          const pickupTime = new Date(pickupDateTime);
-          if (dropoffTime <= pickupTime) {
+          const pickupTime = parseLocalDate(pickupDateTime);
+          if (pickupTime && dropoffTime <= pickupTime) {
             showDateTimeError('dropoffDates', 'Drop-off time must be after pickup time');
             isValid = false;
           }
         }
-        
+
         // Drop-off should be within reasonable range of trip end
         if (tripDates.end) {
-          const tripEnd = new Date(tripDates.end);
-          const maxDropoff = new Date(tripEnd);
-          maxDropoff.setDate(maxDropoff.getDate() + 1); // Allow 1 day buffer
-          
-          if (dropoffTime > maxDropoff) {
-            showDateTimeError('dropoffDates', 'Drop-off should be within trip duration (plus 1 day)');
-            isValid = false;
+          const tripEnd = parseLocalDate(tripDates.end);
+          if (tripEnd) {
+            const maxDropoff = new Date(tripEnd);
+            maxDropoff.setDate(maxDropoff.getDate() + 1); // Allow 1 day buffer
+
+            if (dropoffTime > maxDropoff) {
+              showDateTimeError('dropoffDates', 'Drop-off should be within trip duration (plus 1 day)');
+              isValid = false;
+            }
           }
         }
       }
-      
+
       return isValid;
     }
 
@@ -729,12 +898,14 @@ declare global {
         
         // Join deadline: must be before trip start
         if (tripDates?.start && constraints.joinedBy) {
-          const startDate = new Date(tripDates.start);
-          const dayBefore = new Date(startDate);
-          dayBefore.setDate(startDate.getDate() - 1);
-          
-          constraints.joinedBy.setMinDate(today);
-          constraints.joinedBy.setMaxDate(toDateOnly(dayBefore));
+          const startDate = parseLocalDate(tripDates.start);
+          if (startDate) {
+            const dayBefore = new Date(startDate);
+            dayBefore.setDate(startDate.getDate() - 1);
+            
+            constraints.joinedBy.setMinDate(today);
+            constraints.joinedBy.setMaxDate(toDateOnly(dayBefore));
+          }
         }
         
         // Pickup date: today → trip start
@@ -774,13 +945,15 @@ declare global {
         
         // Max: day after trip end
         if (tripDates?.end) {
-          const endDate = new Date(tripDates.end);
-          const dayAfter = new Date(endDate);
-          dayAfter.setDate(endDate.getDate() + 1);
-          
-          constraints.dropoffDates.setMaxDate(
-          toDateOnly(dayAfter)
-          );
+          const endDate = parseLocalDate(tripDates.end);
+          if (endDate) {
+            const dayAfter = new Date(endDate);
+            dayAfter.setDate(endDate.getDate() + 1);
+            
+            constraints.dropoffDates.setMaxDate(
+            toDateOnly(dayAfter)
+            );
+          }
         }
       } catch (error) {
         console.error('Error updating dropoff constraints:', error);
@@ -821,7 +994,9 @@ declare global {
 
       // Update progress bar
       if (progressBar) {
-        progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+        // Show full bar at step 5 (confirmation)
+        const progress = currentStep === totalSteps ? 100 : (currentStep / totalSteps) * 100;
+        progressBar.style.width = `${progress}%`;
       }
 
       // Show/hide navigation buttons
@@ -926,46 +1101,27 @@ declare global {
         if (dropoffWrapper) {
           if (isChecked) {
             dropoffWrapper.classList.add("hidden");
-            
-            // Clear and disable dropoff fields
+
+            // Clear and disable the location fields only
             if (dropoffInput) {
               dropoffInput.required = false;
               dropoffInput.value = "";
               dropoffInput.classList.remove('border-red-300');
             }
-            
+
             const dropoffCoordinates = document.getElementById("dropoffCoordinates") as HTMLInputElement;
             if (dropoffCoordinates) {
               dropoffCoordinates.value = "";
             }
-            
-            // Clear and disable dropoff date picker
-            const dropoffDatesInput = document.getElementById("dropoffDates") as HTMLInputElement;
-            if (dropoffDatesInput) {
-              dropoffDatesInput.required = false;
-              dropoffDatesInput.value = "";
-              
-              // Clear flatpickr if available
-              if ((dropoffDatesInput as any)._flatpickr) {
-                (dropoffDatesInput as any)._flatpickr.clear();
-              }
-            }
-            
-            hideDateTimeError('dropoffDates');
           } else {
             dropoffWrapper.classList.remove("hidden");
-            
-            // Enable dropoff fields
+
+            // Re-enable location fields
             if (dropoffInput) {
               dropoffInput.required = true;
             }
-            
-            const dropoffDatesInput = document.getElementById("dropoffDates") as HTMLInputElement;
-            if (dropoffDatesInput) {
-              dropoffDatesInput.required = true;
-            }
-            
-            // Update constraints for dropoff date
+
+            // Update date constraints for dropoff
             updateDropoffDateConstraints();
           }
         }
@@ -983,6 +1139,10 @@ declare global {
         if (validateCurrentStep() && currentStep < totalSteps) {
           currentStep++;
           updateUI();
+          // Populate confirmation data when going to Step 5
+          if (currentStep === 5) {
+            populateConfirmationData();
+          }
         }
       };
     }
@@ -994,6 +1154,129 @@ declare global {
           updateUI();
         }
       };
+    }
+
+    // Quick edit links for Step 5
+    document.querySelectorAll('[data-goto-step]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetStep = parseInt(btn.getAttribute('data-goto-step') || '1');
+        currentStep = targetStep;
+        updateUI();
+      });
+    });
+
+    /**
+     * Populate confirmation data for Step 5
+     */
+    function populateConfirmationData() {
+      const title = (document.getElementById('tripTitle') as HTMLInputElement)?.value || '-';
+      const startDate = (document.querySelector('input[name="start_date"]') as HTMLInputElement)?.value || '';
+      const endDate = (document.querySelector('input[name="end_date"]') as HTMLInputElement)?.value || '';
+      const destination = (document.getElementById('regionInput') as HTMLInputElement)?.value || '-';
+      const maxPax = (document.getElementById('maxPax') as HTMLInputElement)?.value || '-';
+      const budget = (document.getElementById('estimatedBudget') as HTMLInputElement)?.value || 'Not set';
+      const costSharing = (document.getElementById('costSharing') as any)?.value || '-';
+
+      const confirmTitle = document.getElementById('confirm-title');
+      const confirmDates = document.getElementById('confirm-dates');
+      const confirmDestination = document.getElementById('confirm-destination');
+      const confirmPax = document.getElementById('confirm-pax');
+      const confirmBudget = document.getElementById('confirm-budget');
+      const confirmCostSharing = document.getElementById('confirm-costsharing');
+
+      if (confirmTitle) confirmTitle.textContent = title;
+      if (confirmDates) confirmDates.textContent = startDate && endDate ? `${startDate} to ${endDate}` : '-';
+      if (confirmDestination) confirmDestination.textContent = destination;
+      if (confirmPax) confirmPax.textContent = `${maxPax} people`;
+      if (confirmBudget) confirmBudget.textContent = budget !== 'Not set' ? `₱${parseInt(budget).toLocaleString()}` : 'Not set';
+
+      const costSharingLabels: Record<string, string> = {
+        'split_evenly': 'Split Evenly',
+        'organizer_shoulders_cost': 'Organizer Shoulders All Costs',
+        'pay_own_expenses': 'Everyone Pays Own Expenses',
+        'custom_split': 'Custom Split'
+      };
+      if (confirmCostSharing) confirmCostSharing.textContent = costSharingLabels[costSharing] || '-';
+
+      // Initialize confirmation map with all 3 location markers
+      initConfirmMap();
+    }
+
+    let confirmMap: any = null;
+
+    async function initConfirmMap() {
+      const mapContainer = document.getElementById('confirm-map');
+      if (!mapContainer || !(window as any).mapboxgl) return;
+
+      // Parse coordinates from hidden inputs
+      const regionRaw = (document.getElementById('regionCoordinates') as HTMLInputElement)?.value;
+      const pickupRaw = (document.getElementById('pickupCoordinates') as HTMLInputElement)?.value;
+      const dropoffRaw = (document.getElementById('dropoffCoordinates') as HTMLInputElement)?.value;
+
+      const parseCoords = (raw: string): [number, number] | null => {
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length === 2) return [arr[0], arr[1]]; // [lng, lat]
+        } catch {}
+        return null;
+      };
+
+      const regionCoords = regionRaw ? parseCoords(regionRaw) : null;
+      const pickupCoords = pickupRaw ? parseCoords(pickupRaw) : null;
+      const dropoffCoords = dropoffRaw ? parseCoords(dropoffRaw) : null;
+
+      if (!regionCoords && !pickupCoords && !dropoffCoords) return;
+
+      // Fetch token
+      let token: string | null = null;
+      try {
+        const res = await fetch('/api/mapbox-token');
+        const json = await res.json();
+        token = ( json as any ).token;
+      } catch {}
+      if (!token) return;
+
+      // Destroy previous instance if re-entering step 5
+      if (confirmMap) { confirmMap.remove(); confirmMap = null; }
+
+      // Clear placeholder content
+      mapContainer.innerHTML = '';
+
+      const mbgl = (window as any).mapboxgl;
+      mbgl.accessToken = token;
+
+      const center = regionCoords || pickupCoords || dropoffCoords!;
+      confirmMap = new mbgl.Map({
+        container: mapContainer,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 9,
+        accessToken: token,
+      });
+
+      confirmMap.on('load', () => {
+        const markerDefs = [
+          { coords: regionCoords,  color: '#ef4444', label: 'Destination' },
+          { coords: pickupCoords,  color: '#22c55e', label: 'Pickup' },
+          { coords: dropoffCoords, color: '#3b82f6', label: 'Dropoff' },
+        ];
+
+        const bounds = new mbgl.LngLatBounds();
+        let hasPoints = false;
+
+        markerDefs.forEach(({ coords, color, label }) => {
+          if (!coords) return;
+          const el = document.createElement('div');
+          el.style.cssText = `width:14px;height:14px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4);`;
+          new mbgl.Marker(el).setLngLat(coords).setPopup(new mbgl.Popup({ offset: 12 }).setText(label)).addTo(confirmMap);
+          bounds.extend(coords);
+          hasPoints = true;
+        });
+
+        if (hasPoints) {
+          confirmMap.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 500 });
+        }
+      });
     }
 
     /**
@@ -1029,7 +1312,7 @@ declare global {
       return crypto.randomUUID();
     }
     // create sessionID
-    const sessionId = await createSessionToken();
+    const sessionId = createSessionToken();
     if (!sessionId) {
       console.error('Session ID not found for Mapbox integration');
     } else {
@@ -1073,6 +1356,49 @@ declare global {
       });
     }
 
+    // ==================== MAP PICKER MODAL HANDLERS ====================
+    // Listen for location selection events from modals
+    document.addEventListener('locationSelected', (e: any) => {
+      const { fieldId, coordinates, address } = e.detail;
+      
+      if (fieldId === 'region') {
+        const regionInput = document.getElementById('regionInput') as HTMLInputElement;
+        const regionCoordinates = document.getElementById('regionCoordinates') as HTMLInputElement;
+        if (regionInput) regionInput.value = address;
+        if (regionCoordinates) regionCoordinates.value = JSON.stringify(coordinates);
+      } else if (fieldId === 'pickup') {
+        const pickupInput = document.getElementById('pickupInput') as HTMLInputElement;
+        const pickupCoordinates = document.getElementById('pickupCoordinates') as HTMLInputElement;
+        if (pickupInput) pickupInput.value = address;
+        if (pickupCoordinates) pickupCoordinates.value = JSON.stringify(coordinates);
+      } else if (fieldId === 'dropoff') {
+        const dropoffInput = document.getElementById('dropoffInput') as HTMLInputElement;
+        const dropoffCoordinates = document.getElementById('dropoffCoordinates') as HTMLInputElement;
+        if (dropoffInput) dropoffInput.value = address;
+        if (dropoffCoordinates) dropoffCoordinates.value = JSON.stringify(coordinates);
+      }
+    });
+
+    // Map picker button handlers
+    const regionPickBtn = document.getElementById('region-pick-map-btn');
+    const pickupPickBtn = document.getElementById('pickup-pick-map-btn');
+    const dropoffPickBtn = document.getElementById('dropoff-pick-map-btn');
+
+    regionPickBtn?.addEventListener('click', () => {
+      const openFn = (window as any).openRegionMapPicker;
+      if (openFn) openFn();
+    });
+
+    pickupPickBtn?.addEventListener('click', () => {
+      const openFn = (window as any).openPickupMapPicker;
+      if (openFn) openFn();
+    });
+
+    dropoffPickBtn?.addEventListener('click', () => {
+      const openFn = (window as any).openDropoffMapPicker;
+      if (openFn) openFn();
+    });
+
     // ==================== FORM SUBMISSION ====================
 
     if (form) {
@@ -1093,12 +1419,6 @@ declare global {
         try {
           // Collect ALL form data directly - no disabling needed with novalidate attribute
           const formData = new FormData(form);
-
-          // Log all form data for debugging
-          console.log("Raw FormData entries:");
-          for (let [key, value] of formData.entries()) {
-            console.log(`  ${key}: ${value}`);
-          }
 
           // Handle tags - use getAll for multiple values
           const tagsInputs = formData.getAll("tags");
@@ -1183,10 +1503,10 @@ declare global {
           let dropoffDates = formData.get("dropoff_dates") as string;
           
           if (sameLocation) {
-            // Use pickup details for dropoff
+            // Same location: copy address and coordinates from pickup only
             dropoffAddress = formData.get("pickup_address") as string;
             dropoffCoordinates = formData.get("pickup_coordinates") as string;
-            dropoffDates = formData.get("pickup_dates") as string;
+            // dropoff date is always set independently by the user
           }
 
           // Construct trip data
@@ -1223,52 +1543,26 @@ declare global {
             dropoff_dates: dropoffDates,
           };
 
-          console.log("Submitting trip data:", tripData);
-
           // Call the server action
           const { data: result, error } = await actions.trip.createTrip(tripData);
           
-          console.log("Server response:", result, error);
-
           if (error) {
-            showToast({ 
-              message: error.message || 'Failed to create trip', 
-              type: "error" 
+            showToast({
+              message: error.message || 'Failed to create trip',
+              type: "error"
             });
           } else {
-            // Clear draft from session storage
             sessionStorage.removeItem("tripDraft");
-            
-            // Parse the response to get trip_id
-            let tripId;
-            if (typeof result === 'string') {
-              try {
-                const parsed = JSON.parse(result);
-                tripId = parsed.data?.trip_id || parsed.trip_id;
-              } catch {
-                tripId = result;
-              }
-            } else if (result && typeof result === 'object') {
-              tripId = (result as any).trip_id || (result as any).data?.trip_id;
-            } else {
-              tripId = result;
-            }
-            
-            console.log("Created trip ID:", tripId);
-            
-            // Show success message
-            showToast({ 
-              message: 'Trip created successfully!', 
-              type: "success" 
+
+            const tripId = (result as any)?.trip_id;
+
+            showToast({
+              message: 'Trip created successfully!',
+              type: "success"
             });
-            
-            // Redirect to trip page
+
             setTimeout(() => {
-              if (tripId) {
-                window.location.href = `/trips/${tripId}`;
-              } else {
-                window.location.href = `/trips`;
-              }
+              window.location.href = tripId ? `/trips/${tripId}` : `/trips`;
             }, 1000);
           }
         } catch (err) {
@@ -1348,8 +1642,5 @@ declare global {
     (window as any).validateMeetingTime = validateMeetingTime;
     (window as any).validateDropoffTime = validateDropoffTime;
 
-function uuidv4() {
-throw new Error("Function not implemented.");
-}
   </script>
 </Layout>

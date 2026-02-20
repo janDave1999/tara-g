@@ -2,6 +2,8 @@
 
 > Track progress here. Strike out items as they are completed using `~~text~~`.
 > Updated as we go — one item at a time.
+> 
+> **Trip Feature Spec:** See `TRIP_FEATURE_SPEC.md` for detailed requirements
 
 ---
 
@@ -51,6 +53,84 @@
 - [ ] Add inline comments for complex logic — onboarding middleware flow, token refresh, RPC calls
 - [ ] Add CI/CD step to run `vitest` on every push (GitHub Actions or Cloudflare Pages build hook)
 - [ ] Expand test coverage — add component tests and API route tests for critical paths
+
+### Features (Current)
+
+#### Project 82 — Province Tracking
+
+**Phase 1: Core Infrastructure**
+- [ ] Create database migration (`database-migrations/009_project82.sql`) — user_province_visits table + province_boundaries table
+- [ ] Load province geojson data into province_boundaries table
+- [ ] Add province_key field to trips table
+- [ ] Create API: GET /api/project82 (fetch user visits)
+- [ ] Create API: POST /api/project82 (add/update visit)
+- [ ] Create API: DELETE /api/project82/[province_key] (remove visit)
+- [ ] Create frontend: /project82 page with basic choropleth map
+
+**Phase 2: Auto-Detection**
+- [ ] Create API: POST /api/project82/sync (auto-detect from completed trips)
+- [ ] Implement PostGIS spatial query for point-in-polygon province detection
+- [ ] Implement auto-stage calculation based on trip duration
+- [ ] Add sync button + status indicator on frontend
+
+**Phase 3: Privacy & Profile**
+- [ ] Add privacy check in API (respects is_profile_public)
+- [ ] Create public profile page: /project82/[username]
+- [ ] Create Profile badge component showing progress
+
+**Phase 4: Trip Integration**
+- [ ] Add trigger to auto-sync when trip status changes to "completed"
+- [ ] Link visits to source trips (trip_id foreign key)
+- [ ] Show trip info in visit details
+
+**Phase 5: Polish**
+- [ ] Add notes field for visits
+- [ ] Create shareable public link
+- [ ] Add list view toggle
+- [ ] Add achievements/badges UI
+
+---
+
+#### Trip — Core Platform
+
+**Phase 1: Core Stability & Discovery (P0)**
+- [x] ~~Create database migration for preferences_prompt_until (`database-migrations/009_add_preferences_prompt.sql`)~~
+- [x] ~~Create get_discover_trips RPC function (`database-migrations/010_create_discover_trips_function.sql`)~~
+- [x] ~~Rename "Recent" tab to "Discover" in /trips page~~
+- [x] ~~Implement preference-based filtering for Discover tab (budget, style, pace)~~
+- [x] ~~Add toggleable preference filters in Discover tab~~
+- [x] ~~Create PreferencesPrompt modal component~~
+- [x] ~~Add user settings and travel preferences actions (settings.update, travelPreferences.update)~~
+- [ ] Fix bugs in trip creation flow
+- [ ] Verify trip status transitions work correctly
+- [ ] Verify member management (join/leave/remove)
+- [ ] Complete trip search and filtering
+
+**Phase 2: Itinerary Enhancement (P1)**
+- [ ] Full drag-drop itinerary builder component
+- [ ] Activity management per stop
+- [ ] Actual vs scheduled time tracking
+- [ ] Itinerary export/sharing
+
+**Phase 3: Expense System (P1)**
+- [ ] Complete expense tracking UI
+- [ ] Cost splitting calculations and visualization
+- [ ] Settlement tracking between members
+- [ ] Export expense reports
+
+**Phase 4: Notifications & Social (P1)**
+- [ ] Email notification system for trip updates
+- [ ] Push notifications
+- [ ] Trip sharing to social media
+- [ ] Social feed integration
+
+**Phase 5: Advanced Features (P2)**
+- [ ] Trip templates (reusable trip configs)
+- [ ] Weather integration for destinations
+- [ ] Trip packing list
+- [ ] Analytics dashboard
+
+---
 
 ### Features (Future)
 

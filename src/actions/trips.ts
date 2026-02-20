@@ -209,7 +209,7 @@ const createTripSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   
   joined_by: z.string()
-    .datetime('Invalid datetime format')
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid datetime format')
     .refine(datetime => {
       const d = new Date(datetime);
       return d >= new Date(); // Not in the past
@@ -283,11 +283,7 @@ const createTripSchema = z.object({
     }, 'Invalid pickup coordinates format'),
   
   pickup_dates: z.string()
-    .datetime('Invalid pickup datetime format')
-    .refine(datetime => {
-      const d = new Date(datetime);
-      return d >= new Date(); // Not in the past
-    }, 'Pickup time cannot be in the past'),
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid pickup datetime format'),
   
   waiting_time: z.number()
     .int('Waiting time must be a whole number')
@@ -313,7 +309,7 @@ const createTripSchema = z.object({
     }, 'Invalid dropoff coordinates format'),
   
   dropoff_dates: z.string()
-    .datetime('Invalid dropoff datetime format')
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid dropoff datetime format')
 }).superRefine((data, ctx) => {
   // Cross-field validation
   const startDate = new Date(data.start_date);
@@ -322,16 +318,16 @@ const createTripSchema = z.object({
   const pickupDate = new Date(data.pickup_dates);
   const dropoffDate = new Date(data.dropoff_dates);
   
-  // End date must be after start date
-  if (endDate <= startDate) {
+  // End date must not be before start date (same day is allowed)
+  if (endDate < startDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'End date must be after start date',
+      message: 'End date cannot be before start date',
       path: ['end_date']
     });
     return false;
   }
-  
+
   // Join deadline must be before trip start
   if (joinBy >= startDate) {
     ctx.addIssue({
@@ -341,12 +337,13 @@ const createTripSchema = z.object({
     });
     return false;
   }
-  
-  // Pickup must be on or before trip start
-  if (pickupDate > startDate) {
+
+  // Pickup must be on or before trip start date (date-only comparison to avoid timezone issues)
+  const pickupDateOnly = new Date(data.pickup_dates.split('T')[0]);
+  if (pickupDateOnly > startDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Pickup time must be on or before trip start',
+      message: 'Pickup date must be on or before trip start date',
       path: ['pickup_dates']
     });
     return false;
@@ -446,12 +443,11 @@ export const trip = {
     }),
     handler: async (input, context) => {
       try {
-        // Get current user (optional)
-        const { data: { user } } = await supabaseAdmin.auth.getUser();
-        
+        const userId = context.locals.user_id || null;
+
         const { data, error } = await supabaseAdmin.rpc('get_trip_full_details', {
           p_trip_id: input.tripId,
-          p_current_user_id: user?.id || null
+          p_current_user_id: userId
         });
 
         if (error) {
@@ -481,72 +477,69 @@ export const trip = {
     input: createTripSchema,
     handler: async (input, context) => {
       try {
-        // Get current user
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser();
-        
-        if (authError || !user) {
+        // Get current user from request cookies (supabaseAdmin has no session)
+        const userId = context.locals.user_id;
+
+        if (!userId) {
           return {
             success: false,
             error: { message: 'Unauthorized. Please log in.' }
           };
         }
+
         const regionCoords = JSON.parse(input.region_coordinates);
         const pickupCoords = JSON.parse(input.pickup_coordinates);
         const dropoffCoords = JSON.parse(input.dropoff_coordinates);
-        // Call RPC function
-       // Call RPC function
-// Call RPC function
-        const { data, error } = await supabaseAdmin.rpc('create_trip_with_details', {
-          // Basic info (in order)
+
+        const rpcParams = {
           p_title: input.title,
           p_description: input.description,
           p_slug: input.slug,
-          p_owner_id: user.id,
-          
-          // Trip dates
+          p_owner_id: userId,
           p_start_date: input.start_date,
           p_end_date: input.end_date,
           p_join_by: input.joined_by,
-          
-          // Trip settings
           p_max_pax: input.max_pax,
           p_gender_pref: input.gender_preference,
           p_cost_sharing: input.cost_sharing,
-          
-          // Region/destination
           p_region_name: input.region_address,
-          p_region_lat: (regionCoords[0] || regionCoords[1])?.toString(),
-          p_region_lng: (regionCoords[0] || regionCoords[1])?.toString(),
-          
-          // Pickup
+          p_region_lat: regionCoords[1]?.toString(),
+          p_region_lng: regionCoords[0]?.toString(),
           p_pickup_name: input.pickup_address,
-          p_pickup_lat: (pickupCoords[0] || pickupCoords[1])?.toString(),
-          p_pickup_lng: (pickupCoords[0] || pickupCoords[1])?.toString(),
+          p_pickup_lat: pickupCoords[1]?.toString(),
+          p_pickup_lng: pickupCoords[0]?.toString(),
           p_pickup_datetime: input.pickup_dates,
-          
-          // Dropoff
           p_dropoff_name: input.dropoff_address,
-          p_dropoff_lat: (dropoffCoords[0] || dropoffCoords[1])?.toString(),
-          p_dropoff_lng: (dropoffCoords[0] || dropoffCoords[1])?.toString(),
+          p_dropoff_lat: dropoffCoords[1]?.toString(),
+          p_dropoff_lng: dropoffCoords[0]?.toString(),
           p_dropoff_datetime: input.dropoff_dates,
-          
-          // Parameters with defaults (MUST BE LAST)
           p_waiting_time: input.waiting_time,
           p_estimated_budget: input.estimated_budget || null,
           p_tags: input.tags,
-        });
+        };
+
+        const { data, error } = await supabaseAdmin.rpc('create_trip_with_details', rpcParams);
 
         if (error) {
-          console.error('Supabase RPC error:', error);
           return {
             success: false,
             error: { message: error.message || 'Failed to create trip' }
           };
         }
 
+        // Check RPC-level success (function returns success:false on validation failures)
+        const result = Array.isArray(data) ? data[0] : data;
+        if (!result?.success) {
+          return {
+            success: false,
+            error: { message: result?.message || 'Failed to create trip' }
+          };
+        }
+
         return {
           success: true,
-          data: data
+          trip_id: result.trip_id as string,
+          data: result.data
         };
 
       } catch (err) {
@@ -699,7 +692,8 @@ export const trip = {
           .from("trip_images")
           .insert({
             trip_id,
-            key_name: keyname,
+            image_url: keyname,
+            is_cover: true,
             type: "hero",
           });
           
@@ -725,11 +719,9 @@ export const trip = {
           urls: uploadedUrls,
         };
       } catch (error: any) {
-        console.error("[UPLOAD ERROR]", error);
         
         // Cleanup: delete any successfully uploaded files if an error occurred
         if (uploadedKeys.length > 0) {
-          console.log(`Cleaning up ${uploadedKeys.length} uploaded file(s)...`);
           for (const key of uploadedKeys) {
             try {
               await locals.runtime.env.TRIP_HERO.delete(key);
@@ -756,9 +748,13 @@ export const trip = {
     input: z.object({
       trip_id: z.string().uuid(),
     }),
-    
-    async handler({ trip_id }) {
-      const { data, error } = await supabaseAdmin.rpc("leave_trip", { p_trip_id: trip_id });
+
+    async handler({ trip_id }, context) {
+      const userId = context.locals.user_id;
+      if (!userId) {
+        throw new ActionError({ message: 'Unauthorized', code: 'UNAUTHORIZED' });
+      }
+      const { data, error } = await supabaseAdmin.rpc("leave_trip", { p_trip_id: trip_id, p_user_id: userId });
       if (error) {
         throw new ActionError({
           message: error.message,
@@ -965,7 +961,8 @@ getNearbyTrips: defineAction({
         p_trip_id: input.tripId || null,
         p_limit: input.limit,
       });
-      
+      console.log(data);
+      console.log(error);
       if (error) {
         throw new Error(error.message || 'Failed to search users');
       }
@@ -1268,22 +1265,19 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      console.log("input", input);
       const supabase = getSupabaseClient(context.cookies);
-      
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        console.log(userError);
         throw new Error('You must be logged in');
       }
-      
+
       const { data, error } = await supabase.rpc('get_trip_members_complete', {
         p_trip_id: input.tripId,
         p_user_id: user.id,
       });
-      
+
       if (error) {
-        console.log(error);
         throw new Error(error.message || 'Failed to get trip data');
       }
       
@@ -1307,12 +1301,10 @@ getNearbyTrips: defineAction({
         throw new Error('You must be logged in');
       }
 
-      const userId = user.id
-      console.log("user", userId);
       const { data, error } = await supabase.rpc('approve_join_request', {
         p_member_id: input.memberId,
         p_trip_id: input.tripId,
-        p_approver_id: userId
+        p_approver_id: user.id,
       });
       
       if (error || !data?.success) {

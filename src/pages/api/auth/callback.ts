@@ -21,9 +21,9 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
   if (error) {
-    return new Response(error.message, { 
+    return new Response(error.message, {
       status: 500,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
@@ -44,7 +44,11 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 
-  const response = Response.redirect(`${SITE_URL}/feeds`, 302);
+  // Support a ?next= param so email confirmation can redirect to /onboarding/profile
+  const next = url.searchParams.get("next") || "/feeds";
+  const safeNext = next.startsWith("/") ? next : "/feeds"; // only allow relative paths
+
+  const response = Response.redirect(`${SITE_URL}${safeNext}`, 302);
   
   // Add CORS headers to the redirect response
   Object.entries(corsHeaders).forEach(([key, value]) => {

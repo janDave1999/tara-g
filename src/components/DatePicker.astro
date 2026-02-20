@@ -87,131 +87,193 @@ const isSingleMode = mode === 'single';
 
 <script is:inline define:vars={{ pickerId }}>
   document.addEventListener("DOMContentLoaded", () => {
-    const picker = document.getElementById(pickerId);
-    if (!picker) return;
+    try {
+      const picker = document.getElementById(pickerId);
+      if (!picker) {
+        console.warn(`DatePicker: Element #${pickerId} not found`);
+        return;
+      }
 
-    const min = picker.dataset.min || null;
-    const max = picker.dataset.max || null;
-    const enableTime = picker.dataset.enableTime === "true";
-    const mode = picker.dataset.mode || "range";
-    const defaultTime = picker.dataset.defaultTime || "09:00";
+      const min = picker.dataset.min || null;
+      const max = picker.dataset.max || null;
+      const enableTime = picker.dataset.enableTime === "true";
+      const mode = picker.dataset.mode || "range";
+      const defaultTime = picker.dataset.defaultTime || "09:00";
 
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      ...(enableTime && {
-        hour: "2-digit",
-        minute: "2-digit"
-      })
-    });
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        ...(enableTime && {
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      });
 
-    const config = {
-      mode: mode,
-      dateFormat: enableTime ? "Y-m-d H:i" : "Y-m-d",
-      enableTime: enableTime,
-      time_24hr: false,
-      minDate: min,
-      maxDate: max,
-      ...(enableTime && {
-        defaultHour: parseInt(defaultTime.split(':')[0]),
-        defaultMinute: parseInt(defaultTime.split(':')[1])
-      }),
-      // Mobile-friendly settings
-      disableMobile: false, // Allow native mobile date pickers to work
-      onReady: function(selectedDates, dateStr, instance) {
-        // Add custom class for styling
-        instance.calendarContainer.classList.add('flatpickr-enhanced');
-        
-        // Set initial value if exists to prevent validation errors
-        if (mode === 'single') {
-          const hiddenInput = document.getElementById(`${pickerId}-hidden`);
-          if (hiddenInput && selectedDates.length > 0) {
-            const selected = selectedDates[0];
-            if (enableTime) {
-              hiddenInput.value = selected.toISOString().slice(0, 16);
-            } else {
-              hiddenInput.value = selected.toISOString().split("T")[0];
+      const config = {
+        mode: mode,
+        dateFormat: enableTime ? "Y-m-d H:i" : "Y-m-d",
+        enableTime: enableTime,
+        time_24hr: false,
+        minDate: min,
+        maxDate: max,
+        ...(enableTime && {
+          defaultHour: parseInt(defaultTime.split(':')[0]),
+          defaultMinute: parseInt(defaultTime.split(':')[1])
+        }),
+        // Disable mobile native picker for consistent behavior
+        disableMobile: true,
+        static: true,
+        onReady: function(selectedDates, dateStr, instance) {
+          // Guard: ensure calendarContainer exists (may not on mobile with native picker)
+          if (!instance) return;
+          try {
+            if (instance.calendarContainer) {
+              instance.calendarContainer.classList.add('flatpickr-enhanced');
             }
+          } catch (e) {
+            // Ignore DOM manipulation errors on mobile
           }
-        } else {
-          const inputFrom = document.getElementById(`${pickerId}-from`);
-          const inputTo = document.getElementById(`${pickerId}-to`);
-          if (inputFrom && inputTo && selectedDates.length > 0) {
-            const start = selectedDates[0];
-            const end = selectedDates.length === 2 ? selectedDates[1] : selectedDates[0];
-            
-            if (enableTime) {
-              inputFrom.value = start.toISOString().slice(0, 16);
-              inputTo.value = end.toISOString().slice(0, 16);
-            } else {
-              inputFrom.value = start.toISOString().split("T")[0];
-              inputTo.value = end.toISOString().split("T")[0];
-            }
-          }
-        }
-      },
-      onChange: function(selectedDates, dateStr, instance) {
-        // Trigger validation on change
-        const changeEvent = new Event('change', { bubbles: true });
-        picker.dispatchEvent(changeEvent);
-      },
-      onClose: (dates, _, instance) => {
-        if (!dates || dates.length === 0) return;
-
-        if (mode === 'single') {
-          const selected = dates[0];
-          const hiddenInput = document.getElementById(`${pickerId}-hidden`);
           
-          if (enableTime) {
-            hiddenInput.value = selected.toISOString().slice(0, 16);
-            instance.input.value = formatter.format(selected);
-          } else {
-            hiddenInput.value = selected.toISOString().split("T")[0];
-            instance.input.value = formatter.format(selected);
+          // Set initial value if exists to prevent validation errors
+          // Use local time format (Y-m-d H:i) to avoid timezone issues
+          try {
+            if (mode === 'single') {
+              const hiddenInput = document.getElementById(`${pickerId}-hidden`);
+              if (hiddenInput && selectedDates.length > 0) {
+                const selected = selectedDates[0];
+                // Store as local datetime (Y-m-d H:i) to avoid UTC conversion issues
+                const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
+                if (enableTime) {
+                  hiddenInput.value = localDate.toISOString().slice(0, 16);
+                } else {
+                  hiddenInput.value = localDate.toISOString().split("T")[0];
+                }
+              }
+            } else {
+              const inputFrom = document.getElementById(`${pickerId}-from`);
+              const inputTo = document.getElementById(`${pickerId}-to`);
+              if (inputFrom && inputTo && selectedDates.length > 0) {
+                const start = selectedDates[0];
+                const end = selectedDates.length === 2 ? selectedDates[1] : selectedDates[0];
+                
+                // Store as local datetime
+                const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
+                const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
+                
+                if (enableTime) {
+                  inputFrom.value = startLocal.toISOString().slice(0, 16);
+                  inputTo.value = endLocal.toISOString().slice(0, 16);
+                } else {
+                  inputFrom.value = startLocal.toISOString().split("T")[0];
+                  inputTo.value = endLocal.toISOString().split("T")[0];
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`DatePicker: Error setting initial value for ${pickerId}:`, e);
           }
-
-          // Dispatch change event for validation
+        },
+        onChange: function(selectedDates, dateStr, instance) {
+          // Trigger validation on change
           const changeEvent = new Event('change', { bubbles: true });
-          hiddenInput.dispatchEvent(changeEvent);
+          picker.dispatchEvent(changeEvent);
+        },
+        onClose: (dates, _, instance) => {
+          if (!dates || dates.length === 0) return;
 
-        } else {
-          // Range mode
-          const start = dates[0];
-          const end = dates.length === 2 ? dates[1] : dates[0];
+          try {
+            if (mode === 'single') {
+              const selected = dates[0];
+              const hiddenInput = document.getElementById(`${pickerId}-hidden`);
+              if (!hiddenInput) return;
+              
+              // Use local time to avoid timezone issues
+              const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
+              if (enableTime) {
+                hiddenInput.value = localDate.toISOString().slice(0, 16);
+                if (instance && instance.input) instance.input.value = formatter.format(selected);
+              } else {
+                hiddenInput.value = localDate.toISOString().split("T")[0];
+                if (instance && instance.input) instance.input.value = formatter.format(selected);
+              }
 
-          const inputFrom = document.getElementById(`${pickerId}-from`);
-          const inputTo = document.getElementById(`${pickerId}-to`);
+              // Dispatch change event for validation
+              const changeEvent = new Event('change', { bubbles: true });
+              hiddenInput.dispatchEvent(changeEvent);
 
-          if (enableTime) {
-            inputFrom.value = start.toISOString().slice(0, 16);
-            inputTo.value = end.toISOString().slice(0, 16);
-          } else {
-            inputFrom.value = start.toISOString().split("T")[0];
-            inputTo.value = end.toISOString().split("T")[0];
+            } else {
+              // Range mode
+              const start = dates[0];
+              const end = dates.length === 2 ? dates[1] : dates[0];
+
+              const inputFrom = document.getElementById(`${pickerId}-from`);
+              const inputTo = document.getElementById(`${pickerId}-to`);
+              if (!inputFrom || !inputTo) return;
+
+              // Use local time
+              const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
+              const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
+              
+              if (enableTime) {
+                inputFrom.value = startLocal.toISOString().slice(0, 16);
+                inputTo.value = endLocal.toISOString().slice(0, 16);
+              } else {
+                inputFrom.value = startLocal.toISOString().split("T")[0];
+                inputTo.value = endLocal.toISOString().split("T")[0];
+              }
+
+              if (instance && instance.input) {
+                instance.input.value = `${formatter.format(start)} - ${formatter.format(end)}`;
+              }
+
+              // Dispatch change events
+              inputFrom.dispatchEvent(new Event('change', { bubbles: true }));
+              inputTo.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          } catch (e) {
+            console.warn(`DatePicker: Error in onClose for ${pickerId}:`, e);
           }
+        },
+      };
 
-          instance.input.value = `${formatter.format(start)} - ${formatter.format(end)}`;
+      const fpInstance = flatpickr(`#${pickerId}`, config);
 
-          // Dispatch change events
-          inputFrom.dispatchEvent(new Event('change', { bubbles: true }));
-          inputTo.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      },
-    };
+      // Guard: ensure instance was created
+      if (!fpInstance) {
+        console.warn(`DatePicker: Failed to initialize flatpickr for #${pickerId}`);
+        return;
+      }
 
-    const fpInstance = flatpickr(`#${pickerId}`, config);
+      // Store instance for external access
+      picker._flatpickr = fpInstance;
 
-    // Store instance for external access
-    picker._flatpickr = fpInstance;
-
-    // Expose methods to update constraints
-    window.updateDatePickerConstraints = window.updateDatePickerConstraints || {};
-    window.updateDatePickerConstraints[pickerId] = {
-      setMinDate: (date) => fpInstance.set('minDate', date),
-      setMaxDate: (date) => fpInstance.set('maxDate', date),
-      getInstance: () => fpInstance
-    };
+      // Expose methods to update constraints
+      window.updateDatePickerConstraints = window.updateDatePickerConstraints || {};
+      window.updateDatePickerConstraints[pickerId] = {
+        setMinDate: (date) => {
+          try {
+            if (fpInstance && typeof fpInstance.set === 'function') {
+              fpInstance.set('minDate', date);
+            }
+          } catch (e) {
+            console.warn(`DatePicker: Error setting minDate for ${pickerId}:`, e);
+          }
+        },
+        setMaxDate: (date) => {
+          try {
+            if (fpInstance && typeof fpInstance.set === 'function') {
+              fpInstance.set('maxDate', date);
+            }
+          } catch (e) {
+            console.warn(`DatePicker: error setting maxDate for ${pickerId}:`, e);
+          }
+        },
+        getInstance: () => fpInstance
+      };
+    } catch (error) {
+      console.error(`DatePicker: Fatal error initializing #${pickerId}:`, error);
+    }
   });
 </script>
 

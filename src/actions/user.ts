@@ -413,3 +413,107 @@ export const onboarding = {
 // TYPE EXPORTS for client-side usage
 // ============================================================================
 export type OnboardingActions = typeof onboarding;
+
+// ============================================================================
+// SETTINGS ACTIONS
+// ============================================================================
+
+export const settings = {
+  // ============================================================================
+  // Update user settings
+  // ============================================================================
+  updateSettings: defineAction({
+    input: z.object({
+      user_id: z.string().uuid(),
+      preferences_prompt_until: z.string().datetime().optional(),
+    }),
+    handler: async (input, context) => {
+      const userId = context.locals.user_id;
+      if (!userId) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in'
+        });
+      }
+
+      // Verify user can only update their own settings
+      if (userId !== input.user_id) {
+        throw new ActionError({
+          code: 'FORBIDDEN',
+          message: 'You can only update your own settings'
+        });
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .update({
+            preferences_prompt_until: input.preferences_prompt_until ? new Date(input.preferences_prompt_until) : null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', input.user_id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { success: true, data };
+      } catch (error) {
+        handleRpcError(error, 'Failed to update settings');
+      }
+    }
+  }),
+};
+
+// ============================================================================
+// TRAVEL PREFERENCES ACTIONS (Simplified for modal)
+// ============================================================================
+
+export const travelPreferences = {
+  // ============================================================================
+  // Update travel preferences (simplified)
+  // ============================================================================
+  update: defineAction({
+    input: z.object({
+      user_id: z.string().uuid(),
+      budget_range: z.enum(['budget', 'moderate', 'luxury', 'any']).optional(),
+      travel_style: z.array(z.string()).optional(),
+      pace_preference: z.enum(['relaxed', 'moderate', 'fast', 'any']).optional(),
+    }),
+    handler: async (input, context) => {
+      const userId = context.locals.user_id;
+      if (!userId) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in'
+        });
+      }
+
+      // Verify user can only update their own preferences
+      if (userId !== input.user_id) {
+        throw new ActionError({
+          code: 'FORBIDDEN',
+          message: 'You can only update your own preferences'
+        });
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_travel_preferences')
+          .upsert({
+            user_id: input.user_id,
+            budget_range: input.budget_range || 'any',
+            travel_style: input.travel_style || [],
+            pace_preference: input.pace_preference || 'moderate',
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { success: true, data };
+      } catch (error) {
+        handleRpcError(error, 'Failed to update travel preferences');
+      }
+    }
+  }),
+};

@@ -3,7 +3,8 @@
 import Pageplate from "@/layouts/PagePlate.astro";
 import TripCard from "@/components/TripCard.astro";
 import SuggestedTripCard from "@/components/SuggestedTripCard.astro";
-import { supabase } from "@/lib/supabase";
+import PreferencesPrompt from "@/components/PreferencesPrompt.astro";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 
 const userId = Astro.locals.user_id;
 
@@ -18,11 +19,29 @@ const currentPage = parseInt(url.searchParams.get('page') || '1');
 const searchQuery = url.searchParams.get('search') || '';
 const statusFilter = url.searchParams.get('status') || '';
 const regionFilter = url.searchParams.get('region') || '';
+
+// Preference filters for Discover tab
+const budgetFilter = url.searchParams.get('budget') || '';
+const styleFilter = url.searchParams.get('style') || '';
+const paceFilter = url.searchParams.get('pace') || '';
+
 const itemsPerPage = 12;
 const offset = (currentPage - 1) * itemsPerPage;
 
+// Fetch user preferences and settings
+const [preferencesResult, settingsResult] = await Promise.all([
+  supabaseAdmin.from('user_travel_preferences').select('*').eq('user_id', userId).single(),
+  supabaseAdmin.from('user_settings').select('preferences_prompt_until').eq('user_id', userId).single()
+]);
+
+const userPreferences = preferencesResult.data;
+const userSettings = settingsResult.data;
+const now = new Date().toISOString();
+const showPreferencesPrompt = !userPreferences && 
+  (!userSettings?.preferences_prompt_until || userSettings.preferences_prompt_until < now);
+
 // Get initial data for all tabs using RPC functions
-const [ownedResult, memberResult, recentResult, suggestedResult] = await Promise.all([
+const [ownedResult, memberResult, discoverResult, suggestedResult] = await Promise.all([
   supabase.rpc('get_user_owned_trips', {
     p_user_id: userId,
     p_search: currentTab === 'owned' ? (searchQuery || null) : null,
@@ -37,13 +56,15 @@ const [ownedResult, memberResult, recentResult, suggestedResult] = await Promise
     p_limit: itemsPerPage,
     p_offset: currentTab === 'member' ? offset : 0,
   }),
-  supabase.rpc('get_recent_trips', {
+  supabase.rpc('get_discover_trips', {
     p_user_id: userId,
-    p_search: currentTab === 'recent' ? (searchQuery || null) : null,
-    p_tags: null,
-    p_region: currentTab === 'recent' ? (regionFilter || null) : null,
+    p_search: currentTab === 'discover' ? (searchQuery || null) : null,
+    p_region: currentTab === 'discover' ? (regionFilter || null) : null,
+    p_budget: currentTab === 'discover' ? (budgetFilter || null) : null,
+    p_travel_style: currentTab === 'discover' ? (styleFilter || null) : null,
+    p_pace: currentTab === 'discover' ? (paceFilter || null) : null,
     p_limit: itemsPerPage,
-    p_offset: currentTab === 'recent' ? offset : 0,
+    p_offset: currentTab === 'discover' ? offset : 0,
   }),
   supabase.rpc('get_suggested_trips', {
     p_user_id: userId,
@@ -51,15 +72,15 @@ const [ownedResult, memberResult, recentResult, suggestedResult] = await Promise
   }),
 ]);
 
+console.log("Trip data:", ownedResult);
 const ownedTrips = ownedResult.data || [];
-console.log("ownedTrips", ownedTrips);
 const memberTrips = memberResult.data || [];
-const recentTrips = recentResult.data || [];
+const discoverTrips = discoverResult.data || [];
 const suggestedTrips = suggestedResult.data || [];
 
 const ownedCount = ownedTrips[0]?.total_count || 0;
 const memberCount = memberTrips[0]?.total_count || 0;
-const recentCount = recentTrips[0]?.total_count || 0;
+const discoverCount = discoverTrips[0]?.total_count || 0;
 
 // Determine which trips to show based on current tab
 let currentTrips = ownedTrips;
@@ -70,9 +91,9 @@ if (currentTab === 'member') {
   currentTrips = memberTrips;
   currentCount = memberCount;
   currentType = 'member';
-} else if (currentTab === 'recent') {
-  currentTrips = recentTrips;
-  currentCount = recentCount;
+} else if (currentTab === 'discover') {
+  currentTrips = discoverTrips;
+  currentCount = discoverCount;
   currentType = 'discover';
 }
 
@@ -139,12 +160,12 @@ function buildUrl(params: Record<string, string>) {
             </span>
           </a>
           <a
-            href={buildUrl({ tab: 'recent', page: '1', search: '', status: '', region: '' })}
-            class={`tab-link pb-4 px-1 font-semibold transition-colors relative ${currentTab === 'recent' ? 'active-tab' : 'inactive-tab'}`}
+            href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
+            class={`tab-link pb-4 px-1 font-semibold transition-colors relative ${currentTab === 'discover' ? 'active-tab' : 'inactive-tab'}`}
           >
             Discover
             <span class="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-medium">
-              {recentCount}
+              {discoverCount}
             </span>
           </a>
         </nav>
@@ -192,7 +213,7 @@ function buildUrl(params: Record<string, string>) {
           </select>
         </div>
 
-        {currentTab === 'recent' && (
+        {currentTab === 'discover' && (
           <div class="w-48">
             <label for="region-filter" class="block text-sm font-medium text-gray-700 mb-2">
               Region
@@ -203,14 +224,92 @@ function buildUrl(params: Record<string, string>) {
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="" selected={regionFilter === ''}>All Regions</option>
-              <option value="Asia" selected={regionFilter === 'Asia'}>Asia</option>
-              <option value="Europe" selected={regionFilter === 'Europe'}>Europe</option>
-              <option value="North America" selected={regionFilter === 'North America'}>North America</option>
-              <option value="South America" selected={regionFilter === 'South America'}>South America</option>
-              <option value="Africa" selected={regionFilter === 'Africa'}>Africa</option>
-              <option value="Oceania" selected={regionFilter === 'Oceania'}>Oceania</option>
+              <option value="NCR" selected={regionFilter === 'NCR'}>NCR</option>
+              <option value="CAR" selected={regionFilter === 'CAR'}>Cordillera</option>
+              <option value="I" selected={regionFilter === 'I'}>Ilocos Region</option>
+              <option value="II" selected={regionFilter === 'II'}>Cagayan Valley</option>
+              <option value="III" selected={regionFilter === 'III'}>Central Luzon</option>
+              <option value="IV-A" selected={regionFilter === 'IV-A'}>CALABARZON</option>
+              <option value="IV-B" selected={regionFilter === 'IV-B'}>MIMAROPA</option>
+              <option value="V" selected={regionFilter === 'V'}>Bicol Region</option>
+              <option value="VI" selected={regionFilter === 'VI'}>Western Visayas</option>
+              <option value="VII" selected={regionFilter === 'VII'}>Central Visayas</option>
+              <option value="VIII" selected={regionFilter === 'VIII'}>Eastern Visayas</option>
+              <option value="IX" selected={regionFilter === 'IX'}>Zamboanga Peninsula</option>
+              <option value="X" selected={regionFilter === 'X'}>Northern Mindanao</option>
+              <option value="XI" selected={regionFilter === 'XI'}>Davao Region</option>
+              <option value="XII" selected={regionFilter === 'XII'}>SOCCSKSARGEN</option>
+              <option value="XIII" selected={regionFilter === 'XIII'}>Caraga</option>
+              <option value="BARMM" selected={regionFilter === 'BARMM'}>BARMM</option>
             </select>
           </div>
+        )}
+
+        {/* Preference Filters - Only show when on Discover tab */}
+        {currentTab === 'discover' && (
+          <details class="group">
+            <summary class="cursor-pointer px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-gray-700 list-none flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+              </svg>
+              Preferences
+              {(budgetFilter || styleFilter || paceFilter) && (
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                  {(budgetFilter ? 1 : 0) + (styleFilter ? 1 : 0) + (paceFilter ? 1 : 0)}
+                </span>
+              )}
+            </summary>
+            <div class="absolute mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-10 flex gap-4">
+              <div>
+                <label for="budget-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                  Budget
+                </label>
+                <select
+                  id="budget-filter"
+                  name="budget"
+                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="" selected={budgetFilter === ''}>Any</option>
+                  <option value="budget" selected={budgetFilter === 'budget'}>Budget</option>
+                  <option value="moderate" selected={budgetFilter === 'moderate'}>Moderate</option>
+                  <option value="luxury" selected={budgetFilter === 'luxury'}>Luxury</option>
+                </select>
+              </div>
+              <div>
+                <label for="style-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                  Travel Style
+                </label>
+                <select
+                  id="style-filter"
+                  name="style"
+                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="" selected={styleFilter === ''}>Any</option>
+                  <option value="adventure" selected={styleFilter === 'adventure'}>Adventure</option>
+                  <option value="relax" selected={styleFilter === 'relax'}>Relax</option>
+                  <option value="beach" selected={styleFilter === 'beach'}>Beach</option>
+                  <option value="mountain" selected={styleFilter === 'mountain'}>Mountain</option>
+                  <option value="cultural" selected={styleFilter === 'cultural'}>Cultural</option>
+                  <option value="food" selected={styleFilter === 'food'}>Food Trip</option>
+                </select>
+              </div>
+              <div>
+                <label for="pace-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                  Pace
+                </label>
+                <select
+                  id="pace-filter"
+                  name="pace"
+                  class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="" selected={paceFilter === ''}>Any</option>
+                  <option value="relaxed" selected={paceFilter === 'relaxed'}>Relaxed</option>
+                  <option value="moderate" selected={paceFilter === 'moderate'}>Moderate</option>
+                  <option value="fast" selected={paceFilter === 'fast'}>Fast-paced</option>
+                </select>
+              </div>
+            </div>
+          </details>
         )}
 
         <button
@@ -220,9 +319,9 @@ function buildUrl(params: Record<string, string>) {
           Apply Filters
         </button>
 
-        {(searchQuery || statusFilter || regionFilter) && (
+        {(searchQuery || statusFilter || regionFilter || budgetFilter || styleFilter || paceFilter) && (
           <a
-            href={buildUrl({ tab: currentTab, page: '1', search: '', status: '', region: '' })}
+            href={buildUrl({ tab: currentTab, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
             class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
           >
             Clear Filters
@@ -274,7 +373,19 @@ function buildUrl(params: Record<string, string>) {
                 </svg>
               </div>
               <h3 class="text-xl font-semibold text-gray-900 mb-2">No trips found</h3>
-              <p class="text-gray-500">Try adjusting your search or filters</p>
+              <p class="text-gray-500">
+                {userPreferences 
+                  ? "Try adjusting your filters to find more trips"
+                  : "Set your travel preferences to get personalized recommendations"}
+              </p>
+              {!userPreferences && (
+                <button
+                  id="open-preferences-from-empty"
+                  class="mt-4 inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Set Preferences
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -401,6 +512,11 @@ function buildUrl(params: Record<string, string>) {
     )}
   </section>
 
+  {/* Preferences Prompt Modal */}
+  {showPreferencesPrompt && (
+    <PreferencesPrompt userId={userId} />
+  )}
+
   <style>
     .active-tab {
       border-bottom: 2px solid rgb(37, 99, 235);
@@ -424,6 +540,10 @@ function buildUrl(params: Record<string, string>) {
     const searchInput = document.getElementById('search-input');
     const statusFilter = document.getElementById('status-filter');
     const regionFilter = document.getElementById('region-filter');
+    const budgetFilter = document.getElementById('budget-filter');
+    const styleFilter = document.getElementById('style-filter');
+    const paceFilter = document.getElementById('pace-filter');
+    const openPreferencesBtn = document.getElementById('open-preferences-from-empty');
 
     if (searchInput && form) {
       searchInput.addEventListener('input', () => {
@@ -443,6 +563,33 @@ function buildUrl(params: Record<string, string>) {
     if (regionFilter && form) {
       regionFilter.addEventListener('change', () => {
         form.submit();
+      });
+    }
+
+    // Preference filters
+    if (budgetFilter && form) {
+      budgetFilter.addEventListener('change', () => {
+        form.submit();
+      });
+    }
+
+    if (styleFilter && form) {
+      styleFilter.addEventListener('change', () => {
+        form.submit();
+      });
+    }
+
+    if (paceFilter && form) {
+      paceFilter.addEventListener('change', () => {
+        form.submit();
+      });
+    }
+
+    // Open preferences from empty state
+    if (openPreferencesBtn) {
+      openPreferencesBtn.addEventListener('click', () => {
+        const modal = document.getElementById('preferences-modal');
+        if (modal) modal.classList.remove('hidden');
       });
     }
   </script>

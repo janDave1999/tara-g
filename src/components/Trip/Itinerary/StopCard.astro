@@ -1,7 +1,7 @@
 ---
 import ActivityList from './ActivityList.astro';
 import type { ItineraryStop } from '@/types/itinerary';
-import { formatTime, getDuration } from '@/utility/dateFormatter';
+import { formatTime } from '@/utility/dateFormatter';
 import { getStopColors } from '@/utility/stopColors';
 
 interface Props {
@@ -10,9 +10,10 @@ interface Props {
 }
 
 const { completeStop, isOwner } = Astro.props;
-const colors = getStopColors(completeStop.stop_type);
+const stopType = completeStop.stop_type ?? completeStop.location_type;
+const locationName = completeStop.location_name ?? completeStop.location?.name;
+const colors = getStopColors(stopType);
 const stopTime = formatTime(completeStop.scheduled_start);
-const duration = getDuration(completeStop.scheduled_start, completeStop.scheduled_end);
 ---
 
 <div class="timeline-item relative group pl-12 pb-6" data-stop-id={completeStop.id}>
@@ -28,17 +29,16 @@ const duration = getDuration(completeStop.scheduled_start, completeStop.schedule
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
             <span class={`px-2 py-1 ${colors.text} bg-white/70 rounded-md text-xs font-bold uppercase tracking-wider`}>
-              {completeStop.stop_type.replace('_', ' ')}
+              {stopType?.replace('_', ' ')}
             </span>
           </div>
-          <!-- <h3 class="text-xl font-bold text-gray-900 mb-1">{completeStop.location_name}</h3> -->
-          {completeStop.location_name && (
+          {locationName && (
             <div class="flex items-center gap-2 text-gray-600 text-sm">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <h5 class="text-xl font-bold text-gray-900 mb-1">{completeStop.location_name}</h5>
+              <h5 class="text-xl font-bold text-gray-900 mb-1">{locationName}</h5>
             </div>
           )}
         </div>

@@ -1,5 +1,8 @@
 ---
-const tripId = Astro.props.tripId || Astro.params.tripId;
+interface Props {
+  tripId: string;
+}
+const { tripId } = Astro.props;
 ---
 
 <div id="members-data-container" data-trip-id={tripId}></div>

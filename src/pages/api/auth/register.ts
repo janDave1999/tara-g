@@ -6,6 +6,7 @@ import {
 } from "../../../lib/errorHandler";
 import { commonSchemas } from "../../../lib/validation";
 import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
+import { SITE_URL } from "astro:env/server";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -61,11 +62,15 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Create new user in Supabase Auth
+    // emailRedirectTo sends confirmed users to onboarding instead of /feeds
     const { data, error } = await supabase.auth.signUp({
       email: validatedData.email,
       password: validatedData.password,
+      options: {
+        emailRedirectTo: `${SITE_URL}/api/auth/callback?next=/onboarding/profile`,
+      },
     });
-
+    console.log(error)
     if (error) {
       if (error.message.includes('User already registered')) {
         throw new ValidationError('Email already exists', { email: 'This email is already registered' });

@@ -112,7 +112,7 @@ const displayEmail = email ? decodeURIComponent(email) : "";
         body: formData,
       });
 
-      const result = await response.json();
+      const result: any = await response.json();
 
       resendFeedback.textContent = result.message || 'Confirmation email resent!';
       resendFeedback.className = response.ok

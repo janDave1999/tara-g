@@ -238,47 +238,57 @@ if (accessToken && refreshToken) {
 </AuthLayout>
 
 <script>
-  import { showToast } from "@/scripts/Toast.ts";
-  import { clientSchemas, FormValidator } from "@/lib/clientValidation.ts";
+  import { showToast } from "@/scripts/Toast";
+  import { clientSchemas, FormValidator } from "@/lib/clientValidation";
 
   class RegisterForm {
     private formValidator: FormValidator;
-    private elements: {
-      form: HTMLFormElement | null;
-      emailInput: HTMLInputElement | null;
-      passwordInput: HTMLInputElement | null;
-      confirmPasswordInput: HTMLInputElement | null;
-      termsCheckbox: HTMLInputElement | null;
-      submitButton: HTMLButtonElement | null;
-      submitButtonText: HTMLElement | null;
-      submitSpinner: HTMLElement | null;
-      generalError: HTMLElement | null;
-      generalErrorText: HTMLElement | null;
-      googleButton: HTMLButtonElement | null;
-      facebookButton: HTMLButtonElement | null;
+    private elements = {
+      form: null as HTMLFormElement | null,
+      emailInput: null as HTMLInputElement | null,
+      emailError: null as HTMLElement | null,
+      emailErrorText: null as HTMLElement | null,
+      passwordInput: null as HTMLInputElement | null,
+      passwordError: null as HTMLElement | null,
+      passwordErrorText: null as HTMLElement | null,
+      confirmPasswordInput: null as HTMLInputElement | null,
+      confirmPasswordError: null as HTMLElement | null,
+      confirmPasswordErrorText: null as HTMLElement | null,
+      termsCheckbox: null as HTMLInputElement | null,
+      submitButton: null as HTMLButtonElement | null,
+      submitButtonText: null as HTMLElement | null,
+      submitSpinner: null as HTMLElement | null,
+      generalError: null as HTMLElement | null,
+      generalErrorText: null as HTMLElement | null,
+      googleButton: null as HTMLButtonElement | null,
+      facebookButton: null as HTMLButtonElement | null,
     };
 
     constructor() {
       this.formValidator = new FormValidator(clientSchemas.register);
-      this.elements = this.initializeElements();
+      this.initializeElements();
       this.attachEventListeners();
     }
 
     private initializeElements() {
-      return {
-        form: document.getElementById('registerForm') as HTMLFormElement,
-        emailInput: document.getElementById('email') as HTMLInputElement,
-        passwordInput: document.getElementById('password') as HTMLInputElement,
-        confirmPasswordInput: document.getElementById('confirmPassword') as HTMLInputElement,
-        termsCheckbox: document.getElementById('terms') as HTMLInputElement,
-        submitButton: document.getElementById('registerButton') as HTMLButtonElement,
-        submitButtonText: document.getElementById('registerButtonText'),
-        submitSpinner: document.getElementById('registerSpinner'),
-        generalError: document.getElementById('generalError') as HTMLElement,
-        generalErrorText: document.getElementById('generalErrorText') as HTMLElement,
-        googleButton: document.getElementById('googleSignUp') as HTMLButtonElement,
-        facebookButton: document.getElementById('facebookSignUp') as HTMLButtonElement,
-      };
+      this.elements.form = document.getElementById('registerForm') as HTMLFormElement;
+      this.elements.emailInput = document.getElementById('email') as HTMLInputElement;
+      this.elements.emailError = document.getElementById('emailError') as HTMLElement;
+      this.elements.emailErrorText = document.getElementById('emailErrorText') as HTMLElement;
+      this.elements.passwordInput = document.getElementById('password') as HTMLInputElement;
+      this.elements.passwordError = document.getElementById('passwordError') as HTMLElement;
+      this.elements.passwordErrorText = document.getElementById('passwordErrorText') as HTMLElement;
+      this.elements.confirmPasswordInput = document.getElementById('confirmPassword') as HTMLInputElement;
+      this.elements.confirmPasswordError = document.getElementById('confirmPasswordError') as HTMLElement;
+      this.elements.confirmPasswordErrorText = document.getElementById('confirmPasswordErrorText') as HTMLElement;
+      this.elements.termsCheckbox = document.getElementById('terms') as HTMLInputElement;
+      this.elements.submitButton = document.getElementById('registerButton') as HTMLButtonElement;
+      this.elements.submitButtonText = document.getElementById('registerButtonText') as HTMLElement;
+      this.elements.submitSpinner = document.getElementById('registerSpinner') as HTMLElement;
+      this.elements.generalError = document.getElementById('generalError') as HTMLElement;
+      this.elements.generalErrorText = document.getElementById('generalErrorText') as HTMLElement;
+      this.elements.googleButton = document.getElementById('googleSignUp') as HTMLButtonElement;
+      this.elements.facebookButton = document.getElementById('facebookSignUp') as HTMLButtonElement;
     }
 
     private attachEventListeners() {
@@ -371,7 +381,7 @@ if (accessToken && refreshToken) {
           // Server will handle redirect
           window.location.href = response.url;
         } else {
-          const errorData = await response.json();
+          const errorData: any = await response.json();
           
           if (errorData.code === 'VALIDATION_ERROR') {
             // Handle field-specific validation errors

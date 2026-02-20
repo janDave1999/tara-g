@@ -2,7 +2,7 @@
 import { SEO } from "astro-seo";
 
 interface Props {
-  description: {
+  description?: {
     title?: string,
     containsArticle?: boolean,
     description?: string,
@@ -14,30 +14,32 @@ interface Props {
     mentionedKeywords?: string[],
   },
 }
+
 const { description } = Astro.props as Props;
+const desc = description || {};
 ---
 <SEO 
   openGraph={{
     basic:{
       url: Astro.url.origin,
-      type: description.containsArticle ? "article" : "website",
-      title: description.title || "No Title",
-      image: description.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
+      type: desc.containsArticle ? "article" : "website",
+      title: desc.title || "No Title",
+      image: desc.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
     },
     optional:{
-      description: description?.description,
+      description: desc?.description,
     },
-    image: description.previewImage ? {
-      url: description.previewImage,
-      alt: description.title,
+    image: desc.previewImage ? {
+      url: desc.previewImage,
+      alt: desc.title,
     } : undefined,
-    article: description.containsArticle ? {
-      publishedTime: description.datePublished,
-      modifiedTime: description.dateModified,
+    article: desc.containsArticle ? {
+      publishedTime: desc.datePublished,
+      modifiedTime: desc.dateModified,
       expirationTime: undefined,
-      authors: description.author ? (Array.isArray(description.author) ? description.author : [description.author]) : undefined,
-      section: description.topics?.[0] || undefined,
-      tags: description.mentionedKeywords,
+      authors: desc.author ? (Array.isArray(desc.author) ? desc.author : [desc.author]) : undefined,
+      section: desc.topics?.[0] || undefined,
+      tags: desc.mentionedKeywords,
     } : undefined,
   }}
 />

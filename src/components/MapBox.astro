@@ -543,10 +543,10 @@ body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif;
 
 <script>
   import mapboxgl from "mapbox-gl";
-import { actions } from "astro:actions";
-import { PUBLIC_R2_URL } from "astro:env/client";
-import { PH_PROVINCES } from "@/data/phProvinces";
-import { slugify } from "@/scripts/Slugify";
+  import { actions } from "astro:actions";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+  import { PH_PROVINCES } from "@/data/phProvinces";
+  import { slugify } from "@/scripts/Slugify";
 
 const CONFIG = {
   DEFAULT_CENTER: [120.9842, 14.5995] as [number, number],
@@ -600,11 +600,16 @@ async function fetchNearbyTrips(lng: number, lat: number) {
   const radius = getRadiusByZoom(map.getZoom());
 
   while (true) {
-    const { data: trips, error } = await actions.trip.getNearbyTrips({
-      lng, lat, radius, page,
-      location_filter: activeLocationType,
-      tag_filter: activeTags.length > 0 ? activeTags : undefined,
+    const result = await actions.trip.getNearbyTrips({
+      latitude: lat,
+      longitude: lng,
+      radiusKm: radius,
+      limit: 20,
+      offset: (page - 1) * 20,
     });
+
+    const trips = result.data?.trips;
+    const error = result.error;
 
     if (error || !trips || trips.length === 0) break;
     allTrips.push(...trips);

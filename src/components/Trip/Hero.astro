@@ -6,6 +6,7 @@ import UploadImages from "./UploadImages.astro";
 interface TripImage {
   key_name: string;
   type: 'hero' | 'gallery';
+  image_url: string;
   alt?: string;
   location?: string;
   description?: string;
@@ -20,6 +21,7 @@ const { trip_images = [], userRole }: Props = Astro.props;
 
 let isOwner = userRole === 'owner' ? true : false;
 const heroImages = trip_images?.filter((img) => img.type === "hero");
+console.log("Hero Images: ", heroImages);
 const totalSlides = isOwner ? heroImages?.length + 1 : heroImages?.length;
 
 // Helper functions for slide navigation
@@ -50,7 +52,7 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
         >
           <!-- Image with lazy loading and optimized sizing -->
           <img 
-            src={`${PUBLIC_R2_URL}/${image?.key_name}`}
+            src={`${PUBLIC_R2_URL}${image?.image_url}`}
             alt={image.alt || "Adventure hero image"} 
             loading="lazy"
             class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] bg-gray-200"

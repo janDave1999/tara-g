@@ -36,6 +36,7 @@ const {
   trip_images,
 } = trip;
 
+
 // Get primary location (destination)
 const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
 const destination = primaryLocation?.location?.name || primaryLocation?.location_name || 'No destination set';
@@ -48,6 +49,22 @@ const { data: itineraryStops } = await supabaseAdmin
   .eq('trip_id', trip_id)
   .not('location_type', 'in', '(destination)')
   .order('scheduled_start', { ascending: true, nullsFirst: false });
+
+// Detect if the viewing user has a pending invitation — query trip_invitations directly
+// (more reliable than checking trip_members which uses an INNER JOIN with public.users)
+let pendingInvitationId: string | null = null;
+if (user) {
+  const { data: inv } = await supabaseAdmin
+    .from('trip_invitations')
+    .select('invitation_id')
+    .eq('trip_id', trip_id)
+    .eq('invitee_id', user)
+    .eq('status', 'pending')
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+  pendingInvitationId = inv?.invitation_id || null;
+}
+const isInvited = !!pendingInvitationId;
 
 // Prepare props for components
 const tripProps = {
@@ -80,14 +97,48 @@ const tripProps = {
   tags: trip_details?.tags || [],
   
   // Locations
-  locations: trip_locations || []
-};
+  locations: trip_locations || [],
 
-console.log(itineraryStops);
+  // Invitation state
+  isInvited,
+};
 ---
 
 <Layout title={`${title} | Tara G`}>
   <section class="max-w-5xl mx-auto mt-6 mb-20 px-4 space-y-5">
+
+    <!-- Invitation Banner (only shown to invited users) -->
+    {isInvited && pendingInvitationId && (
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-amber-900">You've been invited to join this trip!</p>
+            <p class="text-xs text-amber-700 mt-0.5">Accept to become a member and access the full itinerary.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="accept-invite-btn"
+            data-invitation-id={pendingInvitationId}
+            class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            Accept Invitation
+          </button>
+          <button
+            id="decline-invite-btn"
+            data-invitation-id={pendingInvitationId}
+            class="px-5 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            Decline
+          </button>
+        </div>
+      </div>
+    )}
 
     <!-- Card 1: Hero image + Trip title/meta -->
     <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
@@ -119,8 +170,50 @@ console.log(itineraryStops);
   const joinBtn = document.getElementById('join-btn') as HTMLButtonElement;
   const cancelRequestBtn = document.getElementById('cancel-req-btn') as HTMLButtonElement;
   const leaveTripBtn = document.getElementById('leave-trip-btn') as HTMLButtonElement;
-  
+  const acceptInviteBtn = document.getElementById('accept-invite-btn') as HTMLButtonElement | null;
+  const declineInviteBtn = document.getElementById('decline-invite-btn') as HTMLButtonElement | null;
+
   const tripId = window.location.pathname.split('/').pop();
+
+  if (acceptInviteBtn) {
+    acceptInviteBtn.addEventListener('click', async () => {
+      const invitationId = acceptInviteBtn.dataset.invitationId!;
+      acceptInviteBtn.disabled = true;
+      acceptInviteBtn.textContent = 'Accepting...';
+      if (declineInviteBtn) declineInviteBtn.disabled = true;
+
+      const { error } = await actions.trip.acceptTripInvitation({ invitationId });
+      if (error instanceof ActionError) {
+        showToast({ message: error.message, type: 'error' });
+        acceptInviteBtn.disabled = false;
+        acceptInviteBtn.textContent = 'Accept Invitation';
+        if (declineInviteBtn) declineInviteBtn.disabled = false;
+      } else {
+        showToast({ message: 'Invitation accepted! Welcome to the trip.', type: 'success' });
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    });
+  }
+
+  if (declineInviteBtn) {
+    declineInviteBtn.addEventListener('click', async () => {
+      const invitationId = declineInviteBtn.dataset.invitationId!;
+      declineInviteBtn.disabled = true;
+      declineInviteBtn.textContent = 'Declining...';
+      if (acceptInviteBtn) acceptInviteBtn.disabled = true;
+
+      const { error } = await actions.trip.declineTripInvitation({ invitationId });
+      if (error instanceof ActionError) {
+        showToast({ message: error.message, type: 'error' });
+        declineInviteBtn.disabled = false;
+        declineInviteBtn.textContent = 'Decline';
+        if (acceptInviteBtn) acceptInviteBtn.disabled = false;
+      } else {
+        showToast({ message: 'Invitation declined.', type: 'info' });
+        setTimeout(() => window.location.href = '/trips', 1200);
+      }
+    });
+  }
 
   if (joinBtn) {
     joinBtn.addEventListener('click', async () => {

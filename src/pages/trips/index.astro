@@ -406,7 +406,7 @@ function buildUrl(params: Record<string, string>) {
       </div>
 
       <!-- Results meta -->
-      {currentTrips.length > 0 && (
+      {currentTab !== 'invited' && currentTrips.length > 0 && (
         <div class="flex items-center justify-between mb-4">
           <p class="text-sm text-gray-400">
             <span class="font-semibold text-gray-700">{currentTrips.length}</span> of <span class="font-semibold text-gray-700">{currentCount}</span> trips
@@ -416,7 +416,7 @@ function buildUrl(params: Record<string, string>) {
       )}
 
       <!-- Trip Grid -->
-      {currentTrips.length > 0 && (
+      {currentTab !== 'invited' && currentTrips.length > 0 && (
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8" id="trips-grid">
           {currentTrips.map((trip: any) => (
             <TripCard trip={trip} type={currentType} />
@@ -424,8 +424,74 @@ function buildUrl(params: Record<string, string>) {
         </div>
       )}
 
+      <!-- ── Invited Tab: Pending Invitations ── -->
+      {currentTab === 'invited' && (
+        pendingInvitations.length > 0 ? (
+          <div class="space-y-4 mb-8">
+            <p class="text-sm text-gray-400 mb-2">
+              <span class="font-semibold text-gray-700">{pendingInvitations.length}</span> pending {pendingInvitations.length === 1 ? 'invitation' : 'invitations'}
+            </p>
+            {pendingInvitations.map((inv: any) => (
+              <div
+                class="invitation-card bg-white rounded-xl border border-amber-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                data-invitation-id={inv.invitation_id}
+                data-trip-id={inv.trip_id}
+              >
+                <!-- Icon -->
+                <div class="shrink-0 w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <a href={`/trips/${inv.trip_id}`} class="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-base leading-snug">
+                    {inv.trip_title}
+                  </a>
+                  <p class="text-sm text-gray-500 mt-0.5">
+                    Invited by <span class="font-medium text-gray-700">{inv.inviter_name}</span>
+                    {inv.message && <> · <span class="italic">"{inv.message}"</span></>}
+                  </p>
+                  <p class={`text-xs mt-1 font-medium ${inv.days_until_expiry <= 1 ? 'text-red-500' : 'text-gray-400'}`}>
+                    {inv.days_until_expiry === 0 ? 'Expires today' : `Expires in ${inv.days_until_expiry} day${inv.days_until_expiry !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    class="accept-invite-btn px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all disabled:opacity-50"
+                    data-invitation-id={inv.invitation_id}
+                    data-trip-id={inv.trip_id}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    class="decline-invite-btn px-4 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-800 text-sm font-semibold transition-all disabled:opacity-50"
+                    data-invitation-id={inv.invitation_id}
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="flex flex-col items-center justify-center py-24">
+            <div class="w-24 h-24 rounded-3xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-xl shadow-amber-500/25 mx-auto mb-6">
+              <svg class="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">No pending invitations</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">When someone invites you to join their trip, it will appear here.</p>
+          </div>
+        )
+      )}
+
       <!-- ── Empty States ── -->
-      {currentTrips.length === 0 && (
+      {currentTab !== 'invited' && currentTrips.length === 0 && (
         <div class="flex flex-col items-center justify-center py-24">
           {currentTab === 'owned' && (
             <div class="text-center max-w-sm">
@@ -501,7 +567,7 @@ function buildUrl(params: Record<string, string>) {
       )}
 
       <!-- ── Pagination ── -->
-      {totalPages > 1 && (
+      {currentTab !== 'invited' && totalPages > 1 && (
         <nav class="flex justify-center items-center gap-1 mt-6 mb-2" aria-label="Pagination">
           {currentPage > 1 ? (
             <a
@@ -617,6 +683,45 @@ function buildUrl(params: Record<string, string>) {
     document.getElementById('open-preferences-from-empty')?.addEventListener('click', () => {
       const modal = document.getElementById('preferences-modal') as HTMLDialogElement | null;
       modal?.showModal?.() ?? modal?.classList.remove('hidden');
+    });
+
+    // ── Invitation Accept / Decline ──
+    import { actions } from 'astro:actions';
+
+    async function handleInvitation(btn: HTMLButtonElement, action: 'accept' | 'decline') {
+      const invitationId = btn.dataset.invitationId!;
+      const tripId = btn.dataset.tripId;
+      const card = btn.closest('.invitation-card') as HTMLElement;
+
+      card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = true));
+
+      if (action === 'accept') {
+        const { error } = await actions.trip.acceptTripInvitation({ invitationId });
+        if (error) {
+          card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = false));
+          alert(error.message || 'Failed to accept invitation.');
+        } else {
+          window.location.href = `/trips/${tripId}`;
+        }
+      } else {
+        const { error } = await actions.trip.declineTripInvitation({ invitationId });
+        if (error) {
+          card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = false));
+          alert(error.message || 'Failed to decline invitation.');
+        } else {
+          card.style.opacity = '0';
+          card.style.transition = 'opacity 0.3s';
+          setTimeout(() => card.remove(), 300);
+        }
+      }
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.accept-invite-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleInvitation(btn, 'accept'));
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.decline-invite-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleInvitation(btn, 'decline'));
     });
   </script>
 

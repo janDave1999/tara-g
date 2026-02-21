@@ -464,7 +464,8 @@ database-migrations/
 ├── 031_fix_get_discover_trips.sql          # Fix get_discover_trips: add owner_name/owner_avatar (JOIN users), remove 30-day cap, exclude caller's own trips
 ├── 032_fix_discover_trips_type_cast.sql    # Fix 031: add ::INTEGER casts for max_pax/current_participants/estimated_budget (SMALLINT→INTEGER mismatch, code 42804)
 ├── 033_create_trip_edit_rpcs.sql           # SR-AUTHZ-001: update_trip_dates, update_trip_preferences, update_trip_budget, update_trip_description — all with server-side ownership validation
-└── 034_visibility_gate_get_trip_full_details.sql  # SR-AUTHZ-001: add visibility gate to get_trip_full_details; visitors on private trips receive NULL → /404 redirect
+├── 034_visibility_gate_get_trip_full_details.sql  # SR-AUTHZ-001: add visibility gate to get_trip_full_details; visitors on private trips receive NULL → /404 redirect
+└── 035_get_nearby_trips.sql                 # Maps: new get_nearby_trips RPC function with lat/lng coordinates for map markers
 
 src/
 ├── pages/

@@ -1,0 +1,168 @@
+---
+---
+
+<div id="trip-detail-modal" class="trip-detail-modal">
+  <div class="trip-detail-content" id="trip-detail-content"></div>
+</div>
+
+<script>
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const tripModal = document.getElementById('trip-detail-modal') as HTMLDivElement;
+  const tripContent = document.getElementById('trip-detail-content') as HTMLDivElement;
+
+  // Close modal when clicking outside
+  tripModal?.addEventListener('click', (e) => {
+    if (e.target === tripModal) {
+      tripModal.classList.remove('open');
+    }
+  });
+
+  // Expose function to show trip details
+  (window as any).showTripDetail = function(trip: any) {
+    const hasSlots = trip.current_participants < trip.max_participants;
+    const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
+    
+    tripContent.innerHTML = `
+      <img src="${img}" class="trip-detail-image" />
+      <div class="trip-detail-body">
+        <h2 class="trip-detail-title">${trip.title}</h2>
+        <div class="trip-detail-row">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <span>${trip.location_name || 'Unknown location'}</span>
+        </div>
+        <div class="trip-detail-row">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <span>${trip.start_date || 'TBD'} - ${trip.end_date || 'TBD'}</span>
+        </div>
+        <div class="trip-detail-row">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span>${trip.current_participants || 0}/${trip.max_participants || 0} joiners</span>
+          <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
+            ${hasSlots ? '✓ Available' : '✕ Full'}
+          </span>
+        </div>
+        <div class="trip-detail-actions">
+          <button class="close-detail-btn" id="close-trip-detail">Close</button>
+          <button class="view-trip-btn" onclick="window.location.href='/trips/${trip.trip_id}'">View Details</button>
+        </div>
+      </div>
+    `;
+    
+    // Add close handler
+    document.getElementById('close-trip-detail')?.addEventListener('click', () => {
+      tripModal.classList.remove('open');
+    });
+    
+    tripModal.classList.add('open');
+  };
+</script>
+
+<style>
+  .trip-detail-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 3000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .trip-detail-modal.open { 
+    display: flex; 
+  }
+
+  .trip-detail-content {
+    background: white;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .trip-detail-image {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+  }
+
+  .trip-detail-body { 
+    padding: 24px; 
+  }
+
+  .trip-detail-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+  }
+
+  .trip-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  .trip-detail-row svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .trip-detail-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .trip-detail-actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+
+  .close-detail-btn {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .view-trip-btn {
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+  }
+
+  .slots-badge {
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .slots-badge.available {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .slots-badge.full {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+</style>

@@ -1,0 +1,291 @@
+---
+---
+
+<div id="filter-modal" class="filter-modal">
+  <div class="filter-modal-content">
+    <div class="filter-modal-header">
+      <h2>Filters</h2>
+      <button class="close-modal-btn" id="close-filter-modal">×</button>
+    </div>
+
+    <div class="filter-section">
+      <h3>📍 Location Type</h3>
+      <div class="location-type-grid">
+        <div class="location-type-btn active" data-type="destination">Destination</div>
+        <div class="location-type-btn" data-type="pickup">Pickup</div>
+        <div class="location-type-btn" data-type="dropoff">Drop-off</div>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <h3>🏃 Activities</h3>
+      <div class="tag-grid">
+        <div class="tag-chip" data-tag="hiking">🥾 Hiking</div>
+        <div class="tag-chip" data-tag="diving">🤿 Diving</div>
+        <div class="tag-chip" data-tag="surfing">🏄 Surfing</div>
+        <div class="tag-chip" data-tag="camping">⛺ Camping</div>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <h3>🌴 Nature</h3>
+      <div class="tag-grid">
+        <div class="tag-chip" data-tag="beach">🏖️ Beach</div>
+        <div class="tag-chip" data-tag="mountain">⛰️ Mountain</div>
+        <div class="tag-chip" data-tag="island">🏝️ Island</div>
+      </div>
+    </div>
+
+    <div class="filter-modal-footer">
+      <button class="clear-filters-btn" id="clear-filters">Clear All</button>
+      <button class="apply-filters-btn" id="apply-filters">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const filterModal = document.getElementById('filter-modal') as HTMLDivElement;
+  const closeFilterModal = document.getElementById('close-filter-modal') as HTMLButtonElement;
+  const filterBtn = document.getElementById('filter-btn') as HTMLButtonElement;
+  const locationBtns = document.querySelectorAll('.location-type-btn') as NodeListOf<HTMLDivElement>;
+  const tagChips = document.querySelectorAll('.tag-chip') as NodeListOf<HTMLDivElement>;
+  const clearFilters = document.getElementById('clear-filters') as HTMLButtonElement;
+  const applyFilters = document.getElementById('apply-filters') as HTMLButtonElement;
+  const filterBadge = document.getElementById('filter-badge') as HTMLSpanElement;
+
+  let activeTags: string[] = [];
+  let activeLocationType = 'destination';
+
+  // Open modal
+  filterBtn?.addEventListener('click', () => {
+    filterModal.classList.add('open');
+  });
+
+  // Close modal
+  closeFilterModal?.addEventListener('click', () => {
+    filterModal.classList.remove('open');
+  });
+
+  filterModal?.addEventListener('click', (e) => {
+    if (e.target === filterModal) {
+      filterModal.classList.remove('open');
+    }
+  });
+
+  // Location type buttons
+  locationBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      locationBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeLocationType = btn.dataset.type || 'destination';
+    });
+  });
+
+  // Tag chips
+  tagChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const tag = chip.dataset.tag || '';
+      chip.classList.toggle('active');
+      
+      if (activeTags.includes(tag)) {
+        activeTags = activeTags.filter(t => t !== tag);
+      } else {
+        activeTags.push(tag);
+      }
+    });
+  });
+
+  // Clear filters
+  clearFilters?.addEventListener('click', () => {
+    activeTags = [];
+    activeLocationType = 'destination';
+    tagChips.forEach(chip => chip.classList.remove('active'));
+    locationBtns.forEach(btn => btn.classList.remove('active'));
+    locationBtns[0].classList.add('active');
+    updateFilterBadge();
+  });
+
+  // Apply filters - dispatch event with filter values
+  applyFilters?.addEventListener('click', () => {
+    updateFilterBadge();
+    filterModal.classList.remove('open');
+    
+    window.dispatchEvent(new CustomEvent('filters-apply', { 
+      detail: { 
+        tags: activeTags, 
+        locationType: activeLocationType 
+      } 
+    }));
+  });
+
+  function updateFilterBadge() {
+    const count = activeTags.length + (activeLocationType !== 'destination' ? 1 : 0);
+    if (count > 0) {
+      filterBadge.textContent = count.toString();
+      filterBadge.style.display = '';
+      filterBtn?.classList.add('active');
+    } else {
+      filterBadge.style.display = 'none';
+      filterBtn?.classList.remove('active');
+    }
+  }
+
+  // Expose for external access
+  (window as any).getMapFilters = () => ({ tags: activeTags, locationType: activeLocationType });
+  (window as any).resetMapFilters = () => {
+    activeTags = [];
+    activeLocationType = 'destination';
+    tagChips.forEach(chip => chip.classList.remove('active'));
+    locationBtns.forEach(btn => btn.classList.remove('active'));
+    locationBtns[0].classList.add('active');
+    updateFilterBadge();
+  };
+</script>
+
+<style>
+  .filter-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .filter-modal.open { 
+    display: flex; 
+  }
+
+  .filter-modal-content {
+    background: white;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .filter-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .filter-modal-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .close-modal-btn {
+    background: #f3f4f6;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .filter-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .filter-section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0 0 16px 0;
+  }
+
+  .location-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .location-type-btn {
+    padding: 12px 8px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+  }
+
+  .location-type-btn.active {
+    background: #d1fae5;
+    color: #059669;
+    border-color: #10b981;
+  }
+
+  .tag-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tag-chip {
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: #374151;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+
+  .tag-chip.active {
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+    border-color: #059669;
+  }
+
+  .filter-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 12px;
+    position: sticky;
+    bottom: 0;
+    background: white;
+  }
+
+  .filter-modal-footer button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+
+  .clear-filters-btn {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .apply-filters-btn {
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+  }
+</style>

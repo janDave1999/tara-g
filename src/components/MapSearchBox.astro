@@ -1,0 +1,129 @@
+---
+interface Props {
+  onProvinceSelect?: (province: { name: string; lng: number; lat: number }) => void;
+}
+
+const { onProvinceSelect } = Astro.props;
+---
+
+<div class="search-input-wrapper">
+  <input 
+    type="text" 
+    id="search-area-input" 
+    placeholder="Search trips by province..."
+    class="search-input"
+  />
+  <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+  </svg>
+  <ul id="search-results" class="search-results hidden"></ul>
+</div>
+
+<script>
+  import { PH_PROVINCES } from "@/data/phProvinces";
+
+  const searchBox = document.getElementById("search-area-input") as HTMLInputElement;
+  const resultsEl = document.getElementById("search-results") as HTMLUListElement;
+  
+  let debounce: ReturnType<typeof setTimeout>;
+  
+  searchBox?.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      const query = searchBox.value.trim().toLowerCase();
+      resultsEl.innerHTML = "";
+      
+      if (query.length < 2) {
+        resultsEl.classList.add("hidden");
+        return;
+      }
+
+      const matches = PH_PROVINCES.filter(p => 
+        p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
+      ).slice(0, 8);
+
+      matches.forEach(province => {
+        const li = document.createElement("li");
+        li.textContent = province.name;
+        li.onclick = () => {
+          window.dispatchEvent(new CustomEvent('province-select', { detail: province }));
+          resultsEl.classList.add("hidden");
+          searchBox.value = province.name;
+        };
+        resultsEl.appendChild(li);
+      });
+      
+      resultsEl.classList.remove("hidden");
+    }, 300);
+  });
+
+  // Hide results when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!searchBox.contains(e.target as Node) && !resultsEl.contains(e.target as Node)) {
+      resultsEl.classList.add("hidden");
+    }
+  });
+</script>
+
+<style>
+  .search-input-wrapper {
+    position: relative;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 12px 40px 12px 16px;
+    border: 0;
+    outline: none;
+    font-size: 14px;
+    font-weight: 500;
+    background: #f3f4f6;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #9ca3af;
+  }
+
+  .search-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: white;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    padding: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 10;
+    max-width: 348px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .search-results.hidden { 
+    display: none; 
+  }
+
+  .search-results li {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .search-results li:hover { 
+    background: #f3f4f6; 
+  }
+</style>

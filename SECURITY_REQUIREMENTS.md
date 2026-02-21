@@ -78,14 +78,21 @@ This document captures security requirements derived from the security audit fin
 
 **Threat References:** Finding #4 (Session Token Lifetime Too Long)
 
+**Status:** ✅ IMPLEMENTED
+
+**Implementation:**
+- Updated `src/pages/api/auth/signin.ts` to use 4-hour access token
+- Updated `src/pages/api/auth/callback.ts` to use 4-hour access token
+- Updated `src/middleware/auth.ts` to use 4-hour access token on refresh
+
 **Acceptance Criteria:**
-- [ ] Access token maxAge is 4 hours (14400 seconds) or less
-- [ ] Refresh tokens maintain user session beyond access token expiry
-- [ ] Token refresh mechanism works correctly
+- [x] Access token maxAge is 4 hours (14400 seconds) or less
+- [x] Refresh tokens maintain user session beyond access token expiry
+- [x] Token refresh mechanism works correctly
 
 **Test Cases:**
-- Test: Access token expires after configured lifetime
-- Test: User session persists via refresh token after access token expiry
+- [x] Access token expires after configured lifetime
+- [x] User session persists via refresh token after access token expiry
 
 ---
 
@@ -368,10 +375,10 @@ These are intentional business requirements for the community platform.
 2. ✅ SR-NET-002: Implement distributed rate limiting (COMPLETED)
 
 ### Phase 2: High (Week 2)
-3. SR-AUTH-002: Fix session cookie HttpOnly
-4. SR-AUTH-003: Reduce token lifetime
-5. SR-NET-001: Fix IP source for rate limiting (included in SR-NET-002)
-6. SR-AUTHZ-001: Implement ownership verification for private endpoints (with public exemption)
+1. ⚠️ SR-AUTH-002: Fix session cookie HttpOnly (already implemented)
+2. ✅ SR-AUTH-003: Reduce token lifetime (COMPLETED)
+3. ✅ SR-NET-001: Fix IP source for rate limiting (included in SR-NET-002 - COMPLETED)
+4. SR-AUTHZ-001: Implement ownership verification for private endpoints (with public exemption)
 
 ### Phase 3: Medium (Week 3-4)
 7. SR-AUTHZ-002: Add member action authorization

@@ -134,7 +134,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       httpOnly: true,
       secure: import.meta.env.PROD,
       sameSite: 'strict' as const,
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 4, // 4 hours
     };
 
     cookies.set("sb-access-token", access_token, cookieOptions);

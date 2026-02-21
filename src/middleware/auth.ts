@@ -66,7 +66,7 @@ export const auth = defineMiddleware(async (ctx, next) => {
             httpOnly: true,
             sameSite: "strict",
             secure: import.meta.env.PROD,
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 4, // 4 hours
           });
 
           cookies.set("sb-refresh-token", refreshed.refresh_token, {

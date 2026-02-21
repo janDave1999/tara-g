@@ -1,486 +1,13 @@
 ---
-import PagePlate from "@/layouts/PagePlate.astro"
+import PagePlate from "@/layouts/PagePlate.astro";
+import MapSearchBox from "./MapSearchBox.astro";
+import MapFilterModal from "./MapFilterModal.astro";
+import MapTripDetail from "./MapTripDetail.astro";
 ---
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Tara G! - Trip Map</title>
-<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
-<style>
-body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-
-#search-box {
-  position: absolute;
-  top: 70px;
-  left: 20px;
-  z-index: 1000;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  width: 90%;
-  max-width: 380px;
-  padding: 16px;
-}
-
-.search-input-wrapper {
-  position: relative;
-  margin-bottom: 12px;
-}
-
-#search-area-input {
-  width: 100%;
-  padding: 12px 40px 12px 16px;
-  border: 0;
-  outline: none;
-  font-size: 14px;
-  font-weight: 500;
-  background: #f3f4f6;
-  border-radius: 12px;
-}
-
-.search-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  color: #9ca3af;
-}
-
-#search-results {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: white;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  border-radius: 12px;
-  padding: 8px;
-  max-height: 240px;
-  overflow-y: auto;
-  z-index: 10;
-}
-
-#search-results.hidden { display: none; }
-#search-results li {
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-#search-results li:hover { background: #f3f4f6; }
-
-#filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #f3f4f6;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  color: #374151;
-  width: 100%;
-  justify-content: center;
-}
-
-#filter-btn.active {
-  background: linear-gradient(to right, #10b981, #059669);
-  color: white;
-}
-
-#filter-badge {
-  background: white;
-  color: #10b981;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-#filter-btn.active #filter-badge {
-  background: rgba(255,255,255,0.3);
-  color: white;
-}
-
-#filter-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 2000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-#filter-modal.open { display: flex; }
-
-.filter-modal-content {
-  background: white;
-  border-radius: 24px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.filter-modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  background: white;
-  border-radius: 24px 24px 0 0;
-}
-
-.filter-modal-header h2 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.close-modal-btn {
-  background: #f3f4f6;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.filter-section {
-  padding: 20px 24px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.filter-section h3 {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #6b7280;
-  margin: 0 0 16px 0;
-}
-
-.location-type-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.location-type-btn {
-  padding: 12px 8px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: center;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 2px solid transparent;
-}
-
-.location-type-btn.active {
-  background: #d1fae5;
-  color: #059669;
-  border-color: #10b981;
-}
-
-.tag-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag-chip {
-  padding: 10px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  background: #f3f4f6;
-  color: #374151;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-
-.tag-chip.active {
-  background: linear-gradient(to right, #10b981, #059669);
-  color: white;
-  border-color: #059669;
-}
-
-.filter-modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  gap: 12px;
-  position: sticky;
-  bottom: 0;
-  background: white;
-}
-
-.filter-modal-footer button {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-}
-
-.clear-filters-btn {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.apply-filters-btn {
-  background: linear-gradient(to right, #10b981, #059669);
-  color: white;
-}
-
-#search-area-btn {
-  position: absolute;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 999;
-  background: linear-gradient(to right, #10b981, #059669);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 30px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  display: none;
-  border: none;
-}
-
-.custom-marker {
-  width: 48px;
-  height: 48px;
-  cursor: pointer;
-}
-
-.marker-image {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.marker-image.full { border-color: #ef4444; }
-.marker-image.available { border-color: #10b981; }
-
-.cluster-marker {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  border: 3px solid white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  cursor: pointer;
-}
-
-.mapboxgl-popup-content {
-  padding: 0;
-  border-radius: 16px;
-  overflow: hidden;
-  min-width: 320px;
-  max-width: 360px;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.trip-list-header {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  padding: 16px;
-  font-weight: 700;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.trip-count-badge {
-  background: rgba(255,255,255,0.3);
-  padding: 4px 12px;
-  border-radius: 12px;
-}
-
-.trip-list-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  display: flex;
-  gap: 12px;
-}
-
-.trip-list-item:hover { background: #f9fafb; }
-
-.trip-list-thumbnail {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.trip-list-info { flex: 1; }
-
-.trip-list-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-}
-
-.trip-list-location {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 0 0 6px 0;
-}
-
-.slots-badge {
-  padding: 4px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.slots-badge.available {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.slots-badge.full {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-#trip-detail-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 3000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-#trip-detail-modal.open { display: flex; }
-
-.trip-detail-content {
-  background: white;
-  border-radius: 24px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.trip-detail-image {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-}
-
-.trip-detail-body { padding: 24px; }
-
-.trip-detail-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 16px 0;
-}
-
-.trip-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.trip-detail-row svg {
-  width: 20px;
-  height: 20px;
-}
-
-.trip-detail-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.trip-detail-actions button {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-}
-
-.close-detail-btn {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.view-trip-btn {
-  background: linear-gradient(to right, #10b981, #059669);
-  color: white;
-}
-
-@media (max-width: 640px) {
-  #search-box {
-    left: 12px;
-    right: 12px;
-    width: auto;
-    max-width: none;
-  }
-}
-</style>
-</head>
-<body>
 
 <PagePlate title="Maps" noContainer>
   <div id="search-box">
-    <div class="search-input-wrapper">
-      <input type="text" id="search-area-input" placeholder="Search trips by province..." />
-      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
-      <ul id="search-results" class="hidden"></ul>
-    </div>
+    <MapSearchBox />
     
     <button id="filter-btn">
       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -491,563 +18,404 @@ body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif;
     </button>
   </div>
 
-  <div id="filter-modal">
-    <div class="filter-modal-content">
-      <div class="filter-modal-header">
-        <h2>Filters</h2>
-        <button class="close-modal-btn" id="close-filter-modal">×</button>
-      </div>
-
-      <div class="filter-section">
-        <h3>📍 Location Type</h3>
-        <div class="location-type-grid">
-          <div class="location-type-btn active" data-type="destination">Destination</div>
-          <div class="location-type-btn" data-type="pickup">Pickup</div>
-          <div class="location-type-btn" data-type="dropoff">Drop-off</div>
-        </div>
-      </div>
-
-      <div class="filter-section">
-        <h3>🏃 Activities</h3>
-        <div class="tag-grid">
-          <div class="tag-chip" data-tag="hiking">🥾 Hiking</div>
-          <div class="tag-chip" data-tag="diving">🤿 Diving</div>
-          <div class="tag-chip" data-tag="surfing">🏄 Surfing</div>
-          <div class="tag-chip" data-tag="camping">⛺ Camping</div>
-        </div>
-      </div>
-
-      <div class="filter-section">
-        <h3>🌴 Nature</h3>
-        <div class="tag-grid">
-          <div class="tag-chip" data-tag="beach">🏖️ Beach</div>
-          <div class="tag-chip" data-tag="mountain">⛰️ Mountain</div>
-          <div class="tag-chip" data-tag="island">🏝️ Island</div>
-        </div>
-      </div>
-
-      <div class="filter-modal-footer">
-        <button class="clear-filters-btn" id="clear-filters">Clear All</button>
-        <button class="apply-filters-btn" id="apply-filters">Apply</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="trip-detail-modal">
-    <div class="trip-detail-content" id="trip-detail-content"></div>
-  </div>
+  <MapFilterModal />
+  <MapTripDetail />
 
   <button id="search-area-btn">Search this area</button>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
 
+<style is:global>
+  #search-box {
+    position: absolute;
+    top: 70px;
+    left: 20px;
+    z-index: 10;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    width: 90%;
+    max-width: 380px;
+    padding: 16px;
+  }
+
+  #filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #374151;
+    width: 100%;
+    justify-content: center;
+  }
+
+  #filter-btn.active {
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+  }
+
+  #filter-badge {
+    background: white;
+    color: #10b981;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #filter-btn.active #filter-badge {
+    background: rgba(255,255,255,0.3);
+    color: white;
+  }
+
+  #search-area-btn {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: linear-gradient(to right, #10b981, #059669);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: none;
+    border: none;
+  }
+
+  .custom-marker {
+    width: 48px;
+    height: 48px;
+    cursor: pointer;
+  }
+
+  .marker-image {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .marker-image.full { border-color: #ef4444; }
+  .marker-image.available { border-color: #10b981; }
+
+  .cluster-marker {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+
+  .mapboxgl-popup-content {
+    padding: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    min-width: 320px;
+    max-width: 360px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .trip-list-header {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 16px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .trip-count-badge {
+    background: rgba(255,255,255,0.3);
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  .trip-list-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+  }
+
+  .trip-list-item:hover { background: #f9fafb; }
+
+  .trip-list-thumbnail {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    object-fit: cover;
+  }
+
+  .trip-list-info { flex: 1; }
+
+  .trip-list-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+
+  .trip-list-location {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0 0 6px 0;
+  }
+
+  .slots-badge {
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .slots-badge.available {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .slots-badge.full {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  @media (max-width: 640px) {
+    #search-box {
+      left: 12px;
+      right: 12px;
+      width: auto;
+      max-width: none;
+    }
+  }
+</style>
+
 <script>
   import mapboxgl from "mapbox-gl";
-  import { actions } from "astro:actions";
-  import { PUBLIC_R2_URL } from "astro:env/client";
-  import { PH_PROVINCES } from "@/data/phProvinces";
-  import { slugify } from "@/scripts/Slugify";
+  import { fetchNearbyTrips, getMapboxToken } from "../scripts/map/MapApi";
+  import { CONFIG, getRadiusByZoom } from "../scripts/map/MapConfig";
+  import { createTripMarker, createClusterMarker, groupTripsByLocation, clearMarkers } from "../scripts/map/MapMarkers";
 
-const CONFIG = {
-  DEFAULT_CENTER: [120.9842, 14.5995] as [number, number],
-  DEFAULT_ZOOM: 14,
-  PROVINCE_ZOOM: 10,
-  FALLBACK_IMAGE: "fallback.png",
-};
+  console.log('[MapBox] Script loaded');
 
-let map: mapboxgl.Map;
-let activeTags: string[] = [];
-let activeLocationType = 'destination';
-let markers: mapboxgl.Marker[] = [];
+  let map: mapboxgl.Map;
+  let markers: mapboxgl.Marker[] = [];
+  
+  // Filter state
+  let activeTags: string[] = [];
+  let activeLocationType = 'destination';
 
-const els = {
-  searchBox: document.getElementById("search-area-input") as HTMLInputElement,
-  resultsEl: document.getElementById("search-results") as HTMLUListElement,
-  searchBtn: document.getElementById("search-area-btn") as HTMLButtonElement,
-  filterBtn: document.getElementById("filter-btn") as HTMLButtonElement,
-  filterBadge: document.getElementById("filter-badge") as HTMLSpanElement,
-  filterModal: document.getElementById("filter-modal") as HTMLDivElement,
-  closeFilterModal: document.getElementById("close-filter-modal") as HTMLButtonElement,
-  tagChips: document.querySelectorAll(".tag-chip") as NodeListOf<HTMLDivElement>,
-  locationBtns: document.querySelectorAll(".location-type-btn") as NodeListOf<HTMLDivElement>,
-  clearFilters: document.getElementById("clear-filters") as HTMLButtonElement,
-  applyFilters: document.getElementById("apply-filters") as HTMLButtonElement,
-  tripModal: document.getElementById("trip-detail-modal") as HTMLDivElement,
-  tripContent: document.getElementById("trip-detail-content") as HTMLDivElement,
-};
+  const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
+  const filterBtn = document.getElementById("filter-btn") as HTMLButtonElement;
 
-async function getMapboxToken(): Promise<string> {
-  try {
-    const res = await fetch("/api/mapbox-token");
-    const data = await res.json() as any;
-    return data.token || "";
-  } catch {
-    return "";
-  }
-}
-
-function getRadiusByZoom(zoom: number): number {
-  if (zoom <= 6) return 200_000;
-  if (zoom <= 7) return 100_000;
-  if (zoom <= 8) return 50_000;
-  if (zoom <= 9) return 25_000;
-  return 10_000;
-}
-
-async function fetchNearbyTrips(lng: number, lat: number) {
-  let page = 1;
-  const allTrips: any[] = [];
-  const radius = getRadiusByZoom(map.getZoom());
-
-  while (true) {
-    const result = await actions.trip.getNearbyTrips({
+  async function loadTrips(lng: number, lat: number, zoom: number) {
+    console.log('[MapBox] Loading trips for:', { lng, lat, zoom, tags: activeTags, locationType: activeLocationType });
+    
+    const trips = await fetchNearbyTrips({
       latitude: lat,
       longitude: lng,
-      radiusKm: radius,
-      limit: 20,
-      offset: (page - 1) * 20,
+      zoom,
+      tags: activeTags.length > 0 ? activeTags : undefined,
+      locationType: activeLocationType as 'destination' | 'pickup' | 'dropoff' | 'all',
     });
-
-    const trips = result.data?.trips;
-    const error = result.error;
-
-    if (error || !trips || trips.length === 0) break;
-    allTrips.push(...trips);
-    page++;
-  }
-  return allTrips;
-}
-
-function clearLayers() {
-  if (map.getLayer("province")) map.removeLayer("province");
-  if (map.getSource("province")) map.removeSource("province");
-}
-
-function clearMarkers() {
-  markers.forEach(m => m.remove());
-  markers = [];
-}
-
-function groupTripsByLocation(trips: any[]) {
-  const groups = new Map<string, any[]>();
-  trips.forEach(trip => {
-    const lat = Number(trip.lat);
-    const lng = Number(trip.lng);
-    const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(trip);
-  });
-  return groups;
-}
-
-function showTripDetail(trip: any) {
-  const hasSlots = trip.current_participants < trip.max_participants;
-  const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
-  
-  els.tripContent.innerHTML = `
-    <img src="${img}" class="trip-detail-image" />
-    <div class="trip-detail-body">
-      <h2 class="trip-detail-title">${trip.title}</h2>
-      <div class="trip-detail-row">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <span>${trip.location_name}</span>
-      </div>
-      <div class="trip-detail-row">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        <span>${trip.start_date} - ${trip.end_date}</span>
-      </div>
-      <div class="trip-detail-row">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-        </svg>
-        <span>${trip.current_participants}/${trip.max_participants} joiners</span>
-        <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
-          ${hasSlots ? '✓ Available' : '✕ Full'}
-        </span>
-      </div>
-      <div class="trip-detail-actions">
-        <button class="close-detail-btn" onclick="document.getElementById('trip-detail-modal').classList.remove('open')">Close</button>
-        <button class="view-trip-btn" onclick="window.location.href='/trips/${trip.trip_id}'">View Details</button>
-      </div>
-    </div>
-  `;
-  
-  els.tripModal.classList.add('open');
-}
-
-function showTripList(trips: any[], coordinates: [number, number]) {
-  console.log("trips", trips);
-  const html = `
-    <div class="trip-list-header">
-      <div>
-        <div style="font-size: 16px; font-weight: 700;">Trips at this location</div>
-        <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">Click a trip to view details</div>
-      </div>
-      <span class="trip-count-badge">${trips.length}</span>
-    </div>
-    <div class="trip-list-items">
-      ${trips.map((trip, index) => {
-        const hasSlots = trip.current_participants < trip.max_participants;
-        const slotsRemaining = trip.max_participants - trip.current_participants;
-        
-        return `
-          <div class="trip-list-item" data-trip-id="${trip.trip_id}" style="animation: slideIn 0.2s ease ${index * 0.05}s both;">
-            <div class="trip-list-info">
-              <h4 class="trip-list-title">${trip.title}</h4>
-              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
-                  ${hasSlots ? `${slotsRemaining} slot${slotsRemaining !== 1 ? 's' : ''} left` : 'Fully booked'}
-                </span>
-              </div>
-            </div>
-            <svg style="width: 20px; height: 20px; color: #d1d5db; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-  
-  const popup = new mapboxgl.Popup({
-    closeButton: true,
-    maxWidth: 'none',
-    className: 'trip-list-popup'
-  })
-    .setLngLat(coordinates)
-    .setHTML(html)
-    .addTo(map);
-  
-  setTimeout(() => {
-    document.querySelectorAll('.trip-list-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const tripId = item.getAttribute('data-trip-id');
-        const trip = trips.find(t => t.trip_id === tripId);
-        if (trip) {
-          popup.remove();
-          showTripDetail(trip);
-        }
-      });
-    });
-  }, 100);
-}
-
-function updateMap(trips: any[]) {
-  clearMarkers();
-  const groups = groupTripsByLocation(trips);
-  
-  groups.forEach((tripGroup, key) => {
-    const [lat, lng] = key.split(',').map(Number);
-    const coordinates: [number, number] = [lng, lat];
     
-    if (tripGroup.length === 1) {
-      const trip = tripGroup[0];
-      const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
-      const hasSlots = trip.current_participants < trip.max_participants;
-      const statusColor = hasSlots ? '#10b981' : '#ef4444';
-      
-      const el = document.createElement('div');
-      el.className = 'custom-marker';
-      el.innerHTML = `
-        <div style="position: relative; cursor: pointer;">
-          <div style="
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 4px solid ${statusColor};
-            box-shadow: 0 6px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: white;
-          " class="marker-container">
-            <img src="${img}" style="
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-            " alt="${trip.title}" />
-          </div>
-          <div style="
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-top: 12px solid ${statusColor};
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-          "></div>
-          </div>
-        </div>
-      `;
-      
-      const container = el.querySelector('.marker-container') as HTMLElement;
-      el.addEventListener('mouseenter', () => {
-        container.style.transform = 'scale(1.15)';
-        container.style.boxShadow = '0 8px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.05)';
-      });
-      el.addEventListener('mouseleave', () => {
-        container.style.transform = 'scale(1)';
-        container.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)';
-      });
-      el.addEventListener('click', () => showTripDetail(trip));
-      
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat(coordinates)
-        .addTo(map);
-      markers.push(marker);
-    } else {
-      const el = document.createElement('div');
-      el.className = 'cluster-marker';
-      el.innerHTML = `
-        <div style="
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          border: 4px solid white;
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(0,0,0,0.05);
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-        " class="cluster-container">
-          <div style="font-size: 22px; line-height: 1;">${tripGroup.length}</div>
-          <div style="font-size: 9px; opacity: 0.9; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px;">trips</div>
-          <div style="
-            position: absolute;
-            inset: -8px;
-            border-radius: 50%;
-            border: 2px solid #10b981;
-            opacity: 0.3;
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-          "></div>
-        </div>
-        <style>
-          @keyframes pulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: 0.3;
-            }
-            50% {
-              transform: scale(1.1);
-              opacity: 0.1;
-            }
-          }
-        </style>
-      `;
-      
-      const container = el.querySelector('.cluster-container') as HTMLElement;
-      el.addEventListener('mouseenter', () => {
-        container.style.transform = 'scale(1.15)';
-        container.style.boxShadow = '0 8px 30px rgba(16, 185, 129, 0.5), 0 0 0 1px rgba(0,0,0,0.05)';
-      });
-      el.addEventListener('mouseleave', () => {
-        container.style.transform = 'scale(1)';
-        container.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(0,0,0,0.05)';
-      });
-      // el.addEventListener('click', () => showTripList(tripGroup, coordinates));
-      el.addEventListener('click', () => {
-        console.log("tripGroup", tripGroup);
-        showTripList(tripGroup, coordinates);
-      });
-      
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat(coordinates)
-        .addTo(map);
-      markers.push(marker);
-    }
-  });
-}
-
-async function handleProvinceSelect(province: any) {
-  clearLayers();
-  els.resultsEl.classList.add("hidden");
-  els.searchBox.value = province.name;
-
-  map.flyTo({ center: [province.lng, province.lat], zoom: CONFIG.PROVINCE_ZOOM, essential: true });
-
-  try {
-    const slug = await slugify(province.name.toLowerCase());
-    const res = await fetch(`/geojson/${slug}.geojson`);
-    const data = await res.json() as any;
-    map.addSource("province", { type: "geojson", data: data.geometry });
-    map.addLayer({
-      id: "province", type: "fill", source: "province",
-      paint: { "fill-color": "#10b981", "fill-opacity": 0.1 }
-    });
-  } catch {}
-
-  const trips = await fetchNearbyTrips(province.lng, province.lat);
-  updateMap(trips);
-}
-
-function updateFilterBadge() {
-  const count = activeTags.length + (activeLocationType !== 'destination' ? 1 : 0);
-  if (count > 0) {
-    els.filterBadge.textContent = count.toString();
-    els.filterBadge.style.display = '';
-    els.filterBtn.classList.add('active');
-  } else {
-    els.filterBadge.style.display = 'none';
-    els.filterBtn.classList.remove('active');
-  }
-}
-
-function initEvents() {
-  // Search area button
-  els.searchBtn.addEventListener("click", async () => {
-    els.searchBtn.textContent = "Searching...";
-    const center = map.getCenter();
-    const trips = await fetchNearbyTrips(center.lng, center.lat);
+    console.log('[MapBox] Fetched trips:', trips.length, trips);
     updateMap(trips);
-    els.searchBtn.textContent = "Search this area";
-    els.searchBtn.style.display = "none";
-  });
+  }
 
-  // Province search
-  let debounce: ReturnType<typeof setTimeout>;
-  els.searchBox.addEventListener("input", () => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      const query = els.searchBox.value.trim().toLowerCase();
-      els.resultsEl.innerHTML = "";
+  function updateMap(trips: any[]) {
+    clearMarkers(markers);
+    markers = [];
+    
+    const groups = groupTripsByLocation(trips);
+    
+    groups.forEach((tripGroup, key) => {
+      const [lat, lng] = key.split(',').map(Number);
+      const coordinates: [number, number] = [lng, lat];
       
-      if (query.length < 2) {
-        els.resultsEl.classList.add("hidden");
-        return;
-      }
-
-      const matches = PH_PROVINCES.filter(p => 
-        p.name.toLowerCase().includes(query) || p.region.toLowerCase().includes(query)
-      ).slice(0, 8);
-
-      matches.forEach(province => {
-        const li = document.createElement("li");
-        li.textContent = province.name;
-        li.onclick = () => handleProvinceSelect(province);
-        els.resultsEl.appendChild(li);
-      });
-      
-      els.resultsEl.classList.remove("hidden");
-    }, 300);
-  });
-
-  // Filter modal
-  els.filterBtn.addEventListener("click", () => {
-    els.filterModal.classList.add('open');
-  });
-
-  els.closeFilterModal.addEventListener("click", () => {
-    els.filterModal.classList.remove('open');
-  });
-
-  els.filterModal.addEventListener("click", (e) => {
-    if (e.target === els.filterModal) {
-      els.filterModal.classList.remove('open');
-    }
-  });
-
-  // Location type buttons
-  els.locationBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      els.locationBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeLocationType = btn.dataset.type || 'destination';
-    });
-  });
-
-  // Tag chips
-  els.tagChips.forEach(chip => {
-    chip.addEventListener("click", () => {
-      const tag = chip.dataset.tag || "";
-      chip.classList.toggle('active');
-      
-      if (activeTags.includes(tag)) {
-        activeTags = activeTags.filter(t => t !== tag);
+      if (tripGroup.length === 1) {
+        const marker = createTripMarker(tripGroup[0], map, (trip) => {
+          (window as any).showTripDetail(trip);
+        });
+        markers.push(marker);
       } else {
-        activeTags.push(tag);
+        const marker = createClusterMarker(tripGroup, coordinates, map, (tripGroup, coords) => {
+          showTripList(tripGroup, coords);
+        });
+        markers.push(marker);
       }
-    });
-  });
-
-  // Clear filters
-  els.clearFilters.addEventListener("click", () => {
-    activeTags = [];
-    activeLocationType = 'destination';
-    els.tagChips.forEach(chip => chip.classList.remove('active'));
-    els.locationBtns.forEach(btn => btn.classList.remove('active'));
-    els.locationBtns[0].classList.add('active');
-    updateFilterBadge();
-  });
-
-  // Apply filters
-  els.applyFilters.addEventListener("click", async () => {
-    updateFilterBadge();
-    els.filterModal.classList.remove('open');
-    
-    const center = map.getCenter();
-    const trips = await fetchNearbyTrips(center.lng, center.lat);
-    updateMap(trips);
-  });
-
-  // Close trip detail modal
-  els.tripModal.addEventListener("click", (e) => {
-    if (e.target === els.tripModal) {
-      els.tripModal.classList.remove('open');
-    }
-  });
-}
-
-async function initMap() {
-  const token = await getMapboxToken();
-  if (!token) return;
-  mapboxgl.accessToken = token;
-
-  let userLocation = CONFIG.DEFAULT_CENTER;
-
-  if (navigator.geolocation) {
-    userLocation = await new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        pos => resolve([pos.coords.longitude, pos.coords.latitude]),
-        () => resolve(CONFIG.DEFAULT_CENTER)
-      );
     });
   }
 
-  map = new mapboxgl.Map({
-    container: "map",
-    style: "mapbox://styles/mapbox/standard",
-    center: userLocation,
-    zoom: CONFIG.DEFAULT_ZOOM
+  function showTripList(trips: any[], coordinates: [number, number]) {
+    const html = `
+      <div class="trip-list-header">
+        <div>
+          <div style="font-size: 16px; font-weight: 700;">Trips at this location</div>
+          <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">Click a trip to view details</div>
+        </div>
+        <span class="trip-count-badge">${trips.length}</span>
+      </div>
+      <div class="trip-list-items">
+        ${trips.map((trip, index) => {
+          const hasSlots = trip.current_participants < trip.max_participants;
+          const slotsRemaining = trip.max_participants - trip.current_participants;
+          
+          return `
+            <div class="trip-list-item" data-trip-id="${trip.trip_id}" style="animation: slideIn 0.2s ease ${index * 0.05}s both;">
+              <div class="trip-list-info">
+                <h4 class="trip-list-title">${trip.title}</h4>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                  <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
+                    ${hasSlots ? `${slotsRemaining} slot${slotsRemaining !== 1 ? 's' : ''} left` : 'Fully booked'}
+                  </span>
+                </div>
+              </div>
+              <svg style="width: 20px; height: 20px; color: #d1d5db; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    
+    const popup = new mapboxgl.Popup({
+      closeButton: true,
+      maxWidth: 'none',
+    })
+      .setLngLat(coordinates)
+      .setHTML(html)
+      .addTo(map);
+    
+    setTimeout(() => {
+      document.querySelectorAll('.trip-list-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const tripId = item.getAttribute('data-trip-id');
+          const trip = trips.find(t => t.trip_id === tripId);
+          if (trip) {
+            popup.remove();
+            (window as any).showTripDetail(trip);
+          }
+        });
+      });
+    }, 100);
+  }
+
+  async function handleProvinceSelect(province: { name: string; lng: number; lat: number }) {
+    map.flyTo({ center: [province.lng, province.lat], zoom: CONFIG.PROVINCE_ZOOM, essential: true });
+    
+    // Load province boundary
+    try {
+      const { slugify } = await import("../scripts/Slugify");
+      const slug = await slugify(province.name.toLowerCase());
+      const res = await fetch(`/geojson/${slug}.geojson`);
+      const data = await res.json() as any;
+      
+      if (map.getLayer("province")) map.removeLayer("province");
+      if (map.getSource("province")) map.removeSource("province");
+      
+      map.addSource("province", { type: "geojson", data: data.geometry });
+      map.addLayer({
+        id: "province", type: "fill", source: "province",
+        paint: { "fill-color": "#10b981", "fill-opacity": 0.1 }
+      });
+    } catch (e) {
+      // Province boundary not found, ignore
+    }
+
+    await loadTrips(province.lng, province.lat, CONFIG.PROVINCE_ZOOM);
+  }
+
+  async function initMap() {
+    console.log('[MapBox] initMap called');
+    const token = await getMapboxToken();
+    console.log('[MapBox] Token:', token ? 'loaded' : 'missing');
+    if (!token) {
+      console.error('Failed to load Mapbox token');
+      return;
+    }
+    
+    mapboxgl.accessToken = token;
+
+    let userLocation = CONFIG.DEFAULT_CENTER;
+
+    if (navigator.geolocation) {
+      userLocation = await new Promise<[number, number]>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve([pos.coords.longitude, pos.coords.latitude]),
+          () => resolve(CONFIG.DEFAULT_CENTER)
+        );
+      });
+    }
+
+    map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/standard",
+      center: userLocation,
+      zoom: CONFIG.DEFAULT_ZOOM
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
+    map.addControl(new mapboxgl.GeolocateControl({ 
+      positionOptions: { enableHighAccuracy: true }, 
+      trackUserLocation: true 
+    }), 'bottom-left');
+
+    map.on("load", async () => {
+      await loadTrips(userLocation[0], userLocation[1], CONFIG.DEFAULT_ZOOM);
+    });
+
+    map.on("moveend", () => {
+      searchBtn.style.display = "block";
+    });
+
+    // Search area button
+    searchBtn?.addEventListener("click", async () => {
+      searchBtn.textContent = "Searching...";
+      const center = map.getCenter();
+      await loadTrips(center.lng, center.lat, map.getZoom());
+      searchBtn.textContent = "Search this area";
+      searchBtn.style.display = "none";
+    });
+
+    // Province selection from search
+    window.addEventListener('province-select', ((e: CustomEvent) => {
+      handleProvinceSelect(e.detail);
+    }) as EventListener);
+
+    // Filters applied
+    window.addEventListener('filters-apply', ((e: CustomEvent) => {
+      activeTags = e.detail.tags;
+      activeLocationType = e.detail.locationType;
+      const center = map.getCenter();
+      loadTrips(center.lng, center.lat, map.getZoom());
+    }) as EventListener);
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    console.log('[MapBox] DOMContentLoaded fired');
+    initMap();
   });
-
-  map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
-  map.addControl(new mapboxgl.GeolocateControl({ 
-    positionOptions: { enableHighAccuracy: true }, 
-    trackUserLocation: true 
-  }), 'bottom-left');
-
-  map.on("load", async () => {
-    const trips = await fetchNearbyTrips(userLocation[0], userLocation[1]);
-    updateMap(trips);
-    initEvents();
-  });
-
-  map.on("moveend", () => {
-    els.searchBtn.style.display = "block";
-  });
-}
-
-window.addEventListener("DOMContentLoaded", initMap);
 </script>

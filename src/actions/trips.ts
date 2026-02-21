@@ -778,20 +778,17 @@ getNearbyTrips: defineAction({
     input: z.object({
       latitude: z.number().min(-90).max(90),
       longitude: z.number().min(-180).max(180),
-      radiusKm: z.number().min(0.1).max(1000).default(50),
+      radiusKm: z.number().min(0.1).max(5000).default(50),
       tags: z.array(z.string()).optional(),
-      minBudget: z.number().min(0).optional(),
-      maxBudget: z.number().min(0).optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-      locationType: z.enum(['destination', 'pickup', 'all']).default('destination'),
+      locationType: z.enum(['destination', 'pickup', 'dropoff', 'all']).default('destination'),
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }),
     
-    async handler(input) {
+    async handler(input, context) {
       try {
-        // Validate coordinates
+        const userId = context.locals.user_id || null;
+
         if (!input.latitude || !input.longitude) {
           throw new ActionError({
             message: "Latitude and longitude are required",
@@ -799,23 +796,15 @@ getNearbyTrips: defineAction({
           });
         }
 
-        // Convert date strings if provided
-        const startDate = input.startDate ? new Date(input.startDate).toISOString().split('T')[0] : null;
-        const endDate = input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : null;
-
-        // Call the optimized search function
-        const { data, error } = await supabaseAdmin.rpc('search_trips_optimized', {
+        const { data, error } = await supabaseAdmin.rpc('get_nearby_trips', {
           p_latitude: input.latitude,
           p_longitude: input.longitude,
           p_radius_km: input.radiusKm,
           p_tags: input.tags && input.tags.length > 0 ? input.tags : null,
-          p_min_budget: input.minBudget || null,
-          p_max_budget: input.maxBudget || null,
-          p_start_date: startDate,
-          p_end_date: endDate,
           p_location_type: input.locationType,
           p_limit: input.limit,
           p_offset: input.offset,
+          p_user_id: userId,
         });
 
         if (error) {
@@ -826,11 +815,13 @@ getNearbyTrips: defineAction({
           });
         }
 
-        // Transform results to match expected format
-        const transformedTrips = (data || []).map((trip: OptimizedSearchResult) => ({
+        const transformedTrips = (data || []).map((trip: any) => ({
           trip_id: trip.trip_id,
           title: trip.title,
           description: trip.description,
+          lat: trip.lat,
+          lng: trip.lng,
+          location_name: trip.location_name,
           distance_km: trip.distance_km,
           estimated_budget: trip.estimated_budget,
           tags: Array.isArray(trip.tags) ? trip.tags : [],
@@ -842,9 +833,6 @@ getNearbyTrips: defineAction({
           region: trip.region,
           duration_days: trip.duration_days,
           budget_per_person: trip.budget_per_person,
-          relevance_score: trip.relevance_score,
-          primary_location_name: trip.primary_location_name,
-          primary_location_address: trip.primary_location_address,
           images: Array.isArray(trip.images) ? trip.images : [],
         }));
 

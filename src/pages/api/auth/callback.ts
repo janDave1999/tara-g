@@ -34,7 +34,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     httpOnly: true,
     secure: import.meta.env.PROD,
     sameSite: 'strict',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 4, // 4 hours
   });
   cookies.set("sb-refresh-token", refresh_token, {
     path: "/",

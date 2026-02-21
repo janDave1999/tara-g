@@ -84,7 +84,7 @@ const tripProps = {
     : null,
   
   // Members
-  currentPax: trip_members?.length || 0,
+  currentPax: trip_members?.filter((m: any) => m.member_status === 'joined').length || 0,
   maxPax: trip_details?.max_pax || 0,
   members: trip_members || [],
   

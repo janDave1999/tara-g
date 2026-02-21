@@ -440,7 +440,8 @@ database-migrations/
 ├── 015_create_get_trip_full_details.sql    # get_trip_full_details RPC (RETURNS JSONB)
 ├── 025_add_visibility_to_owned_trips.sql   # get_user_owned_trips: add visibility from trip_visibility JOIN
 ├── 026_create_update_trip_status_rpc.sql   # update_trip_status RPC with ownership validation
-└── 027_create_update_trip_destination_rpc.sql  # update_trip_destination RPC; updates locations + PostGIS geometry
+├── 027_create_update_trip_destination_rpc.sql  # update_trip_destination RPC; updates locations + PostGIS geometry
+└── 028_get_user_participating_trips.sql    # get_user_participating_trips RPC; UNION of trip_members (joined/pending) + trip_invitations (invited); returns participation_status
 
 src/
 ├── pages/
@@ -536,7 +537,7 @@ src/
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-21*
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
 *Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*

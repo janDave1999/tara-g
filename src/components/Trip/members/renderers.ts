@@ -2,7 +2,8 @@
 
 import type { Member, JoinRequest, Invitation } from '@/types/tripMembers';
 import { STATUS_CONFIG } from '@/types/tripMembers';
-import { createAvatar, createButton } from '@/utility/tripMembers';
+import { getInitials, createButton } from '@/utility/tripMembers';
+import { PUBLIC_R2_URL } from 'astro:env/client';
 
 export class MemberRenderer {
   constructor(
@@ -25,15 +26,15 @@ export class MemberRenderer {
     const row = document.createElement('tr');
     row.className = 'hover:bg-slate-50/80 transition-colors';
 
-    const avatarHtml = createAvatar(member.full_name, member.avatar_url);
     const statusClass = STATUS_CONFIG[member.member_status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+    const avatarHtml = member.avatar_url
+      ? `<img src="${PUBLIC_R2_URL}${member.avatar_url}" alt="${member.full_name}" class="w-10 h-10 rounded-full object-cover shrink-0" />`
+      : `<div class="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">${getInitials(member.full_name)}</div>`;
 
     row.innerHTML = `
       <td class="px-6 py-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-            ${avatarHtml}
-          </div>
+          ${avatarHtml}
           <div>
             <div class="text-sm font-medium text-slate-800">
               ${member.full_name}${member.is_current_user ? ' (You)' : ''}
@@ -121,14 +122,14 @@ export class RequestRenderer {
     const div = document.createElement('div');
     div.className = 'p-4 hover:bg-slate-50 transition-colors';
 
-    const avatarHtml = createAvatar(request.full_name, request.avatar_url);
+    const avatarHtml = request.avatar_url
+      ? `<img src="${request.avatar_url}" alt="${request.full_name}" class="w-12 h-12 rounded-full object-cover shrink-0" />`
+      : `<div class="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shrink-0">${getInitials(request.full_name)}</div>`;
 
     div.innerHTML = `
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-            ${avatarHtml}
-          </div>
+          ${avatarHtml}
           <div>
             <div class="text-sm font-medium text-slate-800">${request.full_name}</div>
             <div class="text-xs text-slate-500">@${request.username || 'N/A'}</div>
@@ -187,14 +188,15 @@ export class InvitationRenderer {
     const div = document.createElement('div');
     div.className = 'p-4 hover:bg-slate-50 transition-colors';
 
-    const avatarHtml = createAvatar(invitation.invitee_name, invitation.invitee_avatar);
+    const avatarHtml = invitation.invitee_avatar
+      ? `<img src="${invitation.invitee_avatar}" alt="${invitation.invitee_name}" class="w-12 h-12 rounded-full object-cover shrink-0" />`
+      : `<div class="w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-semibold shrink-0">${getInitials(invitation.invitee_name)}</div>`;
     const expiryText = this.getExpiryText(invitation.days_until_expiry);
 
     div.innerHTML = `
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-semibold">
-            ${avatarHtml}
+          ${avatarHtml}
           </div>
           <div>
             <div class="text-sm font-medium text-slate-800">${invitation.invitee_name}</div>

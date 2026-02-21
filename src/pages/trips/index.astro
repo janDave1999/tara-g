@@ -36,7 +36,7 @@ const now = new Date().toISOString();
 const showPreferencesPrompt = !userPreferences &&
   (!userSettings?.preferences_prompt_until || userSettings.preferences_prompt_until < now);
 
-const [ownedResult, memberResult, discoverResult, suggestedResult, invitationsResult] = await Promise.all([
+const [ownedResult, participatingResult, discoverResult, suggestedResult] = await Promise.all([
   supabase.rpc('get_user_owned_trips', {
     p_user_id: userId,
     p_search: currentTab === 'owned' ? (searchQuery || null) : null,
@@ -44,10 +44,10 @@ const [ownedResult, memberResult, discoverResult, suggestedResult, invitationsRe
     p_limit: itemsPerPage,
     p_offset: currentTab === 'owned' ? offset : 0,
   }),
-  supabase.rpc('get_user_member_trips', {
+  supabase.rpc('get_user_participating_trips', {
     p_user_id: userId,
     p_search: currentTab === 'member' ? (searchQuery || null) : null,
-    p_member_status: currentTab === 'member' ? (statusFilter || null) : null,
+    p_status: currentTab === 'member' ? (statusFilter || null) : null,
     p_limit: itemsPerPage,
     p_offset: currentTab === 'member' ? offset : 0,
   }),
@@ -65,29 +65,24 @@ const [ownedResult, memberResult, discoverResult, suggestedResult, invitationsRe
     p_user_id: userId,
     p_limit: 6,
   }),
-  supabase.rpc('get_user_pending_invitations', {
-    p_user_id: userId,
-  }),
 ]);
 
 const ownedTrips = ownedResult.data || [];
-const memberTrips = memberResult.data || [];
+const participatingTrips = participatingResult.data || [];
 const discoverTrips = discoverResult.data || [];
 const suggestedTrips = suggestedResult.data || [];
-const pendingInvitations: any[] = Array.isArray(invitationsResult.data) ? invitationsResult.data : [];
 
 const ownedCount = ownedTrips[0]?.total_count || 0;
-const memberCount = memberTrips[0]?.total_count || 0;
+const participatingCount = participatingTrips[0]?.total_count || 0;
 const discoverCount = discoverTrips[0]?.total_count || 0;
-const invitedCount = pendingInvitations.length;
 
 let currentTrips = ownedTrips;
 let currentCount = ownedCount;
 let currentType: 'owned' | 'member' | 'discover' = 'owned';
 
 if (currentTab === 'member') {
-  currentTrips = memberTrips;
-  currentCount = memberCount;
+  currentTrips = participatingTrips;
+  currentCount = participatingCount;
   currentType = 'member';
 } else if (currentTab === 'discover') {
   currentTrips = discoverTrips;
@@ -171,7 +166,7 @@ function buildUrl(params: Record<string, string>) {
       <div class="flex flex-wrap items-center gap-6 md:gap-10 pt-8 border-t border-white/[0.07]">
         {[
           { value: ownedCount, label: 'My Trips' },
-          { value: memberCount, label: 'Joined' },
+          { value: participatingCount, label: 'Joined' },
           { value: `${discoverCount}+`, label: 'Discover' },
           { value: '82', label: 'Provinces' },
         ].map(stat => (
@@ -198,9 +193,8 @@ function buildUrl(params: Record<string, string>) {
           <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 self-start flex-wrap">
             {[
               { id: 'owned', label: 'My Trips', count: ownedCount, accent: false },
-              { id: 'member', label: 'Joined', count: memberCount, accent: false },
+              { id: 'member', label: 'Joined', count: participatingCount, accent: false },
               { id: 'discover', label: 'Discover', count: discoverCount, accent: false },
-              { id: 'invited', label: 'Invited', count: invitedCount, accent: invitedCount > 0 },
             ].map(tab => (
               <a
                 href={buildUrl({ tab: tab.id, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
@@ -211,15 +205,13 @@ function buildUrl(params: Record<string, string>) {
                 }`}
               >
                 {tab.label}
-                {(tab.count > 0 || tab.id !== 'invited') && (
-                  <span class={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
-                    currentTab === tab.id
-                      ? (tab.accent ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white')
-                      : (tab.accent ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-500')
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
+                <span class={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                  currentTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {tab.count}
+                </span>
               </a>
             ))}
           </div>
@@ -406,7 +398,7 @@ function buildUrl(params: Record<string, string>) {
       </div>
 
       <!-- Results meta -->
-      {currentTab !== 'invited' && currentTrips.length > 0 && (
+      {currentTrips.length > 0 && (
         <div class="flex items-center justify-between mb-4">
           <p class="text-sm text-gray-400">
             <span class="font-semibold text-gray-700">{currentTrips.length}</span> of <span class="font-semibold text-gray-700">{currentCount}</span> trips
@@ -416,82 +408,20 @@ function buildUrl(params: Record<string, string>) {
       )}
 
       <!-- Trip Grid -->
-      {currentTab !== 'invited' && currentTrips.length > 0 && (
+      {currentTrips.length > 0 && (
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8" id="trips-grid">
           {currentTrips.map((trip: any) => (
-            <TripCard trip={trip} type={currentType} />
+            <TripCard
+              trip={trip}
+              type={currentType}
+              participationStatus={currentTab === 'member' ? trip.participation_status : undefined}
+            />
           ))}
         </div>
       )}
 
-      <!-- ── Invited Tab: Pending Invitations ── -->
-      {currentTab === 'invited' && (
-        pendingInvitations.length > 0 ? (
-          <div class="space-y-4 mb-8">
-            <p class="text-sm text-gray-400 mb-2">
-              <span class="font-semibold text-gray-700">{pendingInvitations.length}</span> pending {pendingInvitations.length === 1 ? 'invitation' : 'invitations'}
-            </p>
-            {pendingInvitations.map((inv: any) => (
-              <div
-                class="invitation-card bg-white rounded-xl border border-amber-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-                data-invitation-id={inv.invitation_id}
-                data-trip-id={inv.trip_id}
-              >
-                <!-- Icon -->
-                <div class="shrink-0 w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-
-                <!-- Info -->
-                <div class="flex-1 min-w-0">
-                  <a href={`/trips/${inv.trip_id}`} class="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-base leading-snug">
-                    {inv.trip_title}
-                  </a>
-                  <p class="text-sm text-gray-500 mt-0.5">
-                    Invited by <span class="font-medium text-gray-700">{inv.inviter_name}</span>
-                    {inv.message && <> · <span class="italic">"{inv.message}"</span></>}
-                  </p>
-                  <p class={`text-xs mt-1 font-medium ${inv.days_until_expiry <= 1 ? 'text-red-500' : 'text-gray-400'}`}>
-                    {inv.days_until_expiry === 0 ? 'Expires today' : `Expires in ${inv.days_until_expiry} day${inv.days_until_expiry !== 1 ? 's' : ''}`}
-                  </p>
-                </div>
-
-                <!-- Actions -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <button
-                    class="accept-invite-btn px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all disabled:opacity-50"
-                    data-invitation-id={inv.invitation_id}
-                    data-trip-id={inv.trip_id}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    class="decline-invite-btn px-4 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-800 text-sm font-semibold transition-all disabled:opacity-50"
-                    data-invitation-id={inv.invitation_id}
-                  >
-                    Decline
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div class="flex flex-col items-center justify-center py-24">
-            <div class="w-24 h-24 rounded-3xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-xl shadow-amber-500/25 mx-auto mb-6">
-              <svg class="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">No pending invitations</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">When someone invites you to join their trip, it will appear here.</p>
-          </div>
-        )
-      )}
-
       <!-- ── Empty States ── -->
-      {currentTab !== 'invited' && currentTrips.length === 0 && (
+      {currentTrips.length === 0 && (
         <div class="flex flex-col items-center justify-center py-24">
           {currentTab === 'owned' && (
             <div class="text-center max-w-sm">
@@ -528,8 +458,8 @@ function buildUrl(params: Record<string, string>) {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">No joined trips yet</h3>
-              <p class="text-gray-500 text-sm leading-relaxed mb-7">You haven't joined any trips yet. Discover open trips and request to join your crew!</p>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">No trips yet</h3>
+              <p class="text-gray-500 text-sm leading-relaxed mb-7">You haven't joined, requested, or been invited to any trips yet. Discover open trips and join your crew!</p>
               <a
                 href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
                 class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
@@ -567,7 +497,7 @@ function buildUrl(params: Record<string, string>) {
       )}
 
       <!-- ── Pagination ── -->
-      {currentTab !== 'invited' && totalPages > 1 && (
+      {totalPages > 1 && (
         <nav class="flex justify-center items-center gap-1 mt-6 mb-2" aria-label="Pagination">
           {currentPage > 1 ? (
             <a
@@ -685,44 +615,6 @@ function buildUrl(params: Record<string, string>) {
       modal?.showModal?.() ?? modal?.classList.remove('hidden');
     });
 
-    // ── Invitation Accept / Decline ──
-    import { actions } from 'astro:actions';
-
-    async function handleInvitation(btn: HTMLButtonElement, action: 'accept' | 'decline') {
-      const invitationId = btn.dataset.invitationId!;
-      const tripId = btn.dataset.tripId;
-      const card = btn.closest('.invitation-card') as HTMLElement;
-
-      card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = true));
-
-      if (action === 'accept') {
-        const { error } = await actions.trip.acceptTripInvitation({ invitationId });
-        if (error) {
-          card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = false));
-          alert(error.message || 'Failed to accept invitation.');
-        } else {
-          window.location.href = `/trips/${tripId}`;
-        }
-      } else {
-        const { error } = await actions.trip.declineTripInvitation({ invitationId });
-        if (error) {
-          card.querySelectorAll('button').forEach(b => ((b as HTMLButtonElement).disabled = false));
-          alert(error.message || 'Failed to decline invitation.');
-        } else {
-          card.style.opacity = '0';
-          card.style.transition = 'opacity 0.3s';
-          setTimeout(() => card.remove(), 300);
-        }
-      }
-    }
-
-    document.querySelectorAll<HTMLButtonElement>('.accept-invite-btn').forEach(btn => {
-      btn.addEventListener('click', () => handleInvitation(btn, 'accept'));
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('.decline-invite-btn').forEach(btn => {
-      btn.addEventListener('click', () => handleInvitation(btn, 'decline'));
-    });
   </script>
 
 </Pageplate>

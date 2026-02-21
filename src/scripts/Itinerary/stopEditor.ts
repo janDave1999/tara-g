@@ -3,8 +3,8 @@ import { showToast } from '@/scripts/Toast';
 import { createConfirmModal } from '@/scripts/Modal';
 import { createMapboxSearchBox } from '@/scripts/mapBoxSearch';
 
-const MAX_PICKUP = 3;
-const MAX_DROPOFF = 3;
+const MAX_PICKUP = 20;
+const MAX_DROPOFF = 20;
 
 /**
  * Convert a UTC ISO string from the DB into "YYYY-MM-DDTHH:mm" using local time parts,
@@ -226,11 +226,31 @@ const createStopEditor = (stopCard: HTMLElement, stopData: any) => {
 
 // --- Add new stop form ---
 
+/** Returns a suggested start time: the latest scheduled_end (or scheduled_start) among
+ *  stops already in the given day's timeline container, plus a 15-minute buffer.
+ *  Falls back to the current time if no stops exist yet. */
+const suggestStartTime = (timelineContainer: HTMLElement): Date => {
+  let latest = new Date();
+  timelineContainer.querySelectorAll<HTMLElement>('.timeline-item').forEach(item => {
+    const endStr = item.dataset.scheduledEnd;
+    const startStr = item.dataset.scheduledStart;
+    const candidate = endStr ? new Date(endStr) : startStr ? new Date(startStr) : null;
+    if (candidate && !isNaN(candidate.getTime()) && candidate > latest) {
+      latest = candidate;
+    }
+  });
+  // Round up to the next 15-minute mark after the latest stop
+  const ms = latest.getTime();
+  const buffer = 15 * 60 * 1000;
+  return new Date(Math.ceil(ms / buffer) * buffer);
+};
+
 const createAddStopForm = (timelineContainer: HTMLElement, dayIndex: number) => {
   const existingForm = timelineContainer.querySelector('.add-stop-form');
   if (existingForm) return;
 
-  const defaultStart = new Date().toISOString();
+  const suggestedStart = suggestStartTime(timelineContainer);
+  const defaultStart = suggestedStart.toISOString();
   const inputId = `add-stop-location-${Date.now()}`;
 
   const formHTML = `

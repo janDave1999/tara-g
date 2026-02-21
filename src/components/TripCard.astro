@@ -3,9 +3,17 @@ import { PUBLIC_R2_URL } from 'astro:env/client';
 interface Props {
   trip: any;
   type: 'owned' | 'member' | 'discover';
+  /** Override the top-left badge with participation status (joined/pending/invited) */
+  participationStatus?: 'joined' | 'pending' | 'invited';
 }
 
-const { trip, type } = Astro.props;
+const { trip, type, participationStatus } = Astro.props;
+
+const participationMeta: Record<string, { label: string; classes: string }> = {
+  joined:  { label: '✓ Joined',    classes: 'bg-emerald-100 text-emerald-800' },
+  pending: { label: '⏳ Requested', classes: 'bg-amber-100 text-amber-800' },
+  invited: { label: '📧 Invited',   classes: 'bg-blue-100 text-blue-700' },
+};
 
 const formatDate = (date: string | null) => {
   if (!date) return 'TBD';
@@ -63,8 +71,16 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
       </div>
     )}
 
-    {/* Role Badge for member trips */}
-    {type === 'member' && trip.role && (
+    {/* Participation status badge (joined/requested/invited) — shown when provided */}
+    {participationStatus && participationMeta[participationStatus] && (
+      <div class="absolute top-3 left-3 z-10">
+        <span class={`px-3 py-1 rounded-full text-xs font-semibold ${participationMeta[participationStatus].classes}`}>
+          {participationMeta[participationStatus].label}
+        </span>
+      </div>
+    )}
+    {/* Legacy role badge for member trips without participationStatus */}
+    {!participationStatus && type === 'member' && trip.role && (
       <div class="absolute top-3 left-3 z-10">
         <span class="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
           {trip.role}
@@ -154,7 +170,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
       {type === 'member' && trip.owner_name && (
         <div class="flex items-center gap-2">
           {trip.owner_avatar ? (
-            <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
+            <img src={`${PUBLIC_R2_URL}${trip.owner_avatar}`} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
           ) : (
             <div class="w-6 h-6 rounded-full bg-gray-300"></div>
           )}

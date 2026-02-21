@@ -123,7 +123,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US-D8 | As a member, I want to leave a trip I've joined | "Leave Trip" button shown for `member` role; redirects to `/trips` | ✅ Pass |
 | US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown for owners and joined members | ✅ Pass |
 | US-D10 | As a trip owner, I want to manage trip status | Clicking the status badge opens `StatusModal` with all 5 status options; calls `update_trip_status` RPC | ✅ Pass |
-| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete with Mapbox search, pickup/dropoff (max 3 each), and time overlap validation all done; drag-drop reorder pending |
+| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete with Mapbox search, pickup/dropoff (max 20 each), and time overlap validation all done; drag-drop reorder pending |
 | US-D12 | As a visitor, I want to know when a trip is full | "Trip Full" disabled button shown when `currentPax >= maxPax` | ✅ Pass |
 
 **Editable fields (owner only, non-completed trips):**
@@ -156,8 +156,10 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | # | Story | Acceptance Criteria |
 |---|-------|---------------------|
 | US13 | As a user, I want to request to join a trip | Join button, pending status |
+| US13b | As a user, I want to see all my trip participation in one place | "Joined" tab on `/trips` shows three participation states in TripCard format: **Joined** (✓ green badge), **Requested** (⏳ amber badge), **Invited** (📧 blue badge) — fetched via `get_user_participating_trips` RPC; owned trips excluded |
 | US14 | As a user, I want to accept or reject join requests | Owner sees requests, can approve/reject |
 | US15 | As a user, I want to invite others to my trip | Invite by username or email |
+| US15b | As an invited user, I want to accept or decline on the trip detail page | Amber invitation banner shown on `/trips/[trip_id]` with Accept/Decline buttons; banner replaces the "Request to Join" button |
 | US16 | As a user, I want to manage trip members | Remove members, change roles |
 | US17 | As a user, I want to leave a trip I've joined | Leave button for non-owners |
 
@@ -166,7 +168,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | # | Story | Acceptance Criteria |
 |---|-------|---------------------|
 | US18 | As a trip owner, I want to build an itinerary | Add stops with dates/times; Mapbox location search on location name field (suggest + retrieve with coordinates) |
-| US18a | As a trip owner, I want to add multiple pickup and dropoff stops | Pickup and Dropoff available in stop type selector for "Add Stop" form; max **3 pickup** and **3 dropoff** stops per trip enforced — adding a 4th of either type shows an error and prevents save |
+| US18a | As a trip owner, I want to add multiple pickup and dropoff stops | Pickup and Dropoff available in stop type selector for "Add Stop" form; max **20 pickup** and **20 dropoff** stops per trip (effectively unlimited for normal use) |
 | US18b | As a trip owner, I want stop times to not overlap within a day | On save (create or edit), validate that the new stop's scheduled_start–scheduled_end range does not overlap any existing stop on the same day; if overlap detected, show an inline error and block save; end time is optional — if omitted, only start time collision (same start as another stop) is checked |
 | US19 | As a trip owner, I want to add activities to stops | Activity types: hiking, diving, etc. |
 | US20 | As a trip owner, I want to mark actual arrival/departure | Actual times vs scheduled |
@@ -259,7 +261,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | Function | Migration | Parameters | Returns |
 |----------|-----------|------------|---------|
 | `get_user_owned_trips` | `011`, `025` | `p_user_id, p_search, p_status, p_limit, p_offset` | Trips owned by user + `member_count`, `visibility`, `total_count` |
-| `get_user_member_trips` | `011` | `p_user_id, p_search, p_member_status, p_limit, p_offset` | Trips user joined + `role`, `owner_name`, `owner_avatar`, `total_count` |
+| `get_user_member_trips` | `011` | `p_user_id, p_search, p_member_status, p_limit, p_offset` | Trips user joined (status = 'joined') + `role`, `owner_name`, `owner_avatar`, `total_count` — kept for legacy API use |
+| `get_user_participating_trips` | `028` | `p_user_id, p_search, p_status, p_limit, p_offset` | All trips the user participates in (joined + pending request + invited) — excludes owned trips; adds `participation_status` ('joined'/'pending'/'invited'), `invitation_id` for invited rows + `total_count` |
 | `get_recent_trips` | `011` | `p_user_id, p_search, p_tags, p_region, p_limit, p_offset` | Public active trips, block-filtered + `total_count` |
 | `get_suggested_trips` | `011` | `p_user_id, p_limit` | Preference-scored trip suggestions + `match_score` |
 
@@ -369,8 +372,10 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Delete dead files: `CompleteItinerary.astro` (520 lines, unused), `FormTemplates.astro` (309 lines, orphaned)~~
 - [x] ~~Integrate Mapbox Search Box (suggest + retrieve) into inline add/edit stop forms; coordinates saved to `locations` table~~
 - [x] ~~Fix DaySection.astro type mismatch: `CompleteStop[]` → `ItineraryStop[]`; `firstStop.stop?.scheduled_start` → `firstStop?.scheduled_start`~~
-- [x] ~~Pickup/Dropoff stop type in Add Stop form; enforce max 3 pickup + 3 dropoff per trip (US18a)~~
-- [x] ~~Time overlap validation on stop create/edit within a day — full interval + exact start-time collision; inline form error displayed, save blocked (US18b)~~
+- [x] ~~Pickup/Dropoff stop type in Add Stop form; limits raised to 20 each (US18a)~~
+- [x] ~~Time overlap validation on stop create/edit within a day — full interval + exact start-time collision; inline form error displayed, save blocked (US18b); new stop default time set to after last stop + 15 min~~
+- [x] ~~Consolidated "Joined" tab: `get_user_participating_trips` RPC (028) unifies joined + pending + invited into single TripCard grid; "Invited" tab removed (US13b)~~
+- [x] ~~Invitation banner on trip detail page: Accept/Decline buttons for invited users; hides Request to Join button (US15b)~~
 - [ ] Full drag-drop itinerary builder
 - [ ] Activity type as `<select>` (PH-specific presets) instead of free-text input
 - [ ] Actual vs scheduled time tracking
@@ -537,4 +542,5 @@ src/
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
 *Updated: Itinerary Phase 1–3 complete — crash fixes, query fix (location join + correct filter), `stops.ts` rewritten with correct DB columns (direct table ops), `activityEditor.ts` data-\* reading fixed, alert/confirm replaced with showToast/createConfirmModal, hidden+flex toggle fixed, dead files removed (CompleteItinerary.astro, FormTemplates.astro). Design decision: pickup/dropoff included in itinerary timeline; only destination excluded.*
 *Updated: Mapbox Search Box (suggest+retrieve) integrated into inline add/edit stop forms (US18); DaySection type mismatch fixed (CompleteStop → ItineraryStop). New requirements added: US18a (pickup/dropoff in Add Stop, max 3 each per trip), US18b (time overlap validation within a day).*
-*Updated: US18a implemented — Pickup + Dropoff added to Add Stop type selector; `validateTypeLimit()` counts `.timeline-item[data-stop-type]` in DOM before save, blocks at 3. US18b implemented — `validateTimeOverlap()` checks full interval overlap (both ends present) or exact start-time collision (end absent); inline `.form-error` div shown in form, save blocked. Both validations run in `stopEditor.ts` on create and edit.*
+*Updated: US18a — MAX_PICKUP/MAX_DROPOFF raised to 20 (was 3). US18b — `validateTimeOverlap()` checks full interval overlap or exact start-time collision; new stop form now defaults to after last stop + 15 min instead of current clock time.*
+*Updated: "Joined" tab consolidated — new `get_user_participating_trips` RPC (028) returns joined + pending + invited in one call with `participation_status` field; "Invited" tab removed; TripCard extended with `participation_status` badge. Invitation banner on trip detail page shows Accept/Decline for invited users and hides Request to Join button.*

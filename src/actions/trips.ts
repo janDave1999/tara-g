@@ -970,8 +970,6 @@ getNearbyTrips: defineAction({
         p_trip_id: input.tripId || null,
         p_limit: input.limit,
       });
-      console.log(data);
-      console.log(error);
       if (error) {
         throw new Error(error.message || 'Failed to search users');
       }

@@ -8,6 +8,7 @@ export const auth = {
       // Delete the session cookies
       cookies.delete("sb-access-token", { path: "/" });
       cookies.delete("sb-refresh-token", { path: "/" });
+      cookies.delete("sb-session-id", { path: "/" });
       await supabase.auth.signOut();
       return { success: true };
     },

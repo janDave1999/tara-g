@@ -41,13 +41,15 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 ### 1.3 API Routes
 
-| Endpoint | Description |
-|----------|-------------|
-| `/api/trips/owned` | Get trips owned by user |
-| `/api/trips/recent` | Get recent public trips |
-| `/api/trips/joins` | Get user's joined trips |
-| `/api/trips/member` | Handle join requests |
-| `/api/trips/suggested` | Get suggested trips |
+> **All legacy REST API routes have been removed** (SR-AUTHZ-001 compliance — they accepted `userId` from client input with no auth check, creating IDOR risk). Trip data is fetched entirely through **Astro actions** and **SECURITY DEFINER RPCs** which read `context.locals.user_id` from the verified JWT.
+
+| Endpoint | Status |
+|----------|--------|
+| `/api/trips/owned` | ❌ Deleted — replaced by `get_user_owned_trips` RPC via action |
+| `/api/trips/recent` | ❌ Deleted — replaced by `get_recent_trips` RPC via action |
+| `/api/trips/joins` | ❌ Deleted — replaced by `get_user_participating_trips` RPC via action |
+| `/api/trips/member` | ❌ Deleted — replaced by member RPCs via action |
+| `/api/trips/suggested` | ❌ Deleted — replaced by `get_suggested_trips` RPC via action |
 
 ### 1.4 Frontend Pages
 
@@ -252,9 +254,13 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | Function | Migration | Purpose |
 |----------|-----------|---------|
 | `create_trip_with_details` | `008` | Create trip with all related records in one call |
-| `get_trip_full_details` | `015` | Fetch complete trip with all relations as JSONB |
+| `get_trip_full_details` | `015`, `034` | Fetch complete trip with all relations as JSONB; visibility gate added (034): visitors on private trips receive NULL → page redirects to /404 |
 | `update_trip_status` | `026` | Change trip status with ownership validation |
 | `update_trip_destination` | `027` | Update primary destination location + PostGIS geometry |
+| `update_trip_dates` | `033` | Update `start_date`, `end_date`, `join_by` — ownership verified server-side |
+| `update_trip_preferences` | `033` | Update `gender_pref`, `max_pax` — ownership verified server-side |
+| `update_trip_budget` | `033` | Update `cost_sharing`, `estimated_budget` — ownership verified server-side |
+| `update_trip_description` | `033` | Update `trips.title`, `trips.description`, `trip_details.tags` — ownership verified server-side |
 | `get_nearby_trips` | `002` | Find trips within radius (PostGIS) |
 | `search_trips_optimized` | `002` | Full-text + spatial trip search with relevance score |
 
@@ -361,6 +367,9 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Fix `get_discover_trips`: add `owner_name`/`owner_avatar` (JOIN users), remove 30-day cap, exclude caller's own trips (031); fix `SMALLINT`→`INTEGER` type cast error (032)~~
 - [x] ~~Fix `get_user_owned_trips`: return `visibility` field from `trip_visibility` (030)~~
 - [x] ~~Fix `TripCard` avatar URL: handle both full HTTP URLs (OAuth) and relative R2 paths~~
+- [x] ~~SR-AUTHZ-001: Delete 5 legacy `/api/trips/*` REST routes (accepted `userId` from client input, IDOR risk)~~
+- [x] ~~SR-AUTHZ-001: Create `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (migration 033)~~
+- [x] ~~SR-AUTHZ-001: Add visibility gate to `get_trip_full_details` — visitors on private trips receive NULL, page redirects to /404 (migration 034)~~
 - [ ] Verify member management works (join/leave/remove)
 - [ ] Complete trip search and filtering
 
@@ -453,7 +462,9 @@ database-migrations/
 ├── 029_add_itinerary_public.sql            # ALTER trip_visibility ADD itinerary_public BOOLEAN DEFAULT FALSE; owner-controlled itinerary visibility
 ├── 030_fix_get_user_owned_trips_visibility.sql  # Fix get_user_owned_trips: LEFT JOIN trip_visibility + COALESCE visibility (was missing from 025 apply)
 ├── 031_fix_get_discover_trips.sql          # Fix get_discover_trips: add owner_name/owner_avatar (JOIN users), remove 30-day cap, exclude caller's own trips
-└── 032_fix_discover_trips_type_cast.sql    # Fix 031: add ::INTEGER casts for max_pax/current_participants/estimated_budget (SMALLINT→INTEGER mismatch, code 42804)
+├── 032_fix_discover_trips_type_cast.sql    # Fix 031: add ::INTEGER casts for max_pax/current_participants/estimated_budget (SMALLINT→INTEGER mismatch, code 42804)
+├── 033_create_trip_edit_rpcs.sql           # SR-AUTHZ-001: update_trip_dates, update_trip_preferences, update_trip_budget, update_trip_description — all with server-side ownership validation
+└── 034_visibility_gate_get_trip_full_details.sql  # SR-AUTHZ-001: add visibility gate to get_trip_full_details; visitors on private trips receive NULL → /404 redirect
 
 src/
 ├── pages/
@@ -463,12 +474,7 @@ src/
 │   │   └── [trip_id]/
 │   │       ├── index.astro      # Trip detail
 │   │       └── expenses.astro   # Expense management
-│   └── api/trips/
-│       ├── owned.ts
-│       ├── recent.ts
-│       ├── joins.ts
-│       ├── member.ts
-│       └── suggested.ts
+│   └── api/trips/          # (all 5 legacy routes deleted — SR-AUTHZ-001)
 ├── components/
 │   ├── MapPickerModal.astro    # NEW: Map picker for locations
 │   ├── PreferencesPrompt.astro  # NEW: Travel preferences modal
@@ -549,7 +555,7 @@ src/
 
 ---
 
-*Last updated: 2026-02-21 (session 3)*
+*Last updated: 2026-02-21 (session 4)*
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
 *Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
@@ -559,3 +565,4 @@ src/
 *Updated: "Joined" tab consolidated — new `get_user_participating_trips` RPC (028) returns joined + pending + invited in one call with `participation_status` field; "Invited" tab removed; TripCard extended with `participation_status` badge. Invitation banner on trip detail page shows Accept/Decline for invited users and hides Request to Join button.*
 *Updated: Member section and itinerary gated by role. `currentPax` now counts only `joined` members. `Member.astro` hidden from non-members. Itinerary defaults to members-only; owner can expose it via `🔒/🌐` toggle in `ItineraryHeader` (`trip_visibility.itinerary_public`, migration 029, `updateItineraryPublic` action). Avatar rendering in `renderers.ts` fixed to show `<img>` when URL present, initials fallback otherwise.*
 *Updated (session 3): Discover tab fixed — `get_discover_trips` rebuilt (031) with `owner_name`/`owner_avatar`, no 30-day cap, caller's own trips excluded; `SMALLINT`→`INTEGER` cast fix (032). `get_user_owned_trips` visibility fix (030). `TripCard` avatar URL handling unified for both R2 paths and full OAuth URLs.*
+*Updated (session 4): SR-AUTHZ-001 compliance — deleted 5 legacy `/api/trips/*` REST routes (IDOR risk). Created `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (033). Added visibility gate to `get_trip_full_details`: visitors on private trips receive NULL → page redirects /404 (034).*

@@ -1,14 +1,15 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const { username } = Astro.params;
 if (!username) return Astro.redirect("/");
 
+// viewer_id = auth.users.id (= users.auth_id in the public users table)
 const viewer_id = Astro.locals.user_id;
 
 // Fetch profile by username
-const { data: profileData } = await supabase.rpc('get_profile_by_username', {
+const { data: profileData } = await supabaseAdmin.rpc('get_profile_by_username', {
   p_username: username
 });
 
@@ -21,36 +22,43 @@ const userInfo = profileData.information;
 const userPrefs = profileData.preferences;
 const userInterests = profileData.interests;
 
-// Check if viewer is the profile owner
-const isOwner = viewer_id === profile.id;
+// viewer_id is auth.users.id; profile.auth_id is also auth.users.id — same space, safe to compare
+const isOwner = !!viewer_id && viewer_id === profile.auth_id;
 
 // Check friendship status if viewer is logged in and not owner
 let friendshipStatus = null;
 let friendRequestStatus = null;
 
 if (viewer_id && !isOwner) {
-  // Check if they are friends
-  const { data: friendship } = await supabase
-    .from('friends')
-    .select('*')
-    .or(`and(user_id.eq.${viewer_id},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${viewer_id})`)
+  // Resolve viewer's internal user_id (friends/friend_requests use users.user_id, not auth_id)
+  const { data: viewerUser } = await supabaseAdmin
+    .from('users')
+    .select('user_id')
+    .eq('auth_id', viewer_id)
     .single();
-  
-  friendshipStatus = friendship ? 'friends' : null;
 
-  // Check for pending friend request
-  if (!friendshipStatus) {
-    const { data: request } = await supabase
-      .from('friend_requests')
-      .select('*')
-      .or(`and(from_user.eq.${viewer_id},to_user.eq.${profile.id},status.eq.pending),and(from_user.eq.${profile.id},to_user.eq.${viewer_id},status.eq.pending)`)
+  const viewerUserId = viewerUser?.user_id;
+
+  if (viewerUserId) {
+    // Check if they are friends (friends table uses users.user_id)
+    const { data: friendship } = await supabaseAdmin
+      .from('friends')
+      .select('user_id')
+      .or(`and(user_id.eq.${viewerUserId},friend_id.eq.${profile.user_id}),and(user_id.eq.${profile.user_id},friend_id.eq.${viewerUserId})`)
       .single();
-    
-    if (request) {
-      if (request.from_user === viewer_id) {
-        friendRequestStatus = 'sent';
-      } else {
-        friendRequestStatus = 'received';
+
+    friendshipStatus = friendship ? 'friends' : null;
+
+    // Check for pending friend request (columns: sender_id, receiver_id — not from_user/to_user)
+    if (!friendshipStatus) {
+      const { data: request } = await supabaseAdmin
+        .from('friend_requests')
+        .select('sender_id')
+        .or(`and(sender_id.eq.${viewerUserId},receiver_id.eq.${profile.user_id},status.eq.pending),and(sender_id.eq.${profile.user_id},receiver_id.eq.${viewerUserId},status.eq.pending)`)
+        .single();
+
+      if (request) {
+        friendRequestStatus = request.sender_id === viewerUserId ? 'sent' : 'received';
       }
     }
   }
@@ -151,7 +159,7 @@ const memberSince = profile.created_at
                 ) : (
                   <button 
                     class="btn btn-primary add-friend-btn" 
-                    data-user-id={profile.id}
+                    data-user-id={profile.user_id}
                   >
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -159,7 +167,7 @@ const memberSince = profile.created_at
                     Add Friend
                   </button>
                 )}
-                <button class="btn btn-outline message-btn" data-user-id={profile.id}>
+                <button class="btn btn-outline message-btn" data-user-id={profile.user_id}>
                   <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
@@ -308,7 +316,7 @@ const memberSince = profile.created_at
           {viewer_id && (
             <button 
               class="btn btn-primary add-friend-btn" 
-              data-user-id={profile.id}
+              data-user-id={profile.user_id}
             >
               Add Friend
             </button>
@@ -336,12 +344,21 @@ const memberSince = profile.created_at
           window.location.href = '/signin';
           return;
         }
-        
+
+        // Resolve auth UUID → internal user_id (sender_id/receiver_id are users.user_id)
+        const { data: senderRow } = await supabase
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', user.id)
+          .single();
+
+        if (!senderRow?.user_id) return;
+
         const { error } = await supabase
           .from('friend_requests')
           .insert({
-            from_user: user.id,
-            to_user: userId,
+            sender_id: senderRow.user_id,
+            receiver_id: userId,
             status: 'pending'
           });
         

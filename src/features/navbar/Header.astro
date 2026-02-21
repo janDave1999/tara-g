@@ -335,11 +335,8 @@ const displayFullName = fullName || "User";
   
   logoutBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
-      // Replace this with your actual logout logic
-      // For example, if using Astro actions:
-      // await actions.auth.signout();
-      
-      // For now, just redirect to signin
+      const { actions } = await import("astro:actions");
+      await actions.auth.signout();
       window.location.href = '/signin';
     });
   });

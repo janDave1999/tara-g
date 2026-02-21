@@ -25,6 +25,8 @@ export const auth = defineMiddleware(async (ctx, next) => {
   const env = locals.runtime?.env as Record<string, unknown> | undefined;
   if (env?.USER_CACHE) {
     setRateLimitKV(env.USER_CACHE as any);
+    // Pass env to locals for userData middleware
+    locals.env = env.USER_CACHE as any;
   }
 
   const accessToken = cookies.get("sb-access-token")?.value;
@@ -40,10 +42,14 @@ export const auth = defineMiddleware(async (ctx, next) => {
         locals.user_id = user.id;
         locals.email = user.email ?? undefined;
         
-        // Also extract custom claims from JWT payload for backwards compatibility
+        // Extract from user_metadata (set during onboarding or OAuth)
+        if (user.user_metadata?.username) locals.username = user.user_metadata.username;
+        if (user.user_metadata?.avatar_url) locals.avatar_url = user.user_metadata.avatar_url;
+        
+        // Also check JWT payload for backwards compatibility
         const payload = decodeJwt(accessToken);
-        if (payload.username) locals.username = payload.username;
-        if (payload.avatar_url) locals.avatar_url = payload.avatar_url;
+        if (!locals.username && payload.user_metadata?.username) locals.username = payload.user_metadata.username;
+        if (!locals.avatar_url && payload.user_metadata?.avatar_url) locals.avatar_url = payload.user_metadata.avatar_url;
       } else {
         // Token verification failed - try to refresh
         const refreshed = await refreshSession(accessToken, refreshToken);
@@ -52,7 +58,6 @@ export const auth = defineMiddleware(async (ctx, next) => {
           locals.user_id = refreshed.user_id;
           locals.email = refreshed.email;
           
-          // Extract custom claims from refreshed token if available
           if (refreshed.username) locals.username = refreshed.username;
           if (refreshed.avatar_url) locals.avatar_url = refreshed.avatar_url;
 

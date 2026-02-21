@@ -16,10 +16,28 @@ async function fetchUserFromDB(userId: string): Promise<CachedUser | null> {
     .from("users")
     .select("username, avatar_url, full_name")
     .eq("auth_id", userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
-    return null;
+    // Fallback: try to get from Supabase Auth user_metadata
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    
+    if (authData?.user) {
+      const metadata = authData.user.user_metadata;
+      const username = metadata?.username;
+      const avatar_url = metadata?.avatar_url;
+      const full_name = metadata?.full_name;
+      
+      // Only return user if they have actual profile data, not just defaults
+      if (username || avatar_url || full_name) {
+        return {
+          username: username ?? 'User',
+          avatar_url: avatar_url ?? null,
+          full_name: full_name ?? null,
+        };
+      }
+    }
+    return null;  // Don't cache fallback values
   }
 
   return {
@@ -31,7 +49,7 @@ async function fetchUserFromDB(userId: string): Promise<CachedUser | null> {
 
 async function getCachedUser(
   userId: string,
-  env?: App.Locals["env"]
+  env?: any
 ): Promise<CachedUser | null> {
   const cacheKey = getUserCacheKey(userId);
 
@@ -59,7 +77,7 @@ export const userData = defineMiddleware(async (ctx, next) => {
   const { locals } = ctx;
 
   if (locals.user_id) {
-    const user = await getCachedUser(locals.user_id, locals.env);
+    const user = await getCachedUser(locals.user_id, locals.env as any);
 
     if (user) {
       locals.username = user.username;

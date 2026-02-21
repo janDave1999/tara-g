@@ -1,0 +1,318 @@
+---
+interface Props {
+  profile: {
+    username: string;
+    full_name: string;
+    bio: string;
+    avatar_url: string;
+    location_city: string;
+    location_country: string;
+  };
+}
+
+const { profile } = Astro.props;
+---
+
+<dialog id="edit-profile-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl p-0 max-w-md w-full mx-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-100">
+      <h2 class="text-xl font-semibold text-gray-900">Edit Profile</h2>
+      <button 
+        onclick="document.getElementById('edit-profile-modal').close()" 
+        class="p-2 hover:bg-gray-100 rounded-full transition-colors"
+      >
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Form -->
+    <form id="edit-profile-form" class="p-6 space-y-5">
+      <!-- Avatar - Display Only, Click to Edit -->
+      <div class="flex flex-col items-center">
+        <div class="relative group">
+          <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg cursor-pointer" onclick="document.getElementById('avatar-editor-modal').showModal()">
+            <img 
+              src={profile.avatar_url || "/default-avatar.png"} 
+              alt="Profile avatar" 
+              class="w-full h-full object-cover"
+            />
+            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+              <span class="text-white text-sm font-medium">Change</span>
+            </div>
+          </div>
+        </div>
+        <button 
+          type="button"
+          onclick="document.getElementById('avatar-editor-modal').showModal()"
+          class="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          Change Photo
+        </button>
+      </div>
+      
+      <!-- Full Name -->
+      <div>
+        <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">
+          Display Name
+        </label>
+        <input
+          type="text"
+          id="full_name"
+          name="full_name"
+          value={profile.full_name || ''}
+          maxlength={200}
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          placeholder="Your display name"
+        />
+      </div>
+      
+      <!-- Username -->
+      <div>
+        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+          Username
+        </label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">@</span>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            value={profile.username || ''}
+            minlength={3}
+            maxlength={50}
+            class="w-full pl-8 pr-12 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="username"
+          />
+          <div id="username-status" class="absolute right-3 top-1/2 -translate-y-1/2">
+            <!-- Status icon will be inserted here -->
+          </div>
+        </div>
+        <p id="username-message" class="mt-1 text-sm hidden"></p>
+      </div>
+      
+      <!-- Bio -->
+      <div>
+        <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">
+          Bio
+        </label>
+        <textarea
+          id="bio"
+          name="bio"
+          maxlength={160}
+          rows={3}
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+          placeholder="Tell others about yourself"
+        >{profile.bio || ''}</textarea>
+        <p class="mt-1 text-sm text-gray-400 text-right">
+          <span id="bio-count">{profile.bio?.length || 0}</span>/160
+        </p>
+      </div>
+      
+      <!-- Location -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="location_city" class="block text-sm font-medium text-gray-700 mb-1">
+            City
+          </label>
+          <input
+            type="text"
+            id="location_city"
+            name="location_city"
+            value={profile.location_city || ''}
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="City"
+          />
+        </div>
+        <div>
+          <label for="location_country" class="block text-sm font-medium text-gray-700 mb-1">
+            Country
+          </label>
+          <input
+            type="text"
+            id="location_country"
+            name="location_country"
+            value={profile.location_country || ''}
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="Country"
+          />
+        </div>
+      </div>
+      
+      <!-- Error -->
+      <div id="edit-profile-error" class="p-3 bg-red-50 border border-red-200 rounded-lg hidden">
+        <p id="edit-profile-error-message" class="text-sm text-red-600"></p>
+      </div>
+      
+      <!-- Actions -->
+      <div class="flex gap-3 pt-2">
+        <button
+          type="button"
+          onclick="document.getElementById('edit-profile-modal').close()"
+          class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          id="edit-profile-submit"
+          class="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <span id="edit-profile-spinner" class="hidden">
+            <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </span>
+          <span id="edit-profile-btn-text">Save Changes</span>
+        </button>
+      </div>
+    </form>
+  </div>
+  
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  let usernameCheckTimeout: ReturnType<typeof setTimeout>;
+  let isDirty = false;
+  const username = document.getElementById('username') as HTMLInputElement;
+  const originalUsername = username?.value;
+
+  // Username availability check
+  const usernameInput = document.getElementById('username') as HTMLInputElement;
+  const usernameStatus = document.getElementById('username-status') as HTMLElement;
+  const usernameMessage = document.getElementById('username-message') as HTMLElement;
+  const avatarInput = document.getElementById('avatarInput') as HTMLInputElement;
+  
+
+  usernameInput?.addEventListener('input', () => {
+    isDirty = true;
+    clearTimeout(usernameCheckTimeout);
+    const username = usernameInput.value.trim();
+
+    if (username.length < 3) {
+      usernameStatus.innerHTML = '';
+      usernameMessage.classList.add('hidden');
+      return;
+    }
+
+    if (username === originalUsername) {
+      usernameStatus.innerHTML = '<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>';
+      usernameMessage.classList.add('hidden');
+      return;
+    }
+
+    usernameStatus.innerHTML = '<svg class="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>';
+    
+    usernameCheckTimeout = setTimeout(async () => {
+      try {
+        const { data, error } = await actions.onboarding.checkUsername({ username });
+
+        if (error) throw error;
+
+        if (data.available) {
+          usernameStatus.innerHTML = '<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>';
+          usernameMessage.classList.add('hidden');
+        } else {
+          usernameStatus.innerHTML = '<svg class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>';
+          usernameMessage.textContent = 'This username is already taken';
+          usernameMessage.classList.remove('hidden');
+          usernameMessage.classList.add('text-red-500');
+        }
+      } catch (error) {
+        usernameStatus.innerHTML = '';
+        console.error('Error checking username:', error);
+      }
+    }, 500);
+  });
+
+  // Bio character counter
+  const bioTextarea = document.getElementById('bio') as HTMLTextAreaElement;
+  const bioCount = document.getElementById('bio-count') as HTMLElement;
+
+  bioTextarea?.addEventListener('input', () => {
+    isDirty = true;
+    bioCount.textContent = bioTextarea.value.length.toString();
+  });
+
+  // Other input changes
+  document.querySelectorAll('#edit-profile-form input:not(#username)').forEach(input => {
+    input.addEventListener('input', () => {
+      isDirty = true;
+    });
+  });
+
+  // Form submission
+  const form = document.getElementById('edit-profile-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('edit-profile-submit') as HTMLButtonElement;
+  const btnText = document.getElementById('edit-profile-btn-text') as HTMLElement;
+  const spinner = document.getElementById('edit-profile-spinner') as HTMLElement;
+  const errorDiv = document.getElementById('edit-profile-error') as HTMLElement;
+  const errorMessage = document.getElementById('edit-profile-error-message') as HTMLElement;
+
+  function showError(message: string) {
+    errorMessage.textContent = message;
+    errorDiv.classList.remove('hidden');
+  }
+
+  function hideError() {
+    errorDiv.classList.add('hidden');
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+    
+    // Check if username is taken
+    const usernameStatusHtml = usernameStatus?.innerHTML || '';
+    if (usernameStatusHtml.includes('text-red-500')) {
+      showError('Please choose a different username');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    btnText.textContent = 'Saving...';
+    spinner.classList.remove('hidden');
+
+    const formData = new FormData(form);
+    
+    const profileInput = {
+      username: formData.get('username') as string,
+      bio: formData.get('bio') as string || undefined,
+      location_city: formData.get('location_city') as string || undefined,
+      location_country: formData.get('location_country') as string || undefined,
+    };
+
+    try {
+      const { data, error } = await actions.onboarding.updateProfile(profileInput);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Close modal and reload
+      (document.getElementById('edit-profile-modal') as HTMLDialogElement).close();
+      window.location.reload();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Something went wrong');
+      btnText.textContent = 'Save Changes';
+      spinner.classList.add('hidden');
+      submitBtn.disabled = false;
+    }
+  });
+
+  // Close confirmation
+  const modal = document.getElementById('edit-profile-modal') as HTMLDialogElement;
+  modal?.addEventListener('close', () => {
+    if (isDirty && !window.location.reload) {
+      // Modal closed without saving - page will reload on success
+    }
+  });
+</script>

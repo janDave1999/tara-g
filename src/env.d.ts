@@ -42,3 +42,11 @@ interface ImportMeta {
 //     avatar_url: string | null;
 //   }
 // }
+
+declare module 'astro:actions' {
+  interface Actions {
+    user: {
+      uploadAvatarToR2: import('./actions/user').user['uploadAvatarToR2'];
+    };
+  }
+}

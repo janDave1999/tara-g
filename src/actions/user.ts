@@ -4,7 +4,8 @@
 // ============================================================================
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { uploadToR2 } from "@/scripts/R2/upload";
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -40,6 +41,121 @@ function handleRpcError(error: any, defaultMessage: string) {
     message
   });
 }
+
+// ============================================================================
+// USER ACTIONS
+// ============================================================================
+
+export const user = {
+  // ============================================================================
+  // Upload avatar to R2
+  // ============================================================================
+  uploadAvatarToR2: defineAction({
+    accept: "json",
+    
+    input: z.object({
+      file: z.string(), // base64 encoded
+      name: z.string(),
+      type: z.string(),
+    }),
+    
+    async handler({ file: base64File, name, type }, { locals }) {
+      const userId = locals.user_id;
+      if (!userId) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in'
+        });
+      }
+
+      // Check if R2 binding exists
+      if (!locals.runtime?.env?.TRIP_HERO) {
+        throw new ActionError({
+          message: "R2 bucket not configured",
+          code: "INTERNAL_SERVER_ERROR",
+        });
+      }
+
+      try {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(type)) {
+          throw new ActionError({
+            message: `Invalid file type: ${type}. Allowed types: ${allowedTypes.join(', ')}`,
+            code: "BAD_REQUEST",
+          });
+        }
+        
+        // Proper base64 file size check (in bytes)
+        const padding = base64File.endsWith("==") ? 2 : base64File.endsWith("=") ? 1 : 0;
+        const sizeInBytes = (base64File.length * 3) / 4 - padding;
+        
+        if (sizeInBytes > 5 * 1024 * 1024) {
+          throw new ActionError({
+            message: `File is too large (max 5MB)`,
+            code: "BAD_REQUEST",
+          });
+        }
+        
+        // Decode base64
+        const buffer = Buffer.from(base64File, "base64");
+        
+        // Sanitize filename
+        const sanitizedName = name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileExt = sanitizedName.split('.').pop() || 'jpg';
+        
+        // Unique filename: user/[user_id]/profile-pictures/[timestamp]-[random].[ext]
+        const keyname = `user/${userId}/profile-pictures/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+        
+        // Upload to R2
+        const url = await uploadToR2(
+          buffer, 
+          name, 
+          type, 
+          keyname, 
+          locals.runtime.env.TRIP_HERO
+        );
+        
+        if (!url) {
+          throw new ActionError({
+            message: "Failed to upload avatar",
+            code: "INTERNAL_SERVER_ERROR",
+          });
+        }
+
+        // Update avatar_url in database
+        const { error: updateError } = await supabaseAdmin
+          .from('users')
+          .update({ 
+            avatar_url: url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('auth_id', userId);
+
+        if (updateError) {
+          throw new ActionError({
+            message: `Failed to update avatar: ${updateError.message}`,
+            code: "INTERNAL_SERVER_ERROR",
+          });
+        }
+        
+        return {
+          success: true,
+          url,
+          message: 'Avatar uploaded successfully!'
+        };
+      } catch (error) {
+        if (error instanceof ActionError) throw error;
+        
+        console.error('Avatar upload error:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to upload avatar'
+        });
+      }
+    }
+  }),
+};
 
 // ============================================================================
 // ONBOARDING ACTIONS
@@ -517,3 +633,8 @@ export const travelPreferences = {
     }
   }),
 };
+
+// ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+export type UserActions = typeof user;

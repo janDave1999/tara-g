@@ -36,7 +36,7 @@ const now = new Date().toISOString();
 const showPreferencesPrompt = !userPreferences &&
   (!userSettings?.preferences_prompt_until || userSettings.preferences_prompt_until < now);
 
-const [ownedResult, memberResult, discoverResult, suggestedResult] = await Promise.all([
+const [ownedResult, memberResult, discoverResult, suggestedResult, invitationsResult] = await Promise.all([
   supabase.rpc('get_user_owned_trips', {
     p_user_id: userId,
     p_search: currentTab === 'owned' ? (searchQuery || null) : null,
@@ -65,16 +65,21 @@ const [ownedResult, memberResult, discoverResult, suggestedResult] = await Promi
     p_user_id: userId,
     p_limit: 6,
   }),
+  supabase.rpc('get_user_pending_invitations', {
+    p_user_id: userId,
+  }),
 ]);
 
 const ownedTrips = ownedResult.data || [];
 const memberTrips = memberResult.data || [];
 const discoverTrips = discoverResult.data || [];
 const suggestedTrips = suggestedResult.data || [];
+const pendingInvitations: any[] = Array.isArray(invitationsResult.data) ? invitationsResult.data : [];
 
 const ownedCount = ownedTrips[0]?.total_count || 0;
 const memberCount = memberTrips[0]?.total_count || 0;
 const discoverCount = discoverTrips[0]?.total_count || 0;
+const invitedCount = pendingInvitations.length;
 
 let currentTrips = ownedTrips;
 let currentCount = ownedCount;
@@ -190,11 +195,12 @@ function buildUrl(params: Record<string, string>) {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 md:p-5">
 
           <!-- Segmented tab control -->
-          <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 self-start">
+          <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 self-start flex-wrap">
             {[
-              { id: 'owned', label: 'My Trips', count: ownedCount },
-              { id: 'member', label: 'Joined', count: memberCount },
-              { id: 'discover', label: 'Discover', count: discoverCount },
+              { id: 'owned', label: 'My Trips', count: ownedCount, accent: false },
+              { id: 'member', label: 'Joined', count: memberCount, accent: false },
+              { id: 'discover', label: 'Discover', count: discoverCount, accent: false },
+              { id: 'invited', label: 'Invited', count: invitedCount, accent: invitedCount > 0 },
             ].map(tab => (
               <a
                 href={buildUrl({ tab: tab.id, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
@@ -205,11 +211,15 @@ function buildUrl(params: Record<string, string>) {
                 }`}
               >
                 {tab.label}
-                <span class={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
-                  currentTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-                }`}>
-                  {tab.count}
-                </span>
+                {(tab.count > 0 || tab.id !== 'invited') && (
+                  <span class={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                    currentTab === tab.id
+                      ? (tab.accent ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white')
+                      : (tab.accent ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-500')
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
               </a>
             ))}
           </div>
@@ -557,7 +567,7 @@ function buildUrl(params: Record<string, string>) {
       )}
 
       <!-- ── Suggested Trips ── -->
-      {ownedTrips.length < 3 && suggestedTrips.length > 0 && (
+      {ownedTrips.length < 10 && suggestedTrips.length > 0 && (
         <section class="mt-14 pt-10 border-t border-gray-200">
           <div class="flex items-start justify-between mb-7">
             <div>

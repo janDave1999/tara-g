@@ -13,18 +13,38 @@
 
 ---
 
+### Problem Statement
+
+Filipino travelers currently have no simple way to track which provinces they've visited. They use scattered methods—photos, notes in phone apps, or just memory—which makes it hard to:
+- Know which provinces they've covered vs. remaining
+- Show their travel achievements to others
+- Automatically capture province visits from trip data
+
+This feature consolidates province tracking into the existing Tara G! platform, leveraging completed trips to reduce manual data entry.
+
+---
+
 ## 1. User Stories
 
 ### 1.1 Core Tracking (P0)
 
 | # | Story | Acceptance Criteria |
 |---|-------|---------------------|
-| US1 | As a user, I want to see an interactive map of the Philippines with all 82 provinces | Map loads with all provinces visible; each province is clickable |
+| US1 | As a user, I want to see an interactive map of the Philippines with all 82 provinces | 
+- [ ] Map displays all 82 provinces as clickable polygons
+- [ ] Each province polygon is individually selectable (hover highlight + click response)
+- [ ] Map renders within 3 seconds on 3G connection
+- [ ] Map is centered on Philippines bounds on initial load |
 | US2 | As a user, I want provinces I've visited to be colored differently based on my visit type | Colors: 🔵 Pass through, 🟡 Short stay, 🟠 Extended stay, 🔴 Thorough exploration |
 | US3 | As a user, I want to see my progress as "X/82 provinces visited" | Progress bar shows exact count and percentage |
 | US4 | As a user, I want to manually add a province visit with a stage | Click province → modal → select stage → save |
 | US5 | As a user, I want to edit or delete my recorded visits | Can modify stage, notes, visit date; can delete entry |
-| US6 | As a user, I want the system to automatically detect provinces from my completed trips | Click "Sync" → system finds all completed trips → extracts provinces → calculates stage based on trip duration |
+| US6 | As a user, I want the system to automatically detect provinces from my completed trips | 
+- [ ] "Sync" button triggers scan of all trips where status = 'completed'
+- [ ] Each trip's location coordinates are checked against province boundaries via PostGIS
+- [ ] Detected provinces appear in user's visit list with is_auto_detected = TRUE
+- [ ] Manual entries are preserved (auto-detect skipped if manual entry exists)
+- [ ] Sync completes within 10 seconds for 100 trips |
 
 ### 1.2 Privacy Controls (P0)
 
@@ -239,7 +259,7 @@ GET /api/project82?user_id={target_user_id}
 
 ---
 
-## 8. Questions & Decisions
+## 8. Technical Decisions
 
 | # | Question | Decision |
 |---|----------|----------|
@@ -249,4 +269,53 @@ GET /api/project82?user_id={target_user_id}
 
 ---
 
-*Last updated: 2026-02-19*
+## 9. Constraints & Assumptions
+
+### Constraints (Confirmed)
+- PostGIS extension enabled in Supabase
+- MapBox already integrated in existing codebase
+- Province geojson files available at `/public/geojson/`
+- PH_PROVINCES data structure exists in `src/data/phProvinces.ts`
+
+### Assumptions (Unvalidated)
+- [ ] Province boundaries in geojson are accurate and complete
+- [ ] User trips have location data (coordinates) populated
+- [ ] Trip completion status is reliably set by users
+- [ ] 82 provinces is the correct count (no new provinces created)
+
+### Time Estimate
+- Phase 1: ~4 hours
+- Phase 2: ~3 hours  
+- Phase 3: ~2 hours
+- **Total V1: ~9 hours**
+
+---
+
+## 10. V1 Minimum Viable Scope
+
+### MUST Have (Launch Blockers)
+1. Database tables created and accessible
+2. Map displays all 82 provinces
+3. User can manually add a province visit
+4. User can view their own progress (X/82)
+5. Privacy controls work (defaults to private)
+
+### SHOULD Have (Launch Quality)
+1. Auto-sync from completed trips
+2. Edit/delete visits
+3. Stage-based coloring on map
+4. Progress bar shows percentage
+
+### COULD Have (Post-Launch)
+1. Public profile page
+2. Trip linkage in visits
+3. Notes field
+
+### WON'T Have (Explicitly Deferred)
+1. Achievements/badges UI
+2. Shareable public link
+3. List view toggle
+
+---
+
+*Last updated: 2026-02-21*

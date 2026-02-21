@@ -5,6 +5,7 @@ import { loadEnv } from 'vite';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from "@astrojs/sitemap";
+import react from '@astrojs/react';
 
 
 const env = loadEnv("", process.cwd(), "");
@@ -82,7 +83,7 @@ export default defineConfig({
       prefixDefaultLocale: false,
     },
   },
-  integrations: [sitemap({
+  integrations: [react(), sitemap({
     filter: (page) =>
       page !== "/500" &&
       page !== "/404",

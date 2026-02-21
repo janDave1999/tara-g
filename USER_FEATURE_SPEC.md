@@ -11,6 +11,42 @@ The **User** feature covers the complete journey from account creation to a full
 
 ---
 
+### Problem Statement
+
+New users to Tara G! face friction when:
+- Creating an account requires multiple manual database entries that aren't auto-populated
+- Onboarding is disjointed across different pages with no clear progress tracking
+- Profile data is incomplete, breaking downstream features (trip members, search, invitations)
+
+This feature consolidates user management into a cohesive flow that automatically populates required data and guides users through setup.
+
+---
+
+### Constraints & Assumptions
+
+#### Constraints (Confirmed)
+- Supabase Auth + Database required
+- PostGIS enabled for spatial queries
+- MapBox integrated for maps
+- R2/Cloudflare for image storage
+
+#### Assumptions (Unvalidated)
+- [ ] Email delivery working for confirmations
+- [ ] Social login providers can be configured (Google/Facebook)
+- [ ] Session cookies properly handled across domains
+
+#### Time Estimates (Remaining Work)
+| Phase | Estimate |
+|-------|----------|
+| Phase 4.3: Profile Edit + Completion UI | ~4 hours |
+| Phase 4.4: Profile Tabs (Trips/Friends) | ~3 hours |
+| Phase 4.5: Verified Badge + Share | ~1 hour |
+| Phase 6.1: Friend System UI | ~4 hours |
+| Phase 6.2: Block System UI | ~2 hours |
+| **Total Remaining** | **~14 hours** |
+
+---
+
 ## 1. Current Implementation Summary
 
 ### 1.1 Auth Pages
@@ -37,7 +73,8 @@ The **User** feature covers the complete journey from account creation to a full
 
 | Route | File | Status |
 |-------|------|--------|
-| `/profile` | `src/pages/profile/index.astro` | ⚠️ Minimal (nearly empty) |
+| `/profile` | `src/pages/profile/index.astro` | ✅ Own profile view |
+| `/profile/[username]` | `src/pages/profile/[username].astro` | ✅ Public profile view |
 | `/profile/security` | `src/pages/profile/security.astro` | ⚠️ MFA code commented out |
 
 ### 1.4 Actions
@@ -97,7 +134,12 @@ The missing piece is a PostgreSQL trigger on `auth.users INSERT` that creates th
 
 | # | Story | Acceptance Criteria | Status |
 |---|-------|---------------------|--------|
-| UA1 | As a visitor, I want to create an account with email and password | Register form validates email format, password min 8 chars, requires terms agreement | ✅ Form exists |
+| UA1 | As a visitor, I want to create an account with email and password | 
+- [ ] Email field shows inline error for invalid format
+- [ ] Password field enforces minimum 8 characters
+- [ ] Terms checkbox must be checked to enable submit
+- [ ] Submitting valid form creates `auth.users` row AND triggers `handle_new_user` function
+- [ ] Success message "Check your email" displays within 1 second | ✅ Form exists |
 | UA2 | As a new user, my profile row is created automatically on signup | `public.users` row inserted when `auth.users` row is created (via DB trigger) | ✅ Migration 019 (robust, handles orphaned rows) |
 | UA3 | As a new user, I receive a confirmation email to verify my address | Supabase sends confirmation email; user lands on onboarding after clicking link | ✅ Phase 3 — emailRedirectTo set, callback supports next param |
 | UA4 | As a user, I want to sign in with email and password | Login sets auth cookies, redirects to `/feeds` or onboarding if not complete | ✅ Implemented |
@@ -110,7 +152,11 @@ The missing piece is a PostgreSQL trigger on `auth.users INSERT` that creates th
 | # | Story | Acceptance Criteria | Status |
 |---|-------|---------------------|--------|
 | UO1 | As a new user, I am guided to complete my profile after email confirmation | After confirming email, redirected to `/onboarding/profile` | ✅ Flow implemented - middleware handles redirect |
-| UO2 | As a new user, I want to set my display name and username | Step 1 collects full name, unique username (3-50 chars, alphanumeric + underscore) | ✅ Page exists |
+| UO2 | As a new user, I want to set my display name and username | 
+- [ ] Full name input required, max 200 chars
+- [ ] Username input required, 3-50 chars, lowercase alphanumeric + underscore
+- [ ] Real-time availability check shows ✅ or ❌ within 500ms
+- [ ] Duplicate username shows inline error and prevents submit | ✅ Page exists |
 | UO3 | As a new user, I want to upload a profile photo | Avatar upload to Supabase Storage in Step 1 | ✅ Implemented |
 | UO4 | As a new user, I want to check if my username is available before submitting | Real-time availability check via `check_username_availability` RPC | ✅ Migration 018 |
 | UO5 | As a new user, I want to set my interests to personalize my feed | Step 2 — choose min 3 from 8 categories via `set_user_interests` RPC | ✅ Migration 018 |
@@ -124,25 +170,73 @@ The missing piece is a PostgreSQL trigger on `auth.users INSERT` that creates th
 
 | # | Story | Acceptance Criteria | Status |
 |---|-------|---------------------|--------|
-| UP1 | As a user, I want to view my profile | `/profile` shows name, username, avatar, bio, stats (trips, friends) | ⚠️ Page minimal |
-| UP2 | As a user, I want to edit my profile | Edit name, bio, avatar, location inline | ❌ Not implemented |
+| UP1 | As a user, I want to view my profile | `/profile` shows name, username, avatar, bio, stats (trips, friends) | ✅ Implemented |
+| UP2 | As a user, I want to edit my profile | 
+- [ ] Click "Edit Profile" opens modal with current data
+- [ ] Editable fields: full_name, bio, location_city, location_country
+- [ ] **Note: Avatar is handled separately** - see UP2b
+- [ ] Cancel button discards changes, confirms if dirty
+- [ ] Save button shows loading state, then success toast
+- [ ] Inline validation with error messages | ❌ Not implemented |
+| UP2a | As a user, I want to see my profile completion progress |
+- [ ] Shows percentage bar (0-100%)
+- [ ] Below 100%, shows actionable "Complete your profile" prompt
+- [ ] Clicking prompt navigates to relevant onboarding step | ❌ Not implemented |
+| UP2b | As a user, I want to upload/change my profile picture |
+- [ ] Click avatar opens dedicated avatar editor
+- [ ] File picker for image selection
+- [ ] Live preview before saving
+- [ ] Immediate upload to Supabase Storage on selection
+- [ ] Success/error feedback shown
+- [ ] Works independently of profile edit | ❌ Not implemented |
 | UP3 | As a user, I want to update my travel preferences | Revisit Step 3 data from profile settings | ❌ Not implemented |
 | UP4 | As a user, I want to update my interests | Revisit Step 2 data from profile settings | ❌ Not implemented |
-| UP5 | As a user, I want to see my trips on my profile | Tabs: Owned trips / Joined trips | ❌ Not implemented |
+| UP5 | As a user, I want to see my trips on my profile | 
+- [ ] Tabs: Owned trips / Joined trips
+- [ ] Each tab shows trip cards with thumbnail, title, dates
+- [ ] Empty state if no trips in category | ❌ Not implemented |
 | UP6 | As a user, I want to change my email address | Requires re-confirmation | ❌ Not implemented |
 | UP7 | As a user, I want to change my password | Current + new password form | ❌ Not implemented |
 | UP8 | As a user, I want to set up two-factor authentication | TOTP via authenticator app | ⚠️ Code commented out |
-| UP9 | As a user, I want to see another user's public profile | `/profile/[username]` shows public info | ❌ Not implemented |
+| UP9 | As a user, I want to see another user's public profile | `/profile/[username]` shows public info | ✅ Implemented — privacy-aware by viewer relationship |
 | UP10 | As a user, I want to set my profile to private | Toggle in settings | ❌ Not implemented |
+| UP11 | As a user, I want to share my profile |
+- [ ] "Share Profile" button generates shareable link
+- [ ] Copy to clipboard with visual feedback
+- [ ] Optional: Share to social media | ❌ Not implemented |
+| UP12 | As a user, I want to see a verified badge | 
+- [ ] Blue checkmark displays next to name if is_verified = true
+- [ ] Tooltip on hover: "Verified account" | ❌ Not implemented |
 
 ### 3.4 Friends & Social (P1)
 
 | # | Story | Acceptance Criteria | Status |
 |---|-------|---------------------|--------|
-| UF1 | As a user, I want to send a friend request | Button on other user's profile | ❌ Not implemented |
-| UF2 | As a user, I want to accept or decline friend requests | Notification + accept/decline UI | ❌ Not implemented |
-| UF3 | As a user, I want to see my friends list | `/profile/friends` or profile tab | ❌ Not implemented |
-| UF4 | As a user, I want to block another user | Block from profile; hides their content | ❌ Not implemented |
+| UF1 | As a user, I want to send a friend request | 
+- [ ] "Add Friend" button on public profile
+- [ ] Click → POST to `friend_requests` table (status: pending)
+- [ ] Button changes to "Request Sent" (disabled)
+- [ ] Toast notification: "Friend request sent" | ❌ Not implemented |
+| UF2 | As a user, I want to accept or decline friend requests |
+- [ ] Notification badge on header when pending requests exist
+- [ ] Dropdown/panel shows list of pending requests
+- [ ] Each request shows: avatar, name, "Accept" / "Decline" buttons
+- [ ] Accept → creates friendship pair, notifieser
+- [ request ] Decline → deletes request, no notification | ❌ Not implemented |
+| UF3 | As a user, I want to see my friends list |
+- [ ] `/profile/friends` or profile tab shows all friends
+- [ ] Grid of friend cards (avatar + name)
+- [ ] Click navigates to friend's profile
+- [ ] Pagination if > 20 friends | ❌ Not implemented |
+| UF4 | As a user, I want to block another user |
+- [ ] "Block" option in profile menu (three dots)
+- [ ] Confirmation modal: "Block @username? They won't see your profile."
+- [ ] Block → inserts into `blocks` table
+- [ ] Blocked user sees 404 on your profile | ❌ Not implemented |
+| UF5 | As a user, I want to unfriend someone |
+- [ ] "Unfriend" button on friend profile
+- [ ] Confirmation: "Unfriend @username?"
+- [ ] Removes friendship from both `friends` table rows | ❌ Not implemented |
 
 ---
 
@@ -239,9 +333,43 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 
 ---
 
-## 5. Current Gaps
+## 5. V1 Minimum Scope
 
-### 5.1 P0 — Blocking (Fix First)
+### Must Have (Launch Blockers)
+1. Account registration with auto-population of `public.users`
+2. Email confirmation flow
+3. 3-step onboarding wizard
+4. Login with rate limiting protection
+5. Profile view (own and public)
+
+### Should Have (Launch Quality)
+1. Edit profile inline (with modal)
+2. Profile privacy toggle
+3. Social login (Google/Facebook)
+4. Profile completion progress UI
+5. Verified badge display
+6. Profile tabs (Trips / Friends)
+7. Add Friend / Message buttons on public profiles
+
+### Could Have (Post-Launch)
+1. Friend system UI (requests, list, unfriend)
+2. Block system UI
+3. MFA/2FA
+4. Account deletion (GDPR)
+5. Data export (GDPR)
+6. Profile sharing (copy link)
+7. Profile QR code
+
+### Explicitly Not in V1
+- Trip tabs on profile (belongs to Trip feature)
+- Messaging between users (belongs to Social feature)
+- Dark mode (belongs to Settings/Theme feature)
+
+---
+
+## 6. Current Gaps
+
+### 6.1 P0 — Blocking (Fix First)
 
 - [x] ~~**Missing `handle_new_user` trigger**~~ — Fixed in migration 017. Trigger now auto-populates `public.users`, `user_settings`, `user_information` on signup. Backfills existing users.
 - [x] ~~**Missing onboarding RPC functions**~~ — Fixed in migration 018. All 9 functions created.
@@ -250,25 +378,35 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 - [x] ~~**Profile completion infinite recursion**~~ — Fixed in migration 022. Dropped `trigger_user_info_completion` that caused infinite loop.
 - [x] ~~**Onboarding redirect loop**~~ — Fixed in migration 023. Changed RPC field `is_complete` to `onboarding_completed`.
 
-### 5.2 P1 — Should Fix Soon
+### 6.2 P1 — Should Fix Soon
 
 - [x] ~~**Global middleware**~~ — Implemented in `src/middleware/index.ts`. Protects routes, handles auth, redirects to onboarding if incomplete.
 - [x] ~~**Login attempt protection**~~ — Rate limit failed logins with progressive cooldown (5min/15min/30min). Migration 025 created, signin.ts and signin.astro updated.
+- [x] ~~**Onboarding Cloudflare build errors**~~ — Fixed TypeScript errors in all 3 onboarding pages. Root cause: orphaned `<script define:vars>` open tags (no body/close) caused the language server to parse entire HTML templates as script body. Also reconstructed missing HTML template in `preferences.astro`. All pages now use `data-*` attribute pattern to pass SSR values to client scripts.
+- [x] ~~**`/profile/[username]` public view**~~ — Route created, fetches by username via `get_profile_by_username` RPC (Migration 026), applies privacy rules by viewer relationship.
 - [ ] **Social login** (Google/Facebook) — Code ready, awaiting Supabase/Google/Facebook configuration. See `docs/SOCIAL_LOGIN_SETUP.md`
-- [ ] **Profile page** — `/profile/index.astro` needs to be built out
-- [ ] **`/profile/[username]` public view** — No route for viewing another user's profile.
+- [ ] **Profile edit modal** — Implement edit profile UI with inline editing
+- [ ] **Profile completion UI** — Progress bar + actionable prompts
+- [ ] **Verified badge** — Display blue checkmark for verified users
+- [ ] **Profile tabs** — Owned Trips / Joined Trips / Friends sections
+- [ ] **Friend action buttons** — Add Friend, Message, Unfriend buttons on public profiles
 
-### 5.3 P2 — Nice to Have
+### 6.3 P2 — Nice to Have
 
 - [ ] **MFA / 2FA** — TOTP code exists but is commented out.
 - [ ] **Friends system UI** — Tables exist, no UI for friend requests/listing.
 - [ ] **Block system UI** — Table exists, no UI.
 - [ ] **Email change** — Requires Supabase auth flow + re-confirm.
-- [ ] **Account deletion** — GDPR compliance.
+- [ ] **Account deletion** — GDPR compliance: self-service deletion flow
+- [ ] **Data export** — GDPR compliance: download user data as JSON/CSV
+- [ ] **Profile sharing** — Copy link, share to social
+- [ ] **Profile QR code** — Scan to view profile
+- [ ] **Empty states** — Friendly guidance for incomplete profiles
+- [ ] **Skeleton loaders** — Loading states with shimmer effect
 
 ---
 
-## 6. Implementation Phases
+## 7. Implementation Phases
 
 ### Phase 1: Fix the Root Cause (P0)
 
@@ -306,10 +444,13 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 
 ### Phase 4: Profile Page (P1) - IN PROGRESS
 
-- [ ] Build out `/profile/index.astro` — view own profile with stats (See Section 7.2)
-- [ ] Inline edit: name, bio, avatar, location
+- [x] ~~Build out `/profile/index.astro`~~ — Own profile view with stats
+- [x] ~~Create `/profile/[username].astro`~~ — Public profile view with privacy rules by relationship (owner/friend/visitor)
+- [ ] Inline edit: name, bio, avatar, location (modal form)
+- [ ] Profile completion progress bar + prompts
+- [ ] Verified badge display
 - [ ] Tabs: owned trips / joined trips / friends
-- [ ] Create `/profile/[username].astro` — public profile view
+- [ ] Share profile button
 
 ### Phase 5: Global Middleware (P1)
 
@@ -321,11 +462,15 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 
 ### Phase 6: Social & Safety (P2)
 
-- [ ] Friend request send/accept/decline UI
-- [ ] Block/unblock UI
+- [ ] Friend request send UI (button on profile, request creation)
+- [ ] Friend request accept/decline UI (notification + action buttons)
+- [ ] Friends list page (`/profile/friends` or tab)
+- [ ] Unfriend functionality
+- [ ] Block/unblock UI (profile menu, confirmation modal)
 - [ ] MFA (TOTP) — uncomment and complete existing code
 - [ ] Social login (Google/Facebook) — complete OAuth handlers
-- [ ] Account deletion
+- [ ] Account deletion (GDPR self-service)
+- [ ] Data export (GDPR)
 - [x] ~~**Login attempt protection**~~ — Rate limiting for failed login attempts (Migration 025)
 
 ---
@@ -442,12 +587,12 @@ Profile pages need to support three user types:
 
 ### Implementation Plan
 
-**Phase 4.1: Own Profile (`/profile`)**
-1. Create `/profile/index.astro` page
-2. Use existing RPC `get_user_profile_data` to fetch profile
-3. Use existing RPC `get_user_stats` to fetch stats
-4. Display profile sections: header, stats, about, interests, preferences
-5. Add edit profile modal/button
+**Phase 4.1: Own Profile (`/profile`)** - ✅ COMPLETED
+1. ✅ `/profile/index.astro` created
+2. ✅ Uses `get_user_profile_data` RPC to fetch profile
+3. ✅ Uses `get_user_stats` RPC for stats
+4. ✅ Displays profile sections: header, stats, about, interests, preferences
+5. [ ] Edit profile modal/button — still pending
 
 **Phase 4.2: Public Profile (`/profile/[username]`)** - ✅ COMPLETED
 1. Create `/profile/[username].astro` dynamic route - ✅
@@ -461,25 +606,274 @@ Profile pages need to support three user types:
 2. Inline edit for name, bio, avatar
 3. Link to onboarding for interests/preferences
 
+### 7.4 Edit Profile Modal Specification
+
+> **Note:** Avatar upload is handled separately from profile edit. See [AvatarEditor Component](#77-avatar-editor-component).
+
+#### Modal Layout
+```
+┌────────────────────────────────────────┐
+│  Edit Profile                    [X]  │
+├────────────────────────────────────────┤
+│                                        │
+│  ┌──────────────┐  (Avatar shown here)  │
+│  │   [Avatar]   │  but NOT editable   │
+│  │   120px     │  - separate modal    │
+│  └──────────────┘                      │
+│  [Change Photo →] link to avatar modal  │
+│                                        │
+│  Display Name                         │
+│  [________________]                    │
+│                                        │
+│  Username                             │
+│  [@___________] ✅ Available           │
+│                                        │
+│  Bio                                  │
+│  [__________________]                 │
+│  [160 characters remaining]            │
+│                                        │
+│  Location                             │
+│  City: [_______] Country: [_______]   │
+│                                        │
+│  [Cancel]            [Save Changes]    │
+└────────────────────────────────────────┘
+```
+
+#### Component Specifications
+| Element | Specification |
+|---------|---------------|
+| Modal Overlay | #000000 50% opacity, click-outside to close |
+| Modal Width | 480px desktop, 100% mobile |
+| Avatar Display | 120px circle, read-only, "Change Photo" link below |
+| Avatar Upload | Opens separate AvatarEditor modal (see Section 7.7) |
+| Input Fields | Full width, 44px height, 8px border-radius |
+| Character Counter | Shows remaining for bio (160 max) |
+| Save Button | Primary style, disabled until changes detected |
+| Loading State | Spinner + "Saving..." during API call |
+| Success | Toast notification, close modal, refresh profile |
+| Error | Inline error message below field |
+
+### 7.7 Avatar Editor Component (NEW)
+
+> **Architectural Decision:** Avatar upload is separated from profile edit for better UX and cleaner error handling.
+
+#### Purpose
+Allow users to upload/change their profile picture independently from editing other profile information.
+
+#### User Flow
+1. User clicks avatar or "Change Photo" link on profile
+2. Avatar Editor modal opens with current avatar displayed
+3. User selects new image file
+4. Live preview shown immediately
+5. User clicks "Save" → uploads to Cloudflare R2 → updates `users.avatar_url`
+6. Success/error feedback shown
+
+#### Storage Architecture
+- **Provider:** Cloudflare R2 (not Supabase Storage)
+- **Path Structure:** `user/[user_id]/profile-pictures/[timestamp]-[random].[ext]`
+- **Upload Method:** Base64 encoding via R2 API
+
+#### Modal Layout
+```
+┌────────────────────────────────────────┐
+│  Change Profile Photo             [X]  │
+├────────────────────────────────────────┤
+│                                        │
+│         ┌──────────────┐               │
+│         │   [Avatar]   │               │
+│         │   150px     │               │
+│         │   Preview    │               │
+│         └──────────────┘               │
+│                                        │
+│    [Choose Image]  (file input)        │
+│                                        │
+│    Supported: JPG, PNG, GIF (max 5MB) │
+│                                        │
+│  [Cancel]            [Save Photo]      │
+└────────────────────────────────────────┘
+```
+
+#### Features
+| Feature | Description |
+|---------|-------------|
+| File Selection | Native file picker, filtered to images only |
+| Live Preview | Shows selected image before uploading |
+| File Validation | Type (image/*), Size (max 5MB) |
+| Upload | Uses new `actions.user.uploadAvatarToR2` for R2 upload |
+| Progress | Shows loading state during upload |
+| Error Handling | Displays clear error messages for failures |
+| Success | Auto-closes modal, profile updates immediately |
+
+#### Backend Requirements
+- **New:** `actions.user.uploadAvatarToR2` - uploads to R2, returns public URL
+- **Existing:** `update_user_profile` RPC - updates avatar_url in database
+- **R2 Utility:** `src/scripts/R2/upload.ts` - existing uploadToR2 function
+- **Example Reference:** `src/actions/trips.ts` - existing R2 upload pattern
+
 ### Files to Create/Modify
 
-| File | Action |
-|------|--------|
-| `src/pages/profile/index.astro` | ✅ Create - Own profile view |
-| `src/pages/profile/[username].astro` | ✅ Create - Public profile view |
-| Database RPC: `get_profile_by_username` | ✅ Create - Migration 026 |
-| `src/components/Profile/ProfileHeader.astro` | Create - Avatar, name, username |
-| `src/components/Profile/ProfileStats.astro` | Create - Trip/friend counts |
-| `src/components/Profile/ProfileAbout.astro` | Create - Bio, location |
-| `src/components/Profile/ProfileInterests.astro` | Create - Interest tags |
-| `src/components/Profile/ProfilePreferences.astro` | Create - Travel prefs |
-| `src/components/Profile/EditProfileModal.astro` | Create - Edit form |
-| `src/actions/profile.ts` | Create - Profile actions (if needed) |
-| Database RPC: `get_profile_by_username` | Create - Fetch profile by username |
+| File | Action | Priority |
+|------|--------|----------|
+| `src/pages/profile/index.astro` | ✅ Done - Own profile view | - |
+| `src/pages/profile/[username].astro` | ✅ Done - Public profile view | - |
+| Database RPC: `get_profile_by_username` | ✅ Create - Migration 026 | - |
+| `src/components/Profile/ProfileHeader.astro` | Create - Avatar, name, username | P1 |
+| `src/components/Profile/ProfileStats.astro` | Create - Trip/friend counts | P1 |
+| `src/components/Profile/ProfileAbout.astro` | Create - Bio, location | P1 |
+| `src/components/Profile/ProfileInterests.astro` | Create - Interest tags | P1 |
+| `src/components/Profile/ProfilePreferences.astro` | Create - Travel prefs | P1 |
+| `src/components/Profile/EditProfileModal.astro` | Refactor - Remove avatar, text only | P1 |
+| `src/components/Profile/AvatarEditor.astro` | **Create NEW** - Separate avatar upload | P1 |
+| `src/components/Profile/ProfileTabs.astro` | Create - Tabs navigation | P1 |
+| `src/components/Profile/ProfileCompletion.astro` | Create - Progress bar | P1 |
+| `src/components/Profile/VerifiedBadge.astro` | Create - Blue checkmark | P1 |
+| `src/components/Profile/FriendActions.astro` | Create - Follow/Message buttons | P1 |
+| `src/components/Profile/ShareProfile.astro` | Create - Share modal | P2 |
+| `src/components/ui/Skeleton.astro` | Create - Loading skeleton | P2 |
+| `src/components/ui/EmptyState.astro` | Create - Empty state | P2 |
+| `src/actions/profile.ts` | Create - Profile actions | P1 |
+| `src/actions/friends.ts` | Create - Friend actions | P2 |
+| Database RPC: `update_user_profile` | ✅ Exists - Migration 018 | - |
+| Database RPC: `send_friend_request` | Create - New | P2 |
+| Database RPC: `accept_friend_request` | Create - New | P2 |
+| Database RPC: `decline_friend_request` | Create - New | P2 |
+| Database RPC: `unfriend_user` | Create - New | P2 |
+| Database RPC: `block_user` | Create - New | P2 |
+| Database RPC: `unblock_user` | Create - New | P2 |
 
 ---
 
-## 7. File Structure
+## 7.3 Modern UI/UX Requirements (Based on Industry Best Practices)
+
+Based on analysis of modern social media platforms (Instagram, LinkedIn, X/Twitter, TikTok, Figma), the following UX patterns should be implemented:
+
+### 7.3.1 Profile Layout Guidelines
+
+#### Desktop Layout (min-width: 1024px)
+```
+┌─────────────────────────────────────────────────────────┐
+│                      HEADER                              │
+│  [Cover Image - Optional 1500x500px]                    │
+├─────────────────────────────────────────────────────────┤
+│  ┌──────────┐   NAME + USERNAME + BADGES    [Edit]    │
+│  │  Avatar  │   @username                      [Follow]│
+│  │  150px   │                                          │
+│  └──────────┘   STATS: 12 Trips | 48 Friends          │
+├─────────────────────────────────────────────────────────┤
+│  [About] [Trips] [Friends]  ← TABS                      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│                  CONTENT AREA                           │
+│              (Tab-dependent content)                    │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Mobile Layout (max-width: 768px)
+```
+┌─────────────────┐
+│ [Cover - 100%] │
+├─────────────────┤
+│   ┌───┐ NAME   │
+│   │Ava│ @user  │
+│   │tar│        │
+│   └───┘ STATS  │
+├─────────────────┤
+│ [Follow] [Msg] │
+├─────────────────┤
+│ [About│Trips│  │
+│ Friends]        │
+├─────────────────┤
+│                 │
+│   CONTENT       │
+│                 │
+└─────────────────┘
+```
+
+#### Visual Hierarchy (per UX best practices)
+1. **Identity Zone** (top-left) — Avatar, name, username, verification badge
+2. **Action Zone** (top-right) — Primary CTAs (Edit Profile, Follow, Message)
+3. **Stats Bar** — Horizontal cards showing key metrics
+4. **Navigation Tabs** — Segmented controls (sticky on scroll)
+5. **Content Area** — Scrollable content below tabs
+
+### 7.3.2 Component Specifications
+
+#### Profile Header
+| Element | Specification |
+|---------|---------------|
+| Avatar Size | 150px desktop, 80px mobile |
+| Avatar Shape | Circle with 2px border |
+| Cover Image | 1500x500px (desktop), full-width (mobile) |
+| Name Font | 24px bold, #1a1a1a |
+| Username | 14px, #666666, @ prefix |
+| Verified Badge | 20px icon, #1da1f2 |
+| Edit Button | Outlined, 40px height min |
+
+#### Stats Cards
+| Element | Specification |
+|---------|---------------|
+| Layout | Horizontal flex, equal width |
+| Number | 18px bold |
+| Label | 12px regular, #888888 |
+| Spacing | 24px gap between items |
+| Min Touch Target | 44px height (mobile) |
+
+#### Tab Navigation
+| Element | Specification |
+|---------|---------------|
+| Style | Segmented control (iOS) or underline (Android) |
+| Active State | Bold text, colored underline 2px |
+| Inactive State | Regular weight, no underline |
+| Sticky Behavior | Fixed to top on scroll past header |
+| Animation | 200ms ease-out transition |
+
+#### Action Buttons
+| Element | Specification |
+|---------|---------------|
+| Primary (Follow) | Filled, #1da1f2, 36px height |
+| Secondary (Message) | Outlined, #1da1f2, 36px height |
+| States | Default → Hover (darken 10%) → Active (darken 15%) → Disabled (opacity 0.5) |
+| Loading | Spinner + "Loading..." text |
+| Min Width | 120px |
+
+### 7.3.3 Micro-interactions & Animations
+
+| Interaction | Trigger | Animation |
+|-------------|---------|-----------|
+| Button Hover | Mouse enter | Scale 1.02, 150ms |
+| Button Click | Mouse down | Scale 0.98, 100ms |
+| Tab Switch | Click | Underline slide, 200ms |
+| Avatar Hover | Mouse enter | Subtle glow, box-shadow |
+| Card Hover | Mouse enter | translateY(-2px), shadow increase |
+| Skeleton Loading | Data fetch | Pulse animation 1.5s infinite |
+| Success Toast | Action complete | Slide in from top, 300ms |
+
+### 7.3.4 Accessibility Requirements (WCAG 2.1 AA)
+
+| Requirement | Specification |
+|-------------|--------------|
+| Color Contrast | 4.5:1 minimum for text |
+| Focus Indicators | 2px outline, #1da1f2 |
+| Keyboard Navigation | All actions keyboard-accessible |
+| Screen Reader | ARIA labels for all interactive elements |
+| Touch Targets | Minimum 44x44px |
+| Focus Order | Logical tab order (left-to-right, top-to-bottom) |
+
+### 7.3.5 Missing UX Features
+
+| Feature | Modern Standard | Priority |
+|---------|----------------|----------|
+| **Profile Completion UI** | Progress bar + actionable prompts | P1 |
+| **Empty States** | Friendly illustrations + CTAs to complete | P1 |
+| **Skeleton Loaders** | Shimmer effect while loading | P1 |
+| **Verified Badge** | Blue checkmark next to name | P1 |
+| **Share Profile** | Copy link, share to social | P2 |
+| **Profile QR Code** | Scan to view profile | P2 |
+
+---
+
+## 8. File Structure
 
 ```
 database-migrations/
@@ -514,8 +908,8 @@ src/
 │   │   ├── interests.astro             # Step 2
 │   │   └── preferences.astro          # Step 3
 │   └── profile/
-│       ├── index.astro                # TODO: Own profile view (Phase 4)
-│       ├── [username].astro           # TODO: Public profile view (Phase 4)
+│       ├── index.astro                # ✅ Own profile view
+│       ├── [username].astro           # ✅ Public profile view (privacy-aware)
 │       └── security.astro             # ⚠️ MFA commented out
 ├── actions/
 │   ├── index.ts                      # onboarding.* actions
@@ -527,7 +921,7 @@ src/
 
 ---
 
-## 8. Complete Signup Flow (Current vs Target)
+## 9. Complete Signup Flow (Current vs Target)
 
 ### Current (Broken)
 
@@ -565,5 +959,7 @@ User fills /register
 
 ---
 
-*Last updated: 2026-02-20*
-*Updated: Profile page implementation plan added (Section 7.2), Social login setup guide created*
+*Last updated: 2026-02-21*
+*Updated: Requirements analysis improvements - added Problem Statement, Constraints & Assumptions, V1 Minimum Scope, time estimates, renumbered sections*
+*Updated: Modern UI/UX requirements - added profile layout guidelines, component specs, accessibility, micro-interactions, missing UX features, edit modal spec*
+*Updated: Separated Avatar Upload from Profile Edit - added new AvatarEditor component specification (Section 7.7)*

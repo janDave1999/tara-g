@@ -4,7 +4,7 @@ import { SITE_URL } from "astro:env/server";
 import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 
 export const POST: APIRoute = async ({ request }) => {
-  const { allowed } = checkRateLimit(getClientIp(request));
+  const { allowed } = await checkRateLimit(getClientIp(request));
   if (!allowed) {
     return new Response(
       JSON.stringify({ message: "Too many requests. Please try again later." }),

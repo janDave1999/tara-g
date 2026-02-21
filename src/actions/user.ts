@@ -6,6 +6,8 @@ import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { uploadToR2 } from "@/scripts/R2/upload";
+import { userCache } from '@/lib/userCache';
+import { invalidateUserCache, getUserCacheKey } from '@/lib/kv';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -59,7 +61,8 @@ export const user = {
       type: z.string(),
     }),
     
-    async handler({ file: base64File, name, type }, { locals }) {
+    async handler({ file: base64File, name, type }, context) {
+      const { locals } = context;
       const userId = locals.user_id;
       if (!userId) {
         throw new ActionError({
@@ -131,6 +134,9 @@ export const user = {
             code: "INTERNAL_SERVER_ERROR",
           });
         }
+
+        userCache.invalidateUser(userId);
+        await invalidateUserCache(userId, context.locals.env);
         
         // Return the KEY - frontend constructs URL using PUBLIC_R2_URL
         return {
@@ -175,6 +181,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to fetch onboarding status');
@@ -225,6 +233,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to update profile');
@@ -255,6 +265,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to save interests');
@@ -303,6 +315,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to save preferences');
@@ -333,6 +347,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to skip step');
@@ -357,6 +373,10 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        if (userId) {
+          userCache.invalidateUser(userId);
+        }
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to check username');
@@ -459,6 +479,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to complete onboarding');
@@ -485,6 +507,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to get profile data');
@@ -511,6 +535,8 @@ export const onboarding = {
         });
 
         if (error) throw error;
+        
+        userCache.invalidateUser(userId);
         return data;
       } catch (error) {
         handleRpcError(error, 'Failed to get user stats');

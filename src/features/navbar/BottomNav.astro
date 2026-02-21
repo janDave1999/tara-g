@@ -1,12 +1,12 @@
 ---
-import { Home, Navigation2, Map, Move, User, Plus, MessageCircle, Settings } from "@lucide/astro";
+import { Home, Package, Map, Move, User, Plus, Settings } from "@lucide/astro";
 const { currentPath = "/" } = Astro.props;
 
-/* Nav items (keep consistent components only) */
+/* Nav items */
 const navItems = [
   { href: "/feeds", label: "Feed", Icon: Home },
-  { href: "/discover", label: "Discover", Icon: Navigation2 },
   { href: "/trips", label: "Trips", Icon: Move },
+  { href: "/project82", label: "Bucket", Icon: Package },
   { href: "/maps", label: "Maps", Icon: Map },
   { href: "/profile", label: "Profile", Icon: User },
 ];

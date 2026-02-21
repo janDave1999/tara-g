@@ -1,4 +1,6 @@
 ---
+import { PUBLIC_R2_URL } from 'astro:env/client';
+
 interface Props {
   profile: {
     username: string;
@@ -35,7 +37,7 @@ const { profile } = Astro.props;
         <div class="relative group">
           <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg cursor-pointer" onclick="document.getElementById('avatar-editor-modal').showModal()">
             <img 
-              src={profile.avatar_url || "/default-avatar.png"} 
+              src={`${PUBLIC_R2_URL}${profile.avatar_url}` || "/default-avatar.png"} 
               alt="Profile avatar" 
               class="w-full h-full object-cover"
             />
@@ -190,7 +192,7 @@ const { profile } = Astro.props;
   const usernameStatus = document.getElementById('username-status') as HTMLElement;
   const usernameMessage = document.getElementById('username-message') as HTMLElement;
   const avatarInput = document.getElementById('avatarInput') as HTMLInputElement;
-  
+
 
   usernameInput?.addEventListener('input', () => {
     isDirty = true;

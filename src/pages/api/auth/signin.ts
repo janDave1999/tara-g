@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const { allowed } = checkRateLimit(getClientIp(request));
+  const { allowed } = await checkRateLimit(getClientIp(request));
   if (!allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
       status: 429,

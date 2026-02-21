@@ -3,7 +3,7 @@ import { getSupabaseClient, supabaseAdmin } from "../../../lib/supabase";
 import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const { allowed } = checkRateLimit(getClientIp(request));
+  const { allowed } = await checkRateLimit(getClientIp(request));
   if (!allowed) {
     return new Response(
       JSON.stringify({ message: "Too many requests. Please try again later." }),

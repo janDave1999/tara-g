@@ -2,13 +2,20 @@
 import type { PAGE_PLATE_PROPS } from "@/types/pageplates/types";
 import Layout from "./Layout.astro";
 import FooterMain from "@/features/footer/FooterMain.astro";
-import HeaderMain from "@/features/navbar/HeaderMain.astro";
+import Header from "@/features/navbar/Header.astro";
 import SeoHead from "@/seo/component/SeoHead.astro";
 import CookiesConsent from "@/components/CookiesConsent.astro";
 import LoadModal from "@/components/LoadModal.astro";
 import BottomNav from "@/features/navbar/BottomNav.astro";
+import { PUBLIC_R2_URL } from 'astro:env/client';
 
 let user_id = Astro.locals.user_id;
+let avatar_url = Astro.locals.avatar_url;
+let user_name = Astro.locals.username;
+let full_name = Astro.locals.full_name || "";
+const avatarUrl = avatar_url 
+  ? (avatar_url.startsWith('http') ? avatar_url : `${PUBLIC_R2_URL}${avatar_url}`)
+  : "";
 interface Props extends PAGE_PLATE_PROPS {}
 
 let {
@@ -17,11 +24,11 @@ let {
   noFooter = false,
   noContainer = false,
   clean = false,
-  expectedHeight = "min-h-screen", // Better responsive height handling
+  expectedHeight = "min-h-screen",
   prefetch,
   description,
   html = {},
-  containerClass = "", // Allow custom container classes
+  containerClass = "",
 } = Astro.props;
 
 //---> Preflight
@@ -45,7 +52,12 @@ if(description && !description.title){
   </Fragment>
     {clean?"":<>
       {noHeader ? "":<>
-        <HeaderMain />
+        <Header 
+          userId={user_id} 
+          avatarUrl={avatarUrl}
+          username={Astro.locals.username}
+          fullName={full_name} 
+        />
       </>}
     </>}
     <slot name="header" />

@@ -4,12 +4,8 @@
   "name": "taraaa",
   "compatibility_date": "2025-03-25",
   "compatibility_flags": [
-    // Enable Node.js API
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#nodejs-compatibility-flag
     "nodejs_compat",
-    // Allow to fetch URLs in your app
-    // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
-    "global_fetch_strictly_public",
+    "global_fetch_strictly_public"
   ],
   "assets": {
     "directory": "./dist",
@@ -28,26 +24,26 @@
       "remote": true
     }
   ],
-  // KV
+  "kv_namespaces": [
+    {
+      "binding": "USER_CACHE",
+      "id": "9424f25c025c479bb3c3763543deeec2",
+      "preview_id": "99ed7a255c444688801edc36f9421d93"
+    }
+  ],
   "env": {
-    "production":{
-      // "routes": [ // This is for creating custom domains
-      //   {
-      //     "pattern": "[your-domain].com.ph",
-      //     "custom_domain": true
-      //   }
-      // ],
-      "vars":{
-        "SECRET_ENVIRONMENT_STATUS": "live" // For declaring if it is in maintenance or not
+    "production": {
+      "vars": {
+        "SECRET_ENVIRONMENT_STATUS": "live"
       },
-        // Add this to your wrangler.jsonc
       "kv_namespaces": [
         {
           "binding": "KV",
-          "id": "d6253a35aff94a4782f1cee8878a6296",
-          
-          // Optional: preview_id used when running `wrangler dev` for local dev
-          // "preview_id": "<ID_OF_PREVIEW_KV_NAMESPACE_FOR_LOCAL_DEVELOPMENT>"
+          "id": "171d163490dd4f03be702ec0869e36c5"
+        },
+        {
+          "binding": "USER_CACHE",
+          "id": "99ed7a255c444688801edc36f9421d93"
         }
       ],
       "name": "project-nomad-tara-g",
@@ -55,14 +51,20 @@
         "binding": "AI"
       }
     },
-    "staging":{
-      "vars":{
-        "SECRET_ENVIRONMENT_STATUS": "live" // For declaring if it is in maintenance or not
+    "staging": {
+      "vars": {
+        "SECRET_ENVIRONMENT_STATUS": "live"
       },
       "name": "project-nomad-tara-g-staging",
       "ai": {
         "binding": "AI"
-      }
+      },
+      "kv_namespaces": [
+        {
+          "binding": "USER_CACHE",
+          "id": "99ed7a255c444688801edc36f9421d93"
+        }
+      ]
     }
-  },
+  }
 }

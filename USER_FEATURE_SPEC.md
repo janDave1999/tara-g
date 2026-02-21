@@ -959,7 +959,282 @@ User fills /register
 
 ---
 
+## 10. Navbar & Footer Layout Plan
+
+### 10.1 Current Components
+
+| Component | File | Status |
+|-----------|------|--------|
+| Desktop Header | `src/features/navbar/HeaderMain.astro` | Basic - currently in use |
+| Desktop Header (Advanced) | `src/features/navbar/Header.astro` | Advanced - not in use |
+| Mobile Bottom Nav | `src/features/navbar/BottomNav.astro` | Feature-rich |
+| Footer | `src/features/footer/FooterMain.astro` | Simple - logo + legal links |
+
+### 10.2 Header Architecture
+
+**Current Issue:** Two header implementations exist - `HeaderMain.astro` (basic) and `Header.astro` (advanced).
+
+**Recommended: Use `Header.astro`** - It has:
+- Gradient logo with icon
+- Desktop nav links (About, Discover, Blogs)
+- Desktop profile dropdown with avatar + user info
+- Mobile slide-out menu with full navigation
+- Notifications bell placeholder
+- Logout functionality
+
+**Issues to Fix:**
+1. Replace `HeaderMain` with `Header` in `PagePlate.astro`
+2. Fix avatar URL to use R2 pattern (`${PUBLIC_R2_URL}/${avatarKey}`)
+3. Add active state styling for nav links
+
+### 10.3 Mobile Navigation
+
+**Updated `BottomNav.astro`:**
+- Floating assist button (draggable, magnetic snap)
+- Bottom tab navigation: **Feed, Trips, Bucket (/project82), Maps, Profile**
+- Radial quick-access menu (long-press)
+- Glass morphism styling
+
+### 10.4 Footer Enhancement
+
+**✅ COMPLETED:**
+- Navigation links: About, Discover, Trips, Blogs, Maps
+- Social media icons (Facebook, Instagram, Twitter/X, LinkedIn)
+- Responsive 3-column grid layout
+- Dynamic copyright year
+
+### 10.5 Implementation Tasks
+
+| Priority | Task | Status |
+|---------|------|--------|
+| P1 | Replace `HeaderMain` with `Header` in PagePlate.astro | ✅ Done |
+| P1 | Fix avatar URL in Header to use R2 pattern | ✅ Done |
+| P1 | Enhance FooterMain with nav links + social | ✅ Done |
+| P2 | Update BottomNav - replace Discover with Bucket | ✅ Done |
+| P2 | Add active state styling to nav links | ⏳ Pending |
+| P2 | Add notifications dropdown placeholder | ⏳ Pending |
+| P3 | Add theme toggle to header/footer | ⏳ Pending |
+
+### 10.6 File Modifications
+
+| File | Action | Status |
+|------|--------|--------|
+| `src/layouts/PagePlate.astro` | Replace HeaderMain with Header | ✅ Done |
+| `src/features/navbar/Header.astro` | Fix avatar URL to use R2 | ✅ Done |
+| `src/features/footer/FooterMain.astro` | Add nav links + social icons | ✅ Done |
+| `src/features/navbar/BottomNav.astro` | Update nav items (Discover → Bucket) | ✅ Done |
+
+---
+
+## 11. Middleware Optimization with Cloudflare KV Caching
+
+### 11.1 Current Problem
+
+The current middleware (`src/middleware/index.ts`) has performance issues:
+
+1. **On every request**, it fetches user data from multiple sources:
+   - JWT token parsing and validation
+   - Session refresh check (if token expired)
+   - `get_onboarding_status` RPC call
+   - Avatar URL from JWT `user_metadata` (not the actual DB value)
+
+2. **Data mismatch**: 
+   - `avatar_url` comes from Supabase Auth's `user_metadata` instead of `public.users` table
+   - `username` is not fetched at all
+
+3. **Redundant DB calls**: Each request triggers the same RPC calls repeatedly
+
+### 11.2 Solution: Cloudflare KV + Sequence Middleware
+
+#### Architecture
+
+Split monolithic middleware into composable pieces using `sequence()`:
+
+```
+src/middleware/
+├── index.ts              → export onRequest = sequence(auth, userData, onboarding)
+├── auth.ts               → Session validation + token refresh
+├── userData.ts           → Fetch user from DB with KV caching (NEW)
+└── onboarding.ts         → Onboarding status check (refactored from index.ts)
+```
+
+#### Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Separation of Concerns** | Auth, user data, and onboarding are independent |
+| **Testability** | Each middleware can be tested independently |
+| **Maintainability** | Easier to modify one concern without touching others |
+| **Performance** | KV caching reduces DB calls by ~90% |
+
+### 11.3 Cloudflare KV Caching Strategy
+
+#### Cache Key Structure
+```
+user:{user_id}:profile   → JSON { username, avatar_url, ... }
+user:{user_id}:onboarding → JSON { onboarding_completed, ... }
+```
+
+#### Cache TTL (Time To Live)
+
+| Data Type | TTL | Rationale |
+|-----------|-----|-----------|
+| User profile | 5 minutes | Changes infrequently, needs reasonable freshness |
+| Onboarding status | 10 minutes | Changes rarely, longer TTL acceptable |
+
+#### Cache Invalidation Strategy
+
+Invalidate when user updates their profile:
+- After avatar upload → invalidate `user:{id}:profile`
+- After profile edit → invalidate `user:{id}:profile`
+- After onboarding step → invalidate `user:{id}:onboarding`
+
+### 11.4 Implementation Plan
+
+#### Phase 1: Create Cache Utility (P1)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `src/lib/userCache.ts` | In-memory Map with TTL fallback | ✅ Done |
+| Create KV wrapper in `src/lib/kv.ts` | Cloudflare KV bindings wrapper | ✅ Done |
+| Add KV namespace to wrangler.toml | Define KV binding | ✅ Done |
+
+#### Phase 2: Split Middleware (P1)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `src/middleware/auth.ts` | Extract auth logic | ✅ Done |
+| Create `src/middleware/userData.ts` | User data + caching | ✅ Done |
+| Create `src/middleware/onboarding.ts` | Extract onboarding logic | ✅ Done |
+| Update `src/middleware/index.ts` | Use sequence() | ✅ Done |
+
+#### Phase 3: Add Cache Invalidation (P1)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Add invalidation to avatar upload | Invalidate on `user.uploadAvatarToR2` | ✅ Done |
+| Add invalidation to profile edit | Invalidate on profile update action | ✅ Done |
+| Add invalidation to onboarding | Invalidate on onboarding step completion | ✅ Done |
+
+### 11.5 Files Created/Modified
+
+| File | Action | Status |
+|------|--------|--------|
+| `wrangler.jsonc` | Add KV namespace binding | ✅ Done |
+| `src/lib/kv.ts` | Create - KV wrapper | ✅ Done |
+| `src/lib/userCache.ts` | Create - In-memory cache with TTL | ✅ Done |
+| `src/middleware/auth.ts` | Create - Auth middleware | ✅ Done |
+| `src/middleware/userData.ts` | Create - User data + KV caching | ✅ Done |
+| `src/middleware/onboarding.ts` | Create - Onboarding middleware | ✅ Done |
+| `src/middleware/index.ts` | Refactor - Use sequence() | ✅ Done |
+| `src/actions/user.ts` | Add cache invalidation | ✅ Done |
+
+### 11.6 Technical Details
+
+#### KV Binding Configuration (wrangler.toml)
+
+```toml
+kv_namespaces = [
+  { binding = "USER_CACHE", id = "<KV_NAMESPACE_ID>", preview_id = "<PREVIEW_ID>" }
+]
+```
+
+#### In-Memory Cache Fallback
+
+For development without KV binding, use in-memory Map:
+
+```typescript
+// src/lib/userCache.ts
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+class UserCache {
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private ttl: number;
+
+  constructor(ttlSeconds: number = 300) {
+    this.ttl = ttlSeconds * 1000;
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.value as T;
+  }
+
+  set<T>(key: string, value: T): void {
+    this.cache.set(key, {
+      value,
+      expiresAt: Date.now() + this.ttl
+    });
+  }
+
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+}
+```
+
+#### Middleware Sequence Usage
+
+```typescript
+// src/middleware/index.ts
+import { sequence } from "astro:middleware";
+import { auth } from "./auth";
+import { userData } from "./userData";
+import { onboarding } from "./onboarding";
+
+export const onRequest = sequence(auth, userData, onboarding);
+```
+
+### 11.7 Implementation Notes
+
+#### What Was Implemented
+
+1. **Sequence Middleware** - Split into 3 composable middleware:
+   - `auth.ts` - JWT validation + session refresh
+   - `userData.ts` - Fetches username/avatar from `public.users` table with caching
+   - `onboarding.ts` - Onboarding status check with caching
+
+2. **Dual-layer Caching**:
+   - In-memory `Map` with TTL (fastest, per-worker)
+   - Cloudflare KV for cross-instance persistence
+   - Falls back gracefully if KV is not configured
+
+3. **Cache Invalidation**:
+   - Added to `user.uploadAvatarToR2` action
+   - Added to `onboarding.updateProfile` action
+   - Added to other profile-modifying actions
+
+4. **New Locals Available**:
+   - `locals.username` - From `public.users` table
+   - `locals.avatar_url` - From `public.users` table (not JWT)
+   - `locals.full_name` - From `public.users` table
+
+#### Deployment Steps
+
+1. Create KV namespace: `npx wrangler kv:namespace create USER_CACHE`
+2. Update `wrangler.jsonc` with the KV ID
+3. Deploy: `npm run deploy-staging` or `npm run deploy-production`
+
+#### Files Created
+
+```
+src/lib/kv.ts              - KV wrapper + cache key helpers
+src/lib/userCache.ts       - In-memory cache with TTL
+src/middleware/auth.ts     - Auth middleware
+src/middleware/userData.ts - User data with caching
+src/middleware/onboarding.ts - Onboarding with caching
+src/middleware/index.ts    - Main middleware (sequence)
+```
+
+---
+
 *Last updated: 2026-02-21*
-*Updated: Requirements analysis improvements - added Problem Statement, Constraints & Assumptions, V1 Minimum Scope, time estimates, renumbered sections*
-*Updated: Modern UI/UX requirements - added profile layout guidelines, component specs, accessibility, micro-interactions, missing UX features, edit modal spec*
-*Updated: Separated Avatar Upload from Profile Edit - added new AvatarEditor component specification (Section 7.7)*
+*Updated: Section 11 - Middleware optimization completed*

@@ -94,5 +94,5 @@ export default defineConfig({
       }
     }
   })],
-  site:"https://__YOUR_DOMAIN__.com/",
+  site:"https:tara-g.site/",
 });

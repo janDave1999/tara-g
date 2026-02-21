@@ -31,8 +31,6 @@ const { data: profileData } = await supabase.rpc('get_user_profile_data', {
 const selectedInterests = profileData?.interests || [];
 ---
 
-<script define:vars={{ isOnboardingComplete }}>
-
 <PagePlate title="Select Your Interests">
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
     <div class="max-w-4xl mx-auto">
@@ -53,7 +51,7 @@ const selectedInterests = profileData?.interests || [];
           <p class="text-gray-600">Select at least 3 categories to help us match you with like-minded travelers</p>
         </div>
 
-        <form id="interestsForm" class="space-y-6">
+        <form id="interestsForm" class="space-y-6" data-onboarding-complete={isOnboardingComplete}>
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {Object.entries(INTEREST_CATEGORIES).map(([key, category]) => (
               <label class="interest-card cursor-pointer">
@@ -114,6 +112,7 @@ const selectedInterests = profileData?.interests || [];
     import { actions } from 'astro:actions';
 
     const form = document.getElementById('interestsForm') as HTMLFormElement;
+    const isOnboardingComplete = form.dataset.onboardingComplete === 'true';
     const hint = document.getElementById('selectionHint') as HTMLElement;
     const errorDisplay = document.getElementById('errorDisplay') as HTMLElement;
     const successDisplay = document.getElementById('successDisplay') as HTMLElement;

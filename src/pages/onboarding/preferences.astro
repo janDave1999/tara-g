@@ -39,8 +39,233 @@ const ACCOMMODATION_TYPES = [
 
 ---
 
-<script define:vars={{ isOnboardingComplete }}>
+<PagePlate title="Travel Preferences">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+      <!-- Progress Bar -->
+      <div class="mb-8">
+        <div class="flex justify-between text-sm text-gray-600 mb-2">
+          <span>Travel Preferences</span>
+          <span>Step 3 of 3</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full transition-all" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">Your Travel Preferences</h1>
+          <p class="text-gray-600">Help us match you with compatible travel companions</p>
+        </div>
+
+        <span id="onboarding-meta" data-complete={isOnboardingComplete} style="display:none"></span>
+
+        <form id="preferencesForm" class="space-y-8">
+
+          <!-- Budget Range -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">Budget Range (per day)</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {['budget', 'mid-range', 'premium', 'luxury'].map((range) => (
+                <label class="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="budget_range"
+                    value={range}
+                    class="hidden peer"
+                    checked={existingPrefs.budget_range === range}
+                  />
+                  <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 transition-all capitalize text-sm font-medium text-gray-700">
+                    {range}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Travel Style -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">Travel Style</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {TRAVEL_STYLES.map((style) => (
+                <label class="cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="travel_style"
+                    value={style.value}
+                    class="hidden peer"
+                    checked={Array.isArray(existingPrefs.travel_style) && existingPrefs.travel_style.includes(style.value)}
+                  />
+                  <div class="p-4 border-2 border-gray-200 rounded-xl flex items-center gap-3 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 transition-all">
+                    <span class="text-2xl">{style.icon}</span>
+                    <span class="text-sm font-medium text-gray-700">{style.label}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Pace Preference -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">Travel Pace</label>
+            <div class="grid grid-cols-3 gap-3">
+              {[
+                { value: 'slow', label: 'Slow & Relaxed' },
+                { value: 'moderate', label: 'Moderate' },
+                { value: 'fast', label: 'Fast-paced' },
+              ].map((pace) => (
+                <label class="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pace_preference"
+                    value={pace.value}
+                    class="hidden peer"
+                    checked={existingPrefs.pace_preference === pace.value}
+                  />
+                  <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 transition-all text-sm font-medium text-gray-700">
+                    {pace.label}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Accommodation Types -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">Preferred Accommodation</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ACCOMMODATION_TYPES.map((type) => (
+                <label class="cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="accommodation_type"
+                    value={type.value}
+                    class="hidden peer"
+                    checked={Array.isArray(existingPrefs.accommodation_type) && existingPrefs.accommodation_type.includes(type.value)}
+                  />
+                  <div class="p-4 border-2 border-gray-200 rounded-xl flex items-center gap-3 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 transition-all">
+                    <span class="text-2xl">{type.icon}</span>
+                    <span class="text-sm font-medium text-gray-700">{type.label}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Group Size -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Group Size</label>
+              <input
+                type="number"
+                name="preferred_group_size"
+                min="1"
+                max="50"
+                value={existingPrefs.preferred_group_size || ''}
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="e.g. 4"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Maximum Group Size</label>
+              <input
+                type="number"
+                name="max_group_size"
+                min="1"
+                max="50"
+                value={existingPrefs.max_group_size || ''}
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="e.g. 10"
+              />
+            </div>
+          </div>
+
+          <!-- Cost Splitting -->
+          <div class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="willing_to_split_costs"
+              id="willing_to_split_costs"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded"
+              checked={existingPrefs.willing_to_split_costs === true}
+            />
+            <label for="willing_to_split_costs" class="text-sm font-medium text-gray-700">
+              Willing to split costs with travel companions
+            </label>
+          </div>
+
+          <!-- Languages Spoken -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Languages Spoken</label>
+            <input
+              type="text"
+              name="languages_spoken"
+              value={Array.isArray(existingPrefs.languages_spoken) ? existingPrefs.languages_spoken.join(', ') : ''}
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="English, Spanish, Filipino (comma-separated)"
+            />
+          </div>
+
+          <!-- Dietary Restrictions -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Dietary Restrictions</label>
+            <input
+              type="text"
+              name="dietary_restrictions"
+              value={Array.isArray(existingPrefs.dietary_restrictions) ? existingPrefs.dietary_restrictions.join(', ') : ''}
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Vegetarian, Gluten-free (comma-separated)"
+            />
+          </div>
+
+          <!-- Accessibility Needs -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Accessibility Needs</label>
+            <input
+              type="text"
+              name="accessibility_needs"
+              value={Array.isArray(existingPrefs.accessibility_needs) ? existingPrefs.accessibility_needs.join(', ') : ''}
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Wheelchair accessible, etc. (comma-separated)"
+            />
+          </div>
+
+          <!-- Error/Success Display -->
+          <div id="errorDisplay" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-600 text-sm"></p>
+          </div>
+
+          <div id="successDisplay" class="hidden p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-green-600 text-sm"></p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-between pt-6">
+            <button type="button" id="backBtn"
+                    class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition">
+              ← Back
+            </button>
+            <div class="space-x-3">
+              <button type="button" id="skipBtn"
+                      class="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition">
+                Skip for now
+              </button>
+              <button type="submit" id="submitBtn"
+                      class="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                Complete Setup
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
     import { actions } from 'astro:actions';
+
+    const isOnboardingComplete = (document.getElementById('onboarding-meta') as HTMLElement)?.dataset.complete === 'true';
 
     const form = document.getElementById('preferencesForm') as HTMLFormElement;
     const errorDisplay = document.getElementById('errorDisplay') as HTMLElement;
@@ -84,7 +309,7 @@ const ACCOMMODATION_TYPES = [
       // Group sizes
       const preferredSize = formData.get('preferred_group_size');
       if (preferredSize) preferences.preferred_group_size = parseInt(preferredSize as string);
-      
+
       const maxSize = formData.get('max_group_size');
       if (maxSize) preferences.max_group_size = parseInt(maxSize as string);
 

@@ -25,8 +25,6 @@ const userData = profileData?.user || {};
 const userInfo = profileData?.information || {};
 ---
 
-<script define:vars={{ isOnboardingComplete }}>
-
 <PagePlate title="Complete Your Profile">
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
     <div class="max-w-2xl mx-auto">
@@ -47,7 +45,7 @@ const userInfo = profileData?.information || {};
           <p class="text-gray-600">This helps other travelers get to know you better</p>
         </div>
 
-        <form id="profileForm" class="space-y-6">
+        <form id="profileForm" class="space-y-6" data-onboarding-complete={isOnboardingComplete}>
           <!-- Avatar Upload -->
           <div class="flex flex-col items-center mb-6">
             <div class="relative">
@@ -186,6 +184,7 @@ const userInfo = profileData?.information || {};
     import { actions } from 'astro:actions';
 
     const form = document.getElementById('profileForm') as HTMLFormElement;
+    const isOnboardingComplete = form.dataset.onboardingComplete === 'true';
     const usernameInput = form.querySelector('[name="username"]') as HTMLInputElement;
     const usernameStatus = document.getElementById('usernameStatus') as HTMLElement;
     const bioTextarea = form.querySelector('[name="bio"]') as HTMLTextAreaElement;

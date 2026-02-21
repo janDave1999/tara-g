@@ -40,7 +40,6 @@ const visibilityMeta: Record<string, { label: string; classes: string }> = {
   public:  { label: '🌐 Public',  classes: 'bg-green-100 text-green-800 hover:bg-green-200' },
   friends: { label: '👥 Friends', classes: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
 };
-
 const vis = trip.visibility ?? 'private';
 const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibilityMeta['private'];
 ---
@@ -170,7 +169,11 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
       {type === 'member' && trip.owner_name && (
         <div class="flex items-center gap-2">
           {trip.owner_avatar ? (
-            <img src={`${PUBLIC_R2_URL}${trip.owner_avatar}`} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
+            <img
+              src={trip.owner_avatar.startsWith('http') ? trip.owner_avatar : `${PUBLIC_R2_URL}${trip.owner_avatar}`}
+              alt={trip.owner_name}
+              class="w-6 h-6 rounded-full object-cover"
+            />
           ) : (
             <div class="w-6 h-6 rounded-full bg-gray-300"></div>
           )}
@@ -182,7 +185,11 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
         <div class="flex items-center justify-between w-full">
           <div class="flex items-center gap-2">
             {trip.owner_avatar ? (
-              <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full" />
+              <img
+                src={trip.owner_avatar.startsWith('http') ? trip.owner_avatar : `${PUBLIC_R2_URL}${trip.owner_avatar}`}
+                alt={trip.owner_name}
+                class="w-6 h-6 rounded-full object-cover"
+              />
             ) : (
               <div class="w-6 h-6 rounded-full bg-gray-300"></div>
             )}
@@ -196,9 +203,11 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
         </div>
       )}
 
-      <div class="text-xs text-gray-400">
-        {new Date(trip.created_at).toLocaleDateString()}
-      </div>
+      {trip.created_at && (
+        <div class="text-xs text-gray-400">
+          {new Date(trip.created_at).toLocaleDateString()}
+        </div>
+      )}
     </div>
   </div>
 </div>

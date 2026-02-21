@@ -2,9 +2,11 @@
 interface Props {
   isOwner: boolean;
   destination?: string;
+  itineraryPublic?: boolean;
+  tripId?: string;
 }
 
-const { isOwner, destination } = Astro.props;
+const { isOwner, destination, itineraryPublic = false, tripId } = Astro.props;
 ---
 
 <div class="flex items-center justify-between mb-8 pb-5 border-b border-gray-100">
@@ -16,11 +18,55 @@ const { isOwner, destination } = Astro.props;
   </div>
 
   {isOwner && (
-    <button
-      id="toggle-mode-btn"
-      class="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
-    >
-      Edit Itinerary
-    </button>
+    <div class="flex items-center gap-2">
+      <button
+        id="itinerary-public-toggle"
+        class={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${itineraryPublic ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        data-trip-id={tripId}
+        data-public={itineraryPublic}
+        title={itineraryPublic ? 'Itinerary visible to everyone — click to make private' : 'Itinerary private — click to make public'}
+      >
+        {itineraryPublic ? '🌐 Public' : '🔒 Members only'}
+      </button>
+      <button
+        id="toggle-mode-btn"
+        class="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+      >
+        Edit Itinerary
+      </button>
+    </div>
   )}
 </div>
+
+<script>
+  import { actions, ActionError } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+
+  const btn = document.getElementById('itinerary-public-toggle') as HTMLButtonElement | null;
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      const tripId = btn.dataset.tripId!;
+      const current = btn.dataset.public === 'true';
+      const next = !current;
+
+      btn.disabled = true;
+
+      const { error } = await actions.trip.updateItineraryPublic({
+        trip_id: tripId,
+        itinerary_public: next,
+      });
+
+      if (error instanceof ActionError) {
+        showToast({ message: error.message, type: 'error' });
+      } else {
+        btn.dataset.public = String(next);
+        btn.textContent = next ? '🌐 Public' : '🔒 Members only';
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${next ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`;
+        btn.title = next ? 'Itinerary visible to everyone — click to make private' : 'Itinerary private — click to make public';
+        showToast({ message: next ? 'Itinerary is now public' : 'Itinerary is now members only', type: 'success' });
+      }
+
+      btn.disabled = false;
+    });
+  }
+</script>

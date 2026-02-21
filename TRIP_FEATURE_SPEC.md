@@ -21,7 +21,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | `trip_details` | Dates, budget, max participants, gender preferences, tags |
 | `locations` | Reusable location data with coordinates (PostGIS) |
 | `trip_location` | Junction table (destination/pickup/dropoff) |
-| `trip_visibility` | Visibility settings (private/public/friends), participant limits |
+| `trip_visibility` | Visibility settings (private/public/friends), participant limits, `itinerary_public` flag |
 | `trip_images` | Trip cover images and gallery |
 | `trip_members` | Trip participants with roles and status |
 | `trip_invitations` | Invitation system |
@@ -121,9 +121,10 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US-D6 | As a visitor, I want to request to join an active trip | "Request to Join" button shown when trip is active and not at capacity | ✅ Pass |
 | US-D7 | As a pending member, I want to cancel my join request | "Cancel Request" button shown for `pending` role | ✅ Pass |
 | US-D8 | As a member, I want to leave a trip I've joined | "Leave Trip" button shown for `member` role; redirects to `/trips` | ✅ Pass |
-| US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown for owners and joined members | ✅ Pass |
+| US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown only for `owner` and `member` (joined) roles; hidden from visitors, pending, and invited users | ✅ Pass |
 | US-D10 | As a trip owner, I want to manage trip status | Clicking the status badge opens `StatusModal` with all 5 status options; calls `update_trip_status` RPC | ✅ Pass |
-| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete with Mapbox search, pickup/dropoff (max 20 each), and time overlap validation all done; drag-drop reorder pending |
+| US-D11 | As a user, I want to view the trip itinerary | Itinerary gated by role (`owner`/`member`) or `itinerary_public` flag; rendered below trip details with destination in header | ⚠️ Partial — stops render correctly; add/edit/delete with Mapbox search, pickup/dropoff (max 20 each), and time overlap validation all done; drag-drop reorder pending |
+| US-D11b | As a trip owner, I want to control who sees the itinerary | `🔒 Members only` / `🌐 Public` toggle in itinerary header; updates `trip_visibility.itinerary_public` via `updateItineraryPublic` action; when public, itinerary is visible to all viewers | ✅ Pass |
 | US-D12 | As a visitor, I want to know when a trip is full | "Trip Full" disabled button shown when `currentPax >= maxPax` | ✅ Pass |
 
 **Editable fields (owner only, non-completed trips):**
@@ -131,6 +132,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | Field | Modal Component | Data Updated |
 |-------|----------------|--------------|
 | Visibility | `VisibilityModal.astro` | `trip_visibility.visibility` |
+| Itinerary access | `ItineraryHeader.astro` toggle | `trip_visibility.itinerary_public` via `updateItineraryPublic` action |
 | Status | `StatusModal.astro` | `trips.status` via `update_trip_status` RPC |
 | Destination | `DestinationModal.astro` | `locations` + `trip_location` (primary) via `update_trip_destination` RPC; Mapbox Searchbox autocomplete |
 | Trip Dates | `DatesModal.astro` | `trip_details.start_date`, `end_date`, `join_by` |
@@ -270,7 +272,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 | Function | Migration | Parameters | Returns |
 |----------|-----------|------------|---------|
-| `get_discover_trips` | `010` | `p_user_id, p_search, p_region, p_budget, p_travel_style, p_pace, p_limit, p_offset` | Preference-filtered public trips + `total_count` |
+| `get_discover_trips` | `010`, `031`, `032` | `p_user_id, p_search, p_region, p_budget, p_travel_style, p_pace, p_limit, p_offset` | Preference-filtered public trips + `owner_name`, `owner_avatar`, `total_count`; excludes caller's own trips |
 
 #### Itinerary Management
 
@@ -356,6 +358,9 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Add Mapbox markers (destination/pickup/dropoff) to Step 5 confirmation map~~
 - [x] ~~Remove legacy Itinerary.astro; use Itinerary2 with destination in header~~
 - [x] ~~Ensure trip status transitions work correctly — `StatusModal` + `update_trip_status` RPC (migration 026)~~
+- [x] ~~Fix `get_discover_trips`: add `owner_name`/`owner_avatar` (JOIN users), remove 30-day cap, exclude caller's own trips (031); fix `SMALLINT`→`INTEGER` type cast error (032)~~
+- [x] ~~Fix `get_user_owned_trips`: return `visibility` field from `trip_visibility` (030)~~
+- [x] ~~Fix `TripCard` avatar URL: handle both full HTTP URLs (OAuth) and relative R2 paths~~
 - [ ] Verify member management works (join/leave/remove)
 - [ ] Complete trip search and filtering
 
@@ -376,6 +381,9 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Time overlap validation on stop create/edit within a day — full interval + exact start-time collision; inline form error displayed, save blocked (US18b); new stop default time set to after last stop + 15 min~~
 - [x] ~~Consolidated "Joined" tab: `get_user_participating_trips` RPC (028) unifies joined + pending + invited into single TripCard grid; "Invited" tab removed (US13b)~~
 - [x] ~~Invitation banner on trip detail page: Accept/Decline buttons for invited users; hides Request to Join button (US15b)~~
+- [x] ~~Member count (`currentPax`) now filters to `member_status = 'joined'` only — excludes pending and left members~~
+- [x] ~~Member list (`Member.astro`) gated to owner/member roles only — visitors, pending, invited cannot see it (US-D9)~~
+- [x] ~~Itinerary gated to owner/member by default; owner can toggle `itinerary_public` via `🔒/🌐` button in `ItineraryHeader` — `trip_visibility.itinerary_public` column (migration 029), `updateItineraryPublic` action (US-D11b)~~
 - [ ] Full drag-drop itinerary builder
 - [ ] Activity type as `<select>` (PH-specific presets) instead of free-text input
 - [ ] Actual vs scheduled time tracking
@@ -441,7 +449,11 @@ database-migrations/
 ├── 025_add_visibility_to_owned_trips.sql   # get_user_owned_trips: add visibility from trip_visibility JOIN
 ├── 026_create_update_trip_status_rpc.sql   # update_trip_status RPC with ownership validation
 ├── 027_create_update_trip_destination_rpc.sql  # update_trip_destination RPC; updates locations + PostGIS geometry
-└── 028_get_user_participating_trips.sql    # get_user_participating_trips RPC; UNION of trip_members (joined/pending) + trip_invitations (invited); returns participation_status
+├── 028_get_user_participating_trips.sql    # get_user_participating_trips RPC; UNION of trip_members (joined/pending) + trip_invitations (invited); returns participation_status
+├── 029_add_itinerary_public.sql            # ALTER trip_visibility ADD itinerary_public BOOLEAN DEFAULT FALSE; owner-controlled itinerary visibility
+├── 030_fix_get_user_owned_trips_visibility.sql  # Fix get_user_owned_trips: LEFT JOIN trip_visibility + COALESCE visibility (was missing from 025 apply)
+├── 031_fix_get_discover_trips.sql          # Fix get_discover_trips: add owner_name/owner_avatar (JOIN users), remove 30-day cap, exclude caller's own trips
+└── 032_fix_discover_trips_type_cast.sql    # Fix 031: add ::INTEGER casts for max_pax/current_participants/estimated_budget (SMALLINT→INTEGER mismatch, code 42804)
 
 src/
 ├── pages/
@@ -537,7 +549,7 @@ src/
 
 ---
 
-*Last updated: 2026-02-21*
+*Last updated: 2026-02-21 (session 3)*
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
 *Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
@@ -545,3 +557,5 @@ src/
 *Updated: Mapbox Search Box (suggest+retrieve) integrated into inline add/edit stop forms (US18); DaySection type mismatch fixed (CompleteStop → ItineraryStop). New requirements added: US18a (pickup/dropoff in Add Stop, max 3 each per trip), US18b (time overlap validation within a day).*
 *Updated: US18a — MAX_PICKUP/MAX_DROPOFF raised to 20 (was 3). US18b — `validateTimeOverlap()` checks full interval overlap or exact start-time collision; new stop form now defaults to after last stop + 15 min instead of current clock time.*
 *Updated: "Joined" tab consolidated — new `get_user_participating_trips` RPC (028) returns joined + pending + invited in one call with `participation_status` field; "Invited" tab removed; TripCard extended with `participation_status` badge. Invitation banner on trip detail page shows Accept/Decline for invited users and hides Request to Join button.*
+*Updated: Member section and itinerary gated by role. `currentPax` now counts only `joined` members. `Member.astro` hidden from non-members. Itinerary defaults to members-only; owner can expose it via `🔒/🌐` toggle in `ItineraryHeader` (`trip_visibility.itinerary_public`, migration 029, `updateItineraryPublic` action). Avatar rendering in `renderers.ts` fixed to show `<img>` when URL present, initials fallback otherwise.*
+*Updated (session 3): Discover tab fixed — `get_discover_trips` rebuilt (031) with `owner_name`/`owner_avatar`, no 30-day cap, caller's own trips excluded; `SMALLINT`→`INTEGER` cast fix (032). `get_user_owned_trips` visibility fix (030). `TripCard` avatar URL handling unified for both R2 paths and full OAuth URLs.*

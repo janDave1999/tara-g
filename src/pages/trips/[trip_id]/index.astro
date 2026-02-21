@@ -151,13 +151,16 @@ const tripProps = {
       <TripDetails {...tripProps} />
     </div>
 
-    <Member tripId={trip_id} />
-    <Itinerary
-      initialData={itineraryStops || []}
-      isOwner={trip.user_role === 'owner'}
-      tripId={trip.trip_id}
-      destination={destination}
-    />
+    {(user_role === 'owner' || user_role === 'member') && <Member tripId={trip_id} />}
+    {(user_role === 'owner' || user_role === 'member' || trip_visibility?.itinerary_public) && (
+      <Itinerary
+        initialData={itineraryStops || []}
+        isOwner={trip.user_role === 'owner'}
+        tripId={trip.trip_id}
+        destination={destination}
+        itineraryPublic={trip_visibility?.itinerary_public ?? false}
+      />
+    )}
 
   </section>
 </Layout>

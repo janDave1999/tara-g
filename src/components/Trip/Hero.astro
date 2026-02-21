@@ -21,7 +21,6 @@ const { trip_images = [], userRole }: Props = Astro.props;
 
 let isOwner = userRole === 'owner' ? true : false;
 const heroImages = trip_images?.filter((img) => img.type === "hero");
-console.log("Hero Images: ", heroImages);
 const totalSlides = isOwner ? heroImages?.length + 1 : heroImages?.length;
 
 // Helper functions for slide navigation

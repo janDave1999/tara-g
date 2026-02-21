@@ -1,7 +1,6 @@
 ---
 import StopCard from './StopCard.astro';
 import type { ItineraryStop } from '@/types/itinerary';
-import { formatDate } from '@/utility/dateFormatter';
 
 interface Props {
   dayIndex: number;
@@ -11,7 +10,22 @@ interface Props {
 
 const { dayIndex, stops, isOwner } = Astro.props;
 const firstStop = stops[0];
-const dayDate = firstStop?.scheduled_start ? formatDate(firstStop.scheduled_start) : firstStop?.scheduled_end ? formatDate(firstStop.scheduled_end) : '';
+
+const formatDayDate = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'Asia/Manila',
+  });
+};
+
+// Use scheduled_start; fall back to scheduled_end if null.
+const dayDate = formatDayDate(firstStop?.scheduled_start) || formatDayDate(firstStop?.scheduled_end);
 ---
 
 <div class="day-section mb-6" data-day-index={dayIndex}>

@@ -1,7 +1,6 @@
 ---
 import ActivityList from './ActivityList.astro';
 import type { ItineraryStop } from '@/types/itinerary';
-import { formatTime } from '@/utility/dateFormatter';
 import { getStopColors } from '@/utility/stopColors';
 
 interface Props {
@@ -13,7 +12,17 @@ const { completeStop, isOwner } = Astro.props;
 const stopType = completeStop.stop_type ?? completeStop.location_type;
 const locationName = completeStop.location_name ?? completeStop.location?.name;
 const colors = getStopColors(stopType);
-const stopTime = formatTime(completeStop.scheduled_start);
+
+// Format stop time SSR-side with UTC so output is consistent across environments.
+// Prefer scheduled_start; fall back to scheduled_end for stops like dropoffs.
+const formatStopTime = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' });
+};
+
+const stopTime = formatStopTime(completeStop.scheduled_start) || formatStopTime(completeStop.scheduled_end);
 ---
 
 <div

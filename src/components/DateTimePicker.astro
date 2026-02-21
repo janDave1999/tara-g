@@ -104,10 +104,14 @@ const timeId = `${id}-time`;
       }
 
       if (includeTime && timeInput && timeInput.value) {
-        // Combine date and time
-        hiddenInput.value = `${dateInput.value}T${timeInput.value}`;
+        // Convert local datetime to UTC ISO so DB stores the correct absolute time.
+        // datetime-local gives a naive string ("YYYY-MM-DDTHH:mm") which the browser
+        // interprets as local time — new Date() picks that up and toISOString() gives UTC.
+        const local = `${dateInput.value}T${timeInput.value}`;
+        const d = new Date(local);
+        hiddenInput.value = isNaN(d.getTime()) ? local : d.toISOString();
       } else {
-        // Date only
+        // Date-only fields (DATE column in DB) — keep as YYYY-MM-DD, no TZ conversion.
         hiddenInput.value = dateInput.value;
       }
 

@@ -5,6 +5,13 @@ import { supabase } from "@/lib/supabase";
 const user_id = Astro.locals.user_id;
 if (!user_id) return Astro.redirect("/signin");
 
+// Check onboarding status
+const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status', {
+  p_user_id: user_id
+});
+
+const isOnboardingComplete = onboardingStatus?.onboarding_completed === true;
+
 const INTEREST_CATEGORIES = {
   adventure: { label: 'Adventure', icon: '🏔️' },
   culture: { label: 'Culture', icon: '🏛️' },
@@ -23,6 +30,8 @@ const { data: profileData } = await supabase.rpc('get_user_profile_data', {
 
 const selectedInterests = profileData?.interests || [];
 ---
+
+<script define:vars={{ isOnboardingComplete }}>
 
 <PagePlate title="Select Your Interests">
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
@@ -154,9 +163,13 @@ const selectedInterests = profileData?.interests || [];
 
         showSuccess(data.message || `${data.count} interests saved!`);
 
-        // Redirect to next step
+        // Redirect based on onboarding status
         setTimeout(() => {
-          window.location.href = '/onboarding/preferences';
+          if (isOnboardingComplete) {
+            window.location.href = '/profile';
+          } else {
+            window.location.href = '/onboarding/preferences';
+          }
         }, 1000);
       } catch (error: any) {
         showError(error.message || 'Failed to save interests');
@@ -172,7 +185,11 @@ const selectedInterests = profileData?.interests || [];
     document.getElementById('skipBtn')?.addEventListener('click', async () => {
       try {
         await actions.onboarding.skipOnboardingStep({ step: 'interests' });
-        window.location.href = '/onboarding/preferences';
+        if (isOnboardingComplete) {
+          window.location.href = '/profile';
+        } else {
+          window.location.href = '/onboarding/preferences';
+        }
       } catch (error) {
         console.error('Skip failed:', error);
       }

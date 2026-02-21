@@ -123,7 +123,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US-D8 | As a member, I want to leave a trip I've joined | "Leave Trip" button shown for `member` role; redirects to `/trips` | ✅ Pass |
 | US-D9 | As a member or owner, I want to see the member list | Member list (`Member.astro`) shown for owners and joined members | ✅ Pass |
 | US-D10 | As a trip owner, I want to manage trip status | Clicking the status badge opens `StatusModal` with all 5 status options; calls `update_trip_status` RPC | ✅ Pass |
-| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete stop forms with Mapbox location search done; pickup/dropoff limit + time overlap validation pending |
+| US-D11 | As a user, I want to view the trip itinerary | Itinerary rendered below trip details with destination shown in header | ⚠️ Partial — stops render correctly; add/edit/delete with Mapbox search, pickup/dropoff (max 3 each), and time overlap validation all done; drag-drop reorder pending |
 | US-D12 | As a visitor, I want to know when a trip is full | "Trip Full" disabled button shown when `currentPax >= maxPax` | ✅ Pass |
 
 **Editable fields (owner only, non-completed trips):**
@@ -369,8 +369,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~Delete dead files: `CompleteItinerary.astro` (520 lines, unused), `FormTemplates.astro` (309 lines, orphaned)~~
 - [x] ~~Integrate Mapbox Search Box (suggest + retrieve) into inline add/edit stop forms; coordinates saved to `locations` table~~
 - [x] ~~Fix DaySection.astro type mismatch: `CompleteStop[]` → `ItineraryStop[]`; `firstStop.stop?.scheduled_start` → `firstStop?.scheduled_start`~~
-- [ ] Pickup/Dropoff stop type in Add Stop form; enforce max 3 pickup + 3 dropoff per trip (US18a)
-- [ ] Time overlap validation on stop create/edit within a day (US18b)
+- [x] ~~Pickup/Dropoff stop type in Add Stop form; enforce max 3 pickup + 3 dropoff per trip (US18a)~~
+- [x] ~~Time overlap validation on stop create/edit within a day — full interval + exact start-time collision; inline form error displayed, save blocked (US18b)~~
 - [ ] Full drag-drop itinerary builder
 - [ ] Activity type as `<select>` (PH-specific presets) instead of free-text input
 - [ ] Actual vs scheduled time tracking
@@ -537,3 +537,4 @@ src/
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
 *Updated: Itinerary Phase 1–3 complete — crash fixes, query fix (location join + correct filter), `stops.ts` rewritten with correct DB columns (direct table ops), `activityEditor.ts` data-\* reading fixed, alert/confirm replaced with showToast/createConfirmModal, hidden+flex toggle fixed, dead files removed (CompleteItinerary.astro, FormTemplates.astro). Design decision: pickup/dropoff included in itinerary timeline; only destination excluded.*
 *Updated: Mapbox Search Box (suggest+retrieve) integrated into inline add/edit stop forms (US18); DaySection type mismatch fixed (CompleteStop → ItineraryStop). New requirements added: US18a (pickup/dropoff in Add Stop, max 3 each per trip), US18b (time overlap validation within a day).*
+*Updated: US18a implemented — Pickup + Dropoff added to Add Stop type selector; `validateTypeLimit()` counts `.timeline-item[data-stop-type]` in DOM before save, blocks at 3. US18b implemented — `validateTimeOverlap()` checks full interval overlap (both ends present) or exact start-time collision (end absent); inline `.form-error` div shown in form, save blocked. Both validations run in `stopEditor.ts` on create and edit.*

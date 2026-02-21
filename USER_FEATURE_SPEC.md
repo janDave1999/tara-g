@@ -254,9 +254,8 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 
 - [x] ~~**Global middleware**~~ — Implemented in `src/middleware/index.ts`. Protects routes, handles auth, redirects to onboarding if incomplete.
 - [x] ~~**Login attempt protection**~~ — Rate limit failed logins with progressive cooldown (5min/15min/30min). Migration 025 created, signin.ts and signin.astro updated.
-- [ ] **Profile edit page** — `/profile/index.astro` is nearly empty.
-- [ ] **Social login** (Google/Facebook) — Buttons render but handlers show "not available yet".
-- [ ] **Username uniqueness enforcement on trigger** — If email prefix collides, auto-append suffix (e.g., `dave_32f`).
+- [ ] **Social login** (Google/Facebook) — Code ready, awaiting Supabase/Google/Facebook configuration. See `docs/SOCIAL_LOGIN_SETUP.md`
+- [ ] **Profile page** — `/profile/index.astro` needs to be built out
 - [ ] **`/profile/[username]` public view** — No route for viewing another user's profile.
 
 ### 5.3 P2 — Nice to Have
@@ -305,9 +304,9 @@ An existing trigger in migration 006 auto-calculates `profile_completion_percent
 - [x] ~~Create `/forgot-password` page (send reset email)~~ — Done (Phase 3)
 - [x] ~~Create `/reset-password` page (new password form, handles token from email)~~ — Done (Phase 3)
 
-### Phase 4: Profile Page (P1)
+### Phase 4: Profile Page (P1) - IN PROGRESS
 
-- [ ] Build out `/profile/index.astro` — view own profile with stats
+- [ ] Build out `/profile/index.astro` — view own profile with stats (See Section 7.2)
 - [ ] Inline edit: name, bio, avatar, location
 - [ ] Tabs: owned trips / joined trips / friends
 - [ ] Create `/profile/[username].astro` — public profile view
@@ -368,6 +367,118 @@ Implemented login attempt tracking with progressive cooldown:
 
 ---
 
+## 7.2 Profile Page Implementation
+
+### Overview
+
+Profile pages need to support three user types:
+1. **Owner** - Viewing their own profile
+2. **Friend** - Viewing a friend's profile  
+3. **Visitor** - Viewing a public profile (not a friend)
+
+### Available Data from Database
+
+**users table:**
+- username, email, full_name, avatar_url, bio, is_verified, is_private, created_at
+
+**user_information table:**
+- first_name, last_name, phone_number, date_of_birth, gender, location_city, location_country, nationality, profile_completion_percentage
+
+**user_travel_preferences table:**
+- budget_range, travel_style, pace_preference, accommodation_type, languages_spoken
+
+**user_interests table:**
+- Interest categories
+
+**friends table:**
+- Friend count
+
+### Profile View by User Type
+
+#### Owner View (`/profile`)
+| Section | Content |
+|---------|---------|
+| **Header** | Avatar, full name, username, verified badge |
+| **Stats** | Trips owned, Trips joined, Friends count |
+| **About** | Bio, Location (city, country), Member since |
+| **Interests** | Interest tags |
+| **Travel Preferences** | Budget, travel style, pace, languages |
+| **Edit Button** | Edit profile (name, bio, avatar, location) |
+| **Settings Link** | Account settings, privacy settings |
+
+#### Friend View (`/profile/[username]`)
+| Section | Content |
+|---------|---------|
+| **Header** | Avatar, full name, username, verified badge |
+| **Stats** | Trips owned, Trips joined, Friends count |
+| **About** | Bio, Location |
+| **Interests** | Interest tags |
+| **Travel Preferences** | (Optional - if shared) |
+| **Action Buttons** | Message, Unfriend |
+| **Trip Section** | Public trips they're part of |
+
+#### Visitor View (`/profile/[username]`)
+| Section | Content |
+|---------|---------|
+| **Header** | Avatar, username |
+| **Stats** | Trips shared publicly, Friends count |
+| **About** | Bio only |
+| **Interests** | Interest tags (if public) |
+| **Action Buttons** | Add Friend |
+| **Trip Section** | Only public trips |
+
+### Privacy Matrix
+
+| Field | Owner | Friend | Visitor |
+|-------|-------|--------|---------|
+| Full Name | ✅ | ✅ | ❌ (username only) |
+| Bio | ✅ | ✅ | ✅ |
+| Location | ✅ | ✅ | ❌ |
+| Email | ✅ | ❌ | ❌ |
+| Phone | ✅ | ❌ | ❌ |
+| Interests | ✅ | ✅ | Configurable |
+| Travel Preferences | ✅ | Configurable | ❌ |
+| Trips | ✅ | Friends-only | Public only |
+
+### Implementation Plan
+
+**Phase 4.1: Own Profile (`/profile`)**
+1. Create `/profile/index.astro` page
+2. Use existing RPC `get_user_profile_data` to fetch profile
+3. Use existing RPC `get_user_stats` to fetch stats
+4. Display profile sections: header, stats, about, interests, preferences
+5. Add edit profile modal/button
+
+**Phase 4.2: Public Profile (`/profile/[username]`)** - ✅ COMPLETED
+1. Create `/profile/[username].astro` dynamic route - ✅
+2. Fetch profile by username (not auth_id) - ✅ (via `get_profile_by_username` RPC)
+3. Check friendship status for viewer - ✅
+4. Apply privacy rules based on relationship - ✅
+5. Show appropriate action buttons - ✅
+
+**Phase 4.3: Profile Edit**
+1. Create edit profile modal component
+2. Inline edit for name, bio, avatar
+3. Link to onboarding for interests/preferences
+
+### Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `src/pages/profile/index.astro` | ✅ Create - Own profile view |
+| `src/pages/profile/[username].astro` | ✅ Create - Public profile view |
+| Database RPC: `get_profile_by_username` | ✅ Create - Migration 026 |
+| `src/components/Profile/ProfileHeader.astro` | Create - Avatar, name, username |
+| `src/components/Profile/ProfileStats.astro` | Create - Trip/friend counts |
+| `src/components/Profile/ProfileAbout.astro` | Create - Bio, location |
+| `src/components/Profile/ProfileInterests.astro` | Create - Interest tags |
+| `src/components/Profile/ProfilePreferences.astro` | Create - Travel prefs |
+| `src/components/Profile/EditProfileModal.astro` | Create - Edit form |
+| `src/actions/profile.ts` | Create - Profile actions (if needed) |
+| Database RPC: `get_profile_by_username` | Create - Fetch profile by username |
+
+---
+
 ## 7. File Structure
 
 ```
@@ -382,7 +493,8 @@ database-migrations/
 ├── 021_trigger_with_logging.sql         # ✅ debug trigger with RAISE LOG statements
 ├── 022_fix_profile_completion_recursion.sql  # ✅ fix infinite recursion
 ├── 023_fix_onboarding_status_field.sql  # ✅ fix onboarding_completed field name
-└── 025_login_attempt_protection.sql     # ✅ rate limiting for failed logins
+├── 025_login_attempt_protection.sql     # ✅ rate limiting for failed logins
+├── 026_get_profile_by_username.sql      # ✅ public profile by username RPC
 
 src/
 ├── pages/
@@ -402,8 +514,8 @@ src/
 │   │   ├── interests.astro             # Step 2
 │   │   └── preferences.astro          # Step 3
 │   └── profile/
-│       ├── index.astro                # ⚠️ Nearly empty
-│       ├── [username].astro           # TODO: missing
+│       ├── index.astro                # TODO: Own profile view (Phase 4)
+│       ├── [username].astro           # TODO: Public profile view (Phase 4)
 │       └── security.astro             # ⚠️ MFA commented out
 ├── actions/
 │   ├── index.ts                      # onboarding.* actions
@@ -454,4 +566,4 @@ User fills /register
 ---
 
 *Last updated: 2026-02-20*
-*Updated: Login attempt protection fully implemented and tested*
+*Updated: Profile page implementation plan added (Section 7.2), Social login setup guide created*

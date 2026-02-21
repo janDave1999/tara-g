@@ -1,0 +1,364 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabase } from "@/lib/supabase";
+
+const { username } = Astro.params;
+if (!username) return Astro.redirect("/");
+
+const viewer_id = Astro.locals.user_id;
+
+// Fetch profile by username
+const { data: profileData } = await supabase.rpc('get_profile_by_username', {
+  p_username: username
+});
+
+if (!profileData?.found) {
+  return Astro.redirect("/404");
+}
+
+const profile = profileData.profile;
+const userInfo = profileData.information;
+const userPrefs = profileData.preferences;
+const userInterests = profileData.interests;
+
+// Check if viewer is the profile owner
+const isOwner = viewer_id === profile.id;
+
+// Check friendship status if viewer is logged in and not owner
+let friendshipStatus = null;
+let friendRequestStatus = null;
+
+if (viewer_id && !isOwner) {
+  // Check if they are friends
+  const { data: friendship } = await supabase
+    .from('friends')
+    .select('*')
+    .or(`and(user_id.eq.${viewer_id},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${viewer_id})`)
+    .single();
+  
+  friendshipStatus = friendship ? 'friends' : null;
+
+  // Check for pending friend request
+  if (!friendshipStatus) {
+    const { data: request } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .or(`and(from_user.eq.${viewer_id},to_user.eq.${profile.id},status.eq.pending),and(from_user.eq.${profile.id},to_user.eq.${viewer_id},status.eq.pending)`)
+      .single();
+    
+    if (request) {
+      if (request.from_user === viewer_id) {
+        friendRequestStatus = 'sent';
+      } else {
+        friendRequestStatus = 'received';
+      }
+    }
+  }
+}
+
+// Determine privacy level
+const privacyMode = profile.privacy_mode || 'public';
+let canViewFullProfile = true;
+
+if (!isOwner && viewer_id) {
+  if (privacyMode === 'private') {
+    canViewFullProfile = false;
+  } else if (privacyMode === 'friends' && friendshipStatus !== 'friends') {
+    canViewFullProfile = false;
+  }
+} else if (!viewer_id && privacyMode !== 'public') {
+  canViewFullProfile = false;
+}
+
+// Format dates
+const memberSince = profile.created_at 
+  ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  : 'Unknown';
+---
+
+<PagePlate title={`${profile.full_name || username} (@${username}) | Tara G!`}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Cover Image / Banner -->
+    <div class="h-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+      {profile.cover_image_url && (
+        <img src={profile.cover_image_url} alt="Cover" class="w-full h-full object-cover" />
+      )}
+    </div>
+    
+    <div class="max-w-4xl mx-auto px-4 -mt-20">
+      <!-- Profile Header Card -->
+      <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div class="flex flex-col md:flex-row items-start md:items-end gap-6">
+          <!-- Avatar -->
+          <div class="relative">
+            <div class="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md">
+              <img 
+                src={profile.avatar_url || "/default-avatar.png"} 
+                alt={profile.full_name || username}
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <!-- Verified Badge -->
+            {profile.is_verified && (
+              <div class="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title="Verified">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            )}
+          </div>
+          
+          <!-- Name & Username -->
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <h1 class="text-3xl font-bold text-gray-900">{profile.full_name || username}</h1>
+            </div>
+            <p class="text-gray-500">@{username}</p>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
+            {isOwner ? (
+              <a href="/onboarding/profile" class="btn btn-outline">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit Profile
+              </a>
+            ) : (
+              <>
+                {friendRequestStatus === 'sent' ? (
+                  <button disabled class="btn btn-outline opacity-50 cursor-not-allowed">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Request Sent
+                  </button>
+                ) : friendRequestStatus === 'received' ? (
+                  <a href="/friends/requests" class="btn btn-primary">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Respond to Request
+                  </a>
+                ) : friendshipStatus === 'friends' ? (
+                  <button class="btn btn-outline" disabled>
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Friends
+                  </button>
+                ) : (
+                  <button 
+                    class="btn btn-primary add-friend-btn" 
+                    data-user-id={profile.id}
+                  >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Add Friend
+                  </button>
+                )}
+                <button class="btn btn-outline message-btn" data-user-id={profile.id}>
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Message
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {canViewFullProfile ? (
+        <>
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow p-6 text-center">
+              <div class="text-3xl font-bold text-blue-600">{profile.trips_owned || 0}</div>
+              <div class="text-gray-500 text-sm">Trips Owned</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-6 text-center">
+              <div class="text-3xl font-bold text-purple-600">{profile.trips_joined || 0}</div>
+              <div class="text-gray-500 text-sm">Trips Joined</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-6 text-center">
+              <div class="text-3xl font-bold text-pink-600">{profile.friends_count || 0}</div>
+              <div class="text-gray-500 text-sm">Friends</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Left Column - About & Interests -->
+            <div class="md:col-span-2 space-y-6">
+              <!-- About Section -->
+              <div class="bg-white rounded-xl shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">About</h2>
+                {profile.bio ? (
+                  <p class="text-gray-700 whitespace-pre-wrap">{profile.bio}</p>
+                ) : (
+                  <p class="text-gray-400 italic">No bio yet.</p>
+                )}
+                
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                  <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {userInfo.location_city || userInfo.location_country ? (
+                      <span>{[userInfo.location_city, userInfo.location_country].filter(Boolean).join(', ')}</span>
+                    ) : (
+                      <span>No location set</span>
+                    )}
+                  </div>
+                  <div class="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Member since {memberSince}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interests Section -->
+              {userInterests && userInterests.length > 0 && (
+                <div class="bg-white rounded-xl shadow p-6">
+                  <h2 class="text-xl font-semibold text-gray-900 mb-4">Interests</h2>
+                  <div class="flex flex-wrap gap-2">
+                    {userInterests.map((interest: any) => (
+                      <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                        {interest.category}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <!-- Right Column - Travel Preferences -->
+            <div class="space-y-6">
+              <div class="bg-white rounded-xl shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Travel Preferences</h2>
+                
+                <div class="space-y-4">
+                  <!-- Budget -->
+                  <div>
+                    <label class="text-sm text-gray-500">Budget</label>
+                    <p class="font-medium capitalize">{userPrefs.budget_range || 'Not set'}</p>
+                  </div>
+                  
+                  <!-- Travel Style -->
+                  <div>
+                    <label class="text-sm text-gray-500">Travel Style</label>
+                    <div class="flex flex-wrap gap-1 mt-1">
+                      {userPrefs.travel_style && userPrefs.travel_style.length > 0 ? (
+                        userPrefs.travel_style.map((style: string) => (
+                          <span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">{style}</span>
+                        ))
+                      ) : (
+                        <span class="text-gray-400 text-sm">Not set</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <!-- Pace -->
+                  <div>
+                    <label class="text-sm text-gray-500">Pace</label>
+                    <p class="font-medium capitalize">{userPrefs.pace_preference || 'Not set'}</p>
+                  </div>
+                  
+                  <!-- Languages -->
+                  <div>
+                    <label class="text-sm text-gray-500">Languages</label>
+                    <div class="flex flex-wrap gap-1 mt-1">
+                      {userPrefs.languages_spoken && userPrefs.languages_spoken.length > 0 ? (
+                        userPrefs.languages_spoken.map((lang: string) => (
+                          <span class="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">{lang}</span>
+                        ))
+                      ) : (
+                        <span class="text-gray-400 text-sm">Not set</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <!-- Private Profile Message -->
+        <div class="bg-white rounded-xl shadow p-12 text-center">
+          <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Private Profile</h2>
+          <p class="text-gray-500 mb-6">
+            {viewer_id 
+              ? "This user's profile is private. Add them as a friend to see their full profile."
+              : "This user's profile is private. Sign in and add them as a friend to see their full profile."
+            }
+          </p>
+          {!viewer_id && (
+            <a href="/signin" class="btn btn-primary">
+              Sign In
+            </a>
+          )}
+          {viewer_id && (
+            <button 
+              class="btn btn-primary add-friend-btn" 
+              data-user-id={profile.id}
+            >
+              Add Friend
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+
+  <script>
+    // Add Friend functionality
+    document.querySelectorAll('.add-friend-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = (btn as HTMLElement).dataset.userId;
+        if (!userId) return;
+        
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          import.meta.env.PUBLIC_SUPABASE_URL,
+          import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+        );
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          window.location.href = '/signin';
+          return;
+        }
+        
+        const { error } = await supabase
+          .from('friend_requests')
+          .insert({
+            from_user: user.id,
+            to_user: userId,
+            status: 'pending'
+          });
+        
+        if (!error) {
+          btn.textContent = 'Request Sent';
+          (btn as HTMLButtonElement).disabled = true;
+          btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+      });
+    });
+
+    // Message button functionality
+    document.querySelectorAll('.message-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = (btn as HTMLElement).dataset.userId;
+        window.location.href = `/messages?user=${userId}`;
+      });
+    });
+  </script>
+</PagePlate>

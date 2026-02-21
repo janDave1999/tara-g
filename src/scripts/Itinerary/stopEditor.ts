@@ -6,7 +6,27 @@ import { createMapboxSearchBox } from '@/scripts/mapBoxSearch';
 const MAX_PICKUP = 3;
 const MAX_DROPOFF = 3;
 
-const formatDateTimeLocal = (isoString: string) => isoString.slice(0, 16);
+/**
+ * Convert a UTC ISO string from the DB into "YYYY-MM-DDTHH:mm" using local time parts,
+ * so <input type="datetime-local"> shows the correct local time.
+ */
+const formatDateTimeLocal = (isoString: string): string => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+/**
+ * Convert a datetime-local string ("YYYY-MM-DDTHH:mm", browser-local time) to UTC ISO
+ * before sending to the server, so Supabase stores the correct absolute timestamp.
+ */
+const toUTCISO = (v: string | undefined | null): string | undefined => {
+  if (!v) return undefined;
+  const d = new Date(v); // browser: naive string → local time → Date object
+  return isNaN(d.getTime()) ? undefined : d.toISOString();
+};
 
 const showLoading = (element: HTMLButtonElement, message = 'Saving...') => {
   const originalText = element.textContent;
@@ -343,8 +363,8 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
         location_name: formData.get('location_name') as string || undefined,
         latitude: parseCoord(formData.get('latitude') as string),
         longitude: parseCoord(formData.get('longitude') as string),
-        scheduled_start: scheduledStart || undefined,
-        scheduled_end: scheduledEnd,
+        scheduled_start: toUTCISO(scheduledStart),
+        scheduled_end: toUTCISO(scheduledEnd),
         notes: formData.get('notes') as string || undefined,
       };
 
@@ -434,8 +454,8 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
         location_name: locationName,
         latitude: parseCoord(formData.get('latitude') as string),
         longitude: parseCoord(formData.get('longitude') as string),
-        scheduled_start: scheduledStart,
-        scheduled_end: scheduledEnd,
+        scheduled_start: toUTCISO(scheduledStart) ?? scheduledStart,
+        scheduled_end: toUTCISO(scheduledEnd),
         notes: formData.get('notes') as string || undefined,
       };
 

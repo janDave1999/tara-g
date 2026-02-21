@@ -5,6 +5,13 @@ import { supabase } from "@/lib/supabase";
 const user_id = Astro.locals.user_id;
 if (!user_id) return Astro.redirect("/signin");
 
+// Check onboarding status
+const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status', {
+  p_user_id: user_id
+});
+
+const isOnboardingComplete = onboardingStatus?.onboarding_completed === true;
+
 // Use RPC to get all user data in one call
 const { data: profileData, error } = await supabase.rpc('get_user_profile_data', {
   p_user_id: user_id
@@ -17,6 +24,8 @@ if (error) {
 const userData = profileData?.user || {};
 const userInfo = profileData?.information || {};
 ---
+
+<script define:vars={{ isOnboardingComplete }}>
 
 <PagePlate title="Complete Your Profile">
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
@@ -299,9 +308,13 @@ const userInfo = profileData?.information || {};
 
         showSuccess(data.message || 'Profile updated!');
         
-        // Redirect to next step after a brief delay
+        // Redirect based on onboarding status
         setTimeout(() => {
-          window.location.href = '/onboarding/interests';
+          if (isOnboardingComplete) {
+            window.location.href = '/profile';
+          } else {
+            window.location.href = '/onboarding/interests';
+          }
         }, 1000);
       } catch (error: any) {
         showError(error.message || 'Failed to update profile');
@@ -314,7 +327,11 @@ const userInfo = profileData?.information || {};
     document.getElementById('skipBtn')?.addEventListener('click', async () => {
       try {
         await actions.onboarding.skipOnboardingStep({ step: 'profile' });
-        window.location.href = '/onboarding/interests';
+        if (isOnboardingComplete) {
+          window.location.href = '/profile';
+        } else {
+          window.location.href = '/onboarding/interests';
+        }
       } catch (error) {
         console.error('Skip failed:', error);
       }

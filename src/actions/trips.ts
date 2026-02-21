@@ -209,10 +209,13 @@ const createTripSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   
   joined_by: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid datetime format')
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/,
+      'Invalid datetime format'
+    )
     .refine(datetime => {
       const d = new Date(datetime);
-      return d >= new Date(); // Not in the past
+      return !isNaN(d.getTime()) && d >= new Date();
     }, 'Join deadline cannot be in the past'),
   
   // Enhanced settings validation
@@ -283,7 +286,10 @@ const createTripSchema = z.object({
     }, 'Invalid pickup coordinates format'),
   
   pickup_dates: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid pickup datetime format'),
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/,
+      'Invalid pickup datetime format'
+    ),
   
   waiting_time: z.number()
     .int('Waiting time must be a whole number')
@@ -309,7 +315,10 @@ const createTripSchema = z.object({
     }, 'Invalid dropoff coordinates format'),
   
   dropoff_dates: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, 'Invalid dropoff datetime format')
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/,
+      'Invalid dropoff datetime format'
+    )
 }).superRefine((data, ctx) => {
   // Cross-field validation
   const startDate = new Date(data.start_date);

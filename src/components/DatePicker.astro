@@ -136,17 +136,17 @@ const isSingleMode = mode === 'single';
           }
           
           // Set initial value if exists to prevent validation errors
-          // Use local time format (Y-m-d H:i) to avoid timezone issues
           try {
             if (mode === 'single') {
               const hiddenInput = document.getElementById(`${pickerId}-hidden`);
               if (hiddenInput && selectedDates.length > 0) {
                 const selected = selectedDates[0];
-                // Store as local datetime (Y-m-d H:i) to avoid UTC conversion issues
-                const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
                 if (enableTime) {
-                  hiddenInput.value = localDate.toISOString().slice(0, 16);
+                  // Store as full UTC ISO so Supabase receives the correct absolute time
+                  hiddenInput.value = selected.toISOString();
                 } else {
+                  // Date-only: reconstruct local YYYY-MM-DD to avoid UTC midnight day-shift
+                  const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
                   hiddenInput.value = localDate.toISOString().split("T")[0];
                 }
               }
@@ -156,15 +156,13 @@ const isSingleMode = mode === 'single';
               if (inputFrom && inputTo && selectedDates.length > 0) {
                 const start = selectedDates[0];
                 const end = selectedDates.length === 2 ? selectedDates[1] : selectedDates[0];
-                
-                // Store as local datetime
-                const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
-                const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
-                
+
                 if (enableTime) {
-                  inputFrom.value = startLocal.toISOString().slice(0, 16);
-                  inputTo.value = endLocal.toISOString().slice(0, 16);
+                  inputFrom.value = start.toISOString();
+                  inputTo.value = end.toISOString();
                 } else {
+                  const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
+                  const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
                   inputFrom.value = startLocal.toISOString().split("T")[0];
                   inputTo.value = endLocal.toISOString().split("T")[0];
                 }
@@ -187,16 +185,16 @@ const isSingleMode = mode === 'single';
               const selected = dates[0];
               const hiddenInput = document.getElementById(`${pickerId}-hidden`);
               if (!hiddenInput) return;
-              
-              // Use local time to avoid timezone issues
-              const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
+
               if (enableTime) {
-                hiddenInput.value = localDate.toISOString().slice(0, 16);
-                if (instance && instance.input) instance.input.value = formatter.format(selected);
+                // Store full UTC ISO so Supabase receives the correct absolute time
+                hiddenInput.value = selected.toISOString();
               } else {
+                // Date-only: reconstruct local YYYY-MM-DD to avoid UTC midnight day-shift
+                const localDate = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000);
                 hiddenInput.value = localDate.toISOString().split("T")[0];
-                if (instance && instance.input) instance.input.value = formatter.format(selected);
               }
+              if (instance && instance.input) instance.input.value = formatter.format(selected);
 
               // Dispatch change event for validation
               const changeEvent = new Event('change', { bubbles: true });
@@ -211,14 +209,12 @@ const isSingleMode = mode === 'single';
               const inputTo = document.getElementById(`${pickerId}-to`);
               if (!inputFrom || !inputTo) return;
 
-              // Use local time
-              const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
-              const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
-              
               if (enableTime) {
-                inputFrom.value = startLocal.toISOString().slice(0, 16);
-                inputTo.value = endLocal.toISOString().slice(0, 16);
+                inputFrom.value = start.toISOString();
+                inputTo.value = end.toISOString();
               } else {
+                const startLocal = new Date(start.getTime() - start.getTimezoneOffset() * 60000);
+                const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
                 inputFrom.value = startLocal.toISOString().split("T")[0];
                 inputTo.value = endLocal.toISOString().split("T")[0];
               }

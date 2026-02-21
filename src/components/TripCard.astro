@@ -51,7 +51,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
   <div class="relative h-48 bg-linear-to-br from-blue-100 to-indigo-100 overflow-hidden">
     {trip.cover_image ? (
       <img
-        src={PUBLIC_R2_URL + "/" + trip.cover_image}
+        src={`${PUBLIC_R2_URL}${trip.cover_image}`}
         alt={trip.title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />

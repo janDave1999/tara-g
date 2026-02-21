@@ -27,7 +27,7 @@ const userInterests = profileData?.interests || [];
 const getAvatarUrl = (url: string) => {
   if (!url) return '/default-avatar.png';
   if (url.startsWith('http')) return url; // Already a full URL
-  return `${PUBLIC_R2_URL}/${url}`;
+  return `${PUBLIC_R2_URL}${url}`;
 };
 console.log(PUBLIC_R2_URL);
 const displayAvatarUrl = getAvatarUrl(userData.avatar_url);

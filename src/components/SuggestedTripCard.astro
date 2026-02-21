@@ -24,7 +24,7 @@ const formatDate = (date: string | null) => {
   <div class="relative h-48 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 overflow-hidden">
     {trip.cover_image ? (
       <img 
-        src={PUBLIC_R2_URL +trip.cover_image} 
+        src={`${PUBLIC_R2_URL}${trip.cover_image}`} 
         alt={trip.title}
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
@@ -106,8 +106,8 @@ const formatDate = (date: string | null) => {
     <!-- Footer Info -->
     <div class="pt-3 border-t border-blue-100 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        {PUBLIC_R2_URL + trip.owner_avatar ? (
-          <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full ring-2 ring-blue-200" />
+        {trip.owner_avatar ? (
+          <img src={`${PUBLIC_R2_URL}${trip.owner_avatar}`} alt={trip.owner_name} class="w-6 h-6 rounded-full ring-2 ring-blue-200" />
         ) : (
           <div class="w-6 h-6 rounded-full bg-blue-200"></div>
         )}

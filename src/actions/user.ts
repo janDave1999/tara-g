@@ -108,26 +108,19 @@ export const user = {
         const keyname = `user/${userId}/profile-pictures/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
         
         // Upload to R2
-        const url = await uploadToR2(
+        await uploadToR2(
           buffer, 
           name, 
           type, 
           keyname, 
           locals.runtime.env.TRIP_HERO
         );
-        
-        if (!url) {
-          throw new ActionError({
-            message: "Failed to upload avatar",
-            code: "INTERNAL_SERVER_ERROR",
-          });
-        }
 
-        // Update avatar_url in database
+        // Save the KEY (not full URL) to database - frontend uses PUBLIC_R2_URL to construct URL
         const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({ 
-            avatar_url: url,
+            avatar_url: keyname,
             updated_at: new Date().toISOString()
           })
           .eq('auth_id', userId);
@@ -139,9 +132,10 @@ export const user = {
           });
         }
         
+        // Return the KEY - frontend constructs URL using PUBLIC_R2_URL
         return {
           success: true,
-          url,
+          key: keyname,
           message: 'Avatar uploaded successfully!'
         };
       } catch (error) {

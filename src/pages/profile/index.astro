@@ -1,6 +1,7 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
 import { supabase } from "@/lib/supabase";
+import { PUBLIC_R2_URL } from 'astro:env/client';
 import EditProfileModal from "@/components/Profile/EditProfileModal.astro";
 import AvatarEditor from "@/components/Profile/AvatarEditor.astro";
 
@@ -22,6 +23,15 @@ const userInfo = profileData?.information || {};
 const userPrefs = profileData?.preferences || {};
 const userInterests = profileData?.interests || [];
 
+// Helper to get full avatar URL (handles both full URLs and keys)
+const getAvatarUrl = (url: string) => {
+  if (!url) return '/default-avatar.png';
+  if (url.startsWith('http')) return url; // Already a full URL
+  return `${PUBLIC_R2_URL}/${url}`;
+};
+console.log(PUBLIC_R2_URL);
+const displayAvatarUrl = getAvatarUrl(userData.avatar_url);
+console.log(displayAvatarUrl);
 // Format dates
 const memberSince = userData.created_at 
   ? new Date(userData.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -45,7 +55,7 @@ const memberSince = userData.created_at
               class="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <img 
-                src={userData.avatar_url || "/default-avatar.png"} 
+                src={displayAvatarUrl} 
                 alt={userData.full_name || userData.username}
                 class="w-full h-full object-cover"
               />

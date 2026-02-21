@@ -106,7 +106,7 @@ const formatDate = (date: string | null) => {
     <!-- Footer Info -->
     <div class="pt-3 border-t border-blue-100 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        {trip.owner_avatar ? (
+        {PUBLIC_R2_URL + trip.owner_avatar ? (
           <img src={trip.owner_avatar} alt={trip.owner_name} class="w-6 h-6 rounded-full ring-2 ring-blue-200" />
         ) : (
           <div class="w-6 h-6 rounded-full bg-blue-200"></div>

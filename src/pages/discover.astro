@@ -1,5 +1,6 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 ---
 
 <PagePlate title="Discover Adventures">
@@ -21,7 +22,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
         
         <!-- Card Example -->
         <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
-        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg" alt="Beach Adventure" class="w-full h-44 object-cover"/>
+        <img src=`${PUBLIC_R2_URL}image_processing20181219-4-1w5b3n8.jpg` alt="Beach Adventure" class="w-full h-44 object-cover"/>
         <div class="p-5 space-y-3">
             <h3 class="text-lg sm:text-xl font-semibold">Beach Adventure</h3>
             <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
@@ -35,7 +36,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
         </div>
 
         <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
-        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp" alt="Mountain Adventure" class="w-full h-44 object-cover"/>
+        <img src=`${PUBLIC_R2_URL}Mt-Mayon-750x469.webp` alt="Mountain Adventure" class="w-full h-44 object-cover"/>
         <div class="p-5 space-y-3">
             <h3 class="text-lg sm:text-xl font-semibold">Mountain Hike</h3>
             <p class="text-gray-600 text-sm sm:text-base leading-relaxed">
@@ -49,7 +50,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
         </div>
 
         <div class="flex-none w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition snap-start">
-        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg" alt="Camping Adventure" class="w-full h-44 object-cover"/>
+        <img src=`${PUBLIC_R2_URL}Philippines-Hertz-Patapat-ViaductR.jpg` alt="Camping Adventure" class="w-full h-44 object-cover"/>
         <div class="p-5 space-y-3">
             <h3 class="text-lg sm:text-xl font-semibold">Camping Escape</h3>
             <p class="text-gray-600 text-sm sm:text-base leading-relaxed">

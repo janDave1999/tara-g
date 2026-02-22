@@ -4,6 +4,7 @@ import PagePlate from '../../layouts/PagePlate.astro'
 import BlogItemBig from '@/components/Blog/BlogItemBig.astro';
 import type { NEWSROOM_CONTENT } from 'src/structure/newsroom/content'
 import Pagination from '@/components/Form/Pagination.astro';
+import { PUBLIC_R2_URL } from 'astro:env/client';
 
 interface BlogPost {
   slug: string;
@@ -65,11 +66,11 @@ let totalPage = data.total ? Math.ceil(data.total / limit) : 1;
   <header class="relative w-full">
     <picture>
       <source
-        srcset="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png"
+        srcset=`${PUBLIC_R2_URL}ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png`
         media="(max-width: 768px)"
       />
       <img
-        src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png"
+        src=`${PUBLIC_R2_URL}ChatGPT%20Image%20Nov%2012%2C%202025%2C%2002_09_20%20PM.png`
         alt="Newsroom banner"
         class="w-full h-auto object-cover"
       />

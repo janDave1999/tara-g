@@ -1,5 +1,6 @@
 ---
 import AuthLayout from "@/layouts/AuthLayout.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 const { cookies, redirect } = Astro;
 
@@ -17,7 +18,7 @@ if (accessToken && refreshToken) {
     <div class="text-center">
       <div class="flex justify-center mb-4">
         <img
-          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
+          src=`${PUBLIC_R2_URL}ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png`
           alt="Tara G! Logo" 
           class="w-12 h-12 rounded-lg"
         />
@@ -214,7 +215,7 @@ if (accessToken && refreshToken) {
           "
           aria-label="Sign up with Google"
         >
-          <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/icons8-google-48.png" alt="Google" class="w-5 h-5" />
+          <img src=`${PUBLIC_R2_URL}icons8-google-48.png" alt="Google" class="w-5 h-5` />
           <span>Google</span>
         </button>
 
@@ -229,7 +230,7 @@ if (accessToken && refreshToken) {
           "
           aria-label="Sign up with Facebook"
         >
-          <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/icons8-facebook-48.png" alt="Facebook" class="w-5 h-5" />
+          <img src=`${PUBLIC_R2_URL}icons8-facebook-48.png` alt="Facebook" class="w-5 h-5" />
           <span>Facebook</span>
         </button>
       </div>

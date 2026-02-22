@@ -1,5 +1,6 @@
 ---
 import ThemeController from "@/components/ThemeController.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 let avatarUrl = Astro.locals.avatar_url || "";
 let userID = Astro.locals.user_id || "";
@@ -21,7 +22,7 @@ let userID = Astro.locals.user_id || "";
 <!-- Logo -->
       <a href="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
         <img
-          src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png"
+          src=`${PUBLIC_R2_URL}ChatGPT%20Image%20Nov%204%2C%202025%2C%2002_47_13%20PM.png`
           alt="Tara G! Logo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg" />
         <span class="text-xl sm:text-2xl font-bold text-gray-800 hidden sm:inline">Tara G!</span>
         <span class="text-xl font-bold text-gray-800 sm:hidden">TG!</span>

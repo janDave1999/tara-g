@@ -4,6 +4,7 @@ import "@/styles/globals.css";
 //i18n
 import { getLangFromUrl } from "@/i18/utils";
 import type { HTMLAttributes } from "astro/types";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 interface Props {
 	title: string,
@@ -31,10 +32,10 @@ const currentLang = getLangFromUrl(Astro.url);
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0">
 
-		<link rel="icon" type="image/ico" href="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/logo-with-bg.jpg" />
+		<link rel="icon" type="image/ico" href=`${PUBLIC_R2_URL}logo-with-bg.jpg` />
 		<link rel="sitemap" href="/sitemap-index.xml" />
 		<!-- og images -->
-		<meta property="og:image" content="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/logo-with-bg.jpg" />
+		<meta property="og:image" content=`${PUBLIC_R2_URL}logo-with-bg.jpg` />
 		<meta name="robots" content="index, follow" />
 		<meta name="theme-color" content="#ffffff" />
 		{/* HTML Format */}

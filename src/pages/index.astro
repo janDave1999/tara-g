@@ -2,13 +2,14 @@
 import PagePlate from "../layouts/PagePlate.astro";
 import Blog from "@/components/Blog/Blog.astro"
 import Skeleton from "@/components/Skeleton.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 
 const trips = [
   {
     title: "Beach Adventure",
     slug: "beach-adventure",
-    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/image_processing20181219-4-1w5b3n8.jpg",
+    img: `${PUBLIC_R2_URL}image_processing20181219-4-1w5b3n8.jpg`,
     price: 12500,
     organizer: "John Doe",
     date: "2023-07-15",
@@ -20,7 +21,7 @@ const trips = [
   {
     title: "Mountain Trek",
     slug: "mountain-trek",
-    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Mt-Mayon-750x469.webp",
+    img: `${PUBLIC_R2_URL}Mt-Mayon-750x469.webp`,
     price: 18300,
     organizer: "Jane Smith",
     date: "2023-08-22",
@@ -32,7 +33,7 @@ const trips = [
   {
     title: "Road Trips",
     slug: "road-trips",
-    img: "https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/Philippines-Hertz-Patapat-ViaductR.jpg",
+    img: `${PUBLIC_R2_URL}Philippines-Hertz-Patapat-ViaductR.jpg`,
     price: 9800,
     organizer: "Bob Johnson",
     date: "2023-09-15",

@@ -1,5 +1,6 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 ---
 
 <PagePlate title="About Us">
@@ -25,7 +26,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
         </p>
       </div>
       <div class="lg:w-1/2 px-2 sm:px-0">
-        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/IMG_4074%20(1).jpg" alt="Our Story" class="rounded-2xl shadow-xl w-full object-cover hover:scale-105 transition-transform duration-300"/>
+        <img src=`${PUBLIC_R2_URL}IMG_4074%20(1).jpg` alt="Our Story" class="rounded-2xl shadow-xl w-full object-cover hover:scale-105 transition-transform duration-300"/>
       </div>
     </div>
 
@@ -41,7 +42,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
         </p>
       </div>
       <div class="lg:w-1/2 px-2 sm:px-0">
-        <img src="https://pub-aa2991db87be444fbc5fcb09dbae09a3.r2.dev/_DSC0526.JPG" alt="Our Mission" class="rounded-2xl shadow-xl w-full object-cover hover:scale-105 transition-transform duration-300"/>
+        <img src=`${PUBLIC_R2_URL}_DSC0526.JPG` alt="Our Mission" class="rounded-2xl shadow-xl w-full object-cover hover:scale-105 transition-transform duration-300"/>
       </div>
     </div>
 

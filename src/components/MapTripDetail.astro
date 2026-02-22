@@ -1,168 +1,235 @@
 ---
 ---
 
-<div id="trip-detail-modal" class="trip-detail-modal">
-  <div class="trip-detail-content" id="trip-detail-content"></div>
+<div id="trip-detail-modal" style="
+  position:fixed; inset:0; z-index:3000;
+  display:none; align-items:center; justify-content:center;
+  padding:20px; box-sizing:border-box;
+">
+  <div id="trip-detail-backdrop" style="
+    position:absolute; inset:0;
+    background:rgba(3,7,18,0.65);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  "></div>
+
+  <div id="trip-detail-content" style="
+    position:relative; z-index:1;
+    background:#fff;
+    border-radius:24px;
+    width:100%; max-width:420px;
+    max-height:90vh;
+    overflow:hidden; overflow-y:auto;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.06),
+      0 32px 64px -12px rgba(0,0,0,0.35),
+      0 8px 24px -4px rgba(0,0,0,0.15);
+    scrollbar-width:none;
+  "></div>
 </div>
 
 <script>
   import { PUBLIC_R2_URL } from "astro:env/client";
 
-  const tripModal = document.getElementById('trip-detail-modal') as HTMLDivElement;
-  const tripContent = document.getElementById('trip-detail-content') as HTMLDivElement;
+  const tripModal    = document.getElementById('trip-detail-modal')    as HTMLDivElement;
+  const tripContent  = document.getElementById('trip-detail-content')  as HTMLDivElement;
+  const tripBackdrop = document.getElementById('trip-detail-backdrop') as HTMLDivElement;
 
-  // Close modal when clicking outside
-  tripModal?.addEventListener('click', (e) => {
-    if (e.target === tripModal) {
-      tripModal.classList.remove('open');
-    }
-  });
+  tripBackdrop?.addEventListener('click', closeModal);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-  // Expose function to show trip details
+  function closeModal() {
+    tripModal.style.display = 'none';
+  }
+
   (window as any).showTripDetail = function(trip: any) {
-    const hasSlots = trip.current_participants < trip.max_participants;
-    const img = trip.images?.[0] ? `${PUBLIC_R2_URL}/${trip.images[0]}` : '/images/default-trip.jpg';
-    
+    const hasSlots  = trip.current_participants < trip.max_participants;
+    const slotsLeft = trip.max_participants - trip.current_participants;
+    const current   = trip.current_participants || 0;
+    const max       = trip.max_participants || 0;
+    const fillPct   = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
+    const img       = trip.images?.[0] ? `${PUBLIC_R2_URL}${trip.images[0]}` : '/images/default-trip.jpg';
+
+    const accentColor = hasSlots ? (slotsLeft <= 3 ? '#f59e0b' : '#10b981') : '#ef4444';
+    const pillTxt     = hasSlots
+      ? `${slotsLeft} slot${slotsLeft !== 1 ? 's' : ''} left`
+      : 'Fully Booked';
+
+    const fmtShort = (d: string) =>
+      d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBD';
+    const fmtBudget = (b: number | null) =>
+      b ? `₱${b.toLocaleString('en-PH')}` : 'Open';
+
+    // Build a clean single destination label:
+    // Prefer region alone, or just location_name — never show both if they're duplicates
+    const destination = (() => {
+      const loc    = (trip.location_name || '').trim();
+      const region = (trip.region || '').trim();
+      if (!loc && !region) return 'Unknown destination';
+      if (!region || loc === region) return loc;
+      // If location_name already contains the region text, just use location_name
+      if (loc.toLowerCase().includes(region.toLowerCase())) return loc;
+      return `${loc}, ${region}`;
+    })();
+
+    const tags = (trip.tags || []) as string[];
+
     tripContent.innerHTML = `
-      <img src="${img}" class="trip-detail-image" />
-      <div class="trip-detail-body">
-        <h2 class="trip-detail-title">${trip.title}</h2>
-        <div class="trip-detail-row">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          <span>${trip.location_name || 'Unknown location'}</span>
+      <!-- ── HERO ──────────────────────────────────── -->
+      <div style="position:relative; height:230px; overflow:hidden; border-radius:24px 24px 0 0;">
+        <img src="${img}" alt="${trip.title}"
+          style="width:100%; height:100%; object-fit:cover; display:block;" />
+
+        <!-- Gradient -->
+        <div style="
+          position:absolute; inset:0;
+          background:linear-gradient(
+            to bottom,
+            rgba(0,0,0,0.05) 0%,
+            rgba(0,0,0,0)    25%,
+            rgba(0,0,0,0.55) 68%,
+            rgba(0,0,0,0.88) 100%
+          );
+        "></div>
+
+        <!-- Close -->
+        <button id="close-trip-detail" style="
+          position:absolute; top:14px; right:14px;
+          width:34px; height:34px; border-radius:50%; border:none;
+          background:rgba(255,255,255,0.95);
+          display:flex; align-items:center; justify-content:center;
+          cursor:pointer; color:#1e293b; font-size:15px; font-weight:800;
+          box-shadow:0 2px 12px rgba(0,0,0,0.18);
+          font-family:sans-serif; line-height:1;
+        ">✕</button>
+
+        <!-- Pill -->
+        <div style="
+          position:absolute; top:14px; left:14px;
+          background:${accentColor}; color:#fff;
+          padding:5px 12px; border-radius:99px;
+          font-size:11.5px; font-weight:700;
+          display:flex; align-items:center; gap:5px;
+          box-shadow:0 2px 10px rgba(0,0,0,0.25);
+          font-family:sans-serif;
+        ">
+          <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.85);display:inline-block;"></span>
+          ${pillTxt}
         </div>
-        <div class="trip-detail-row">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-          <span>${trip.start_date || 'TBD'} - ${trip.end_date || 'TBD'}</span>
-        </div>
-        <div class="trip-detail-row">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-          </svg>
-          <span>${trip.current_participants || 0}/${trip.max_participants || 0} joiners</span>
-          <span class="slots-badge ${hasSlots ? 'available' : 'full'}">
-            ${hasSlots ? '✓ Available' : '✕ Full'}
-          </span>
-        </div>
-        <div class="trip-detail-actions">
-          <button class="close-detail-btn" id="close-trip-detail">Close</button>
-          <button class="view-trip-btn" onclick="window.location.href='/trips/${trip.trip_id}'">View Details</button>
+
+        <!-- Title + single destination line -->
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:16px 18px 18px;">
+          <div style="
+            display:flex; align-items:center; gap:5px;
+            font-size:11.5px; color:rgba(255,255,255,0.72);
+            font-weight:500; margin-bottom:6px; font-family:sans-serif;
+          ">
+            📍 <span>${destination}</span>
+          </div>
+          <h2 style="
+            margin:0; font-size:20px; font-weight:800;
+            color:#fff; line-height:1.2; letter-spacing:-0.025em;
+            text-shadow:0 1px 10px rgba(0,0,0,0.4);
+            font-family:sans-serif;
+          ">${trip.title}</h2>
         </div>
       </div>
+
+      <!-- ── BODY ───────────────────────────────────── -->
+      <div style="padding:18px 18px 24px; font-family:sans-serif;">
+
+        <!-- Info chips -->
+        <div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:18px;">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#f1f5f9;border-radius:99px;font-size:12.5px;font-weight:600;color:#1e293b;">
+            📅 ${fmtShort(trip.start_date)} → ${fmtShort(trip.end_date)}
+          </span>
+          ${trip.duration_days ? `
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#f1f5f9;border-radius:99px;font-size:12.5px;font-weight:600;color:#1e293b;">
+            ⏱ ${trip.duration_days} day${trip.duration_days !== 1 ? 's' : ''}
+          </span>` : ''}
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#f1f5f9;border-radius:99px;font-size:12.5px;font-weight:600;color:#1e293b;">
+            💰 ${fmtBudget(trip.estimated_budget)}
+          </span>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px;background:#f1f5f9;margin-bottom:18px;"></div>
+
+        <!-- Group capacity -->
+        <div style="margin-bottom:${tags.length > 0 ? '18px' : '22px'};">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:13px;color:#64748b;font-weight:600;display:flex;align-items:center;gap:5px;">
+              👥 Group capacity
+            </span>
+            <div style="font-family:sans-serif;">
+              <span style="font-size:15px;font-weight:800;color:#0f172a;">${current}</span>
+              <span style="font-size:13px;color:#cbd5e1;font-weight:400;margin:0 2px;">/</span>
+              <span style="font-size:15px;font-weight:800;color:#0f172a;">${max}</span>
+              <span style="font-size:11.5px;color:#94a3b8;font-weight:500;"> joined</span>
+            </div>
+          </div>
+          <div style="height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:${fillPct}%;background:${accentColor};border-radius:99px;min-width:${fillPct > 0 ? '8px' : '0'};"></div>
+          </div>
+          ${!hasSlots ? `
+          <div style="text-align:center;margin-top:8px;font-size:11.5px;color:#ef4444;font-weight:600;">
+            This trip is fully booked
+          </div>` : ''}
+        </div>
+
+        ${tags.length > 0 ? `
+        <!-- Tags -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;">
+          ${tags.slice(0, 5).map((t: string) => `
+            <span style="padding:5px 12px;background:#ecfdf5;color:#047857;border-radius:99px;font-size:12px;font-weight:600;">#${t}</span>
+          `).join('')}
+          ${tags.length > 5 ? `
+            <span style="padding:5px 12px;background:#f3f4f6;color:#9ca3af;border-radius:99px;font-size:12px;font-weight:600;">+${tags.length - 5} more</span>
+          ` : ''}
+        </div>
+        ` : ''}
+
+        <!-- CTA -->
+        <a href="/trips/${trip.trip_id}" style="
+          display:flex; align-items:center; justify-content:center; gap:9px;
+          width:100%; padding:15px 20px; box-sizing:border-box;
+          background:linear-gradient(135deg,#10b981 0%,#059669 100%);
+          color:#fff; border-radius:14px;
+          font-size:15px; font-weight:700; letter-spacing:0.01em;
+          text-decoration:none;
+          box-shadow:0 4px 18px rgba(16,185,129,0.4);
+        ">
+          View Full Details <span style="font-size:17px;">→</span>
+        </a>
+
+      </div>
     `;
-    
-    // Add close handler
-    document.getElementById('close-trip-detail')?.addEventListener('click', () => {
-      tripModal.classList.remove('open');
-    });
-    
-    tripModal.classList.add('open');
+
+    document.getElementById('close-trip-detail')?.addEventListener('click', closeModal);
+    tripModal.style.display = 'flex';
   };
 </script>
 
 <style>
-  .trip-detail-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 3000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+  #trip-detail-content::-webkit-scrollbar { display: none; }
+
+  #trip-detail-content {
+    animation: tdSlideUp 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  }
+  @keyframes tdSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  .trip-detail-modal.open { 
-    display: flex; 
+  #trip-detail-backdrop {
+    animation: tdFadeIn 0.22s ease both;
+  }
+  @keyframes tdFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
-  .trip-detail-content {
-    background: white;
-    border-radius: 24px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  }
-
-  .trip-detail-image {
-    width: 100%;
-    height: 240px;
-    object-fit: cover;
-  }
-
-  .trip-detail-body { 
-    padding: 24px; 
-  }
-
-  .trip-detail-title {
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 16px 0;
-  }
-
-  .trip-detail-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    font-size: 14px;
-    color: #6b7280;
-  }
-
-  .trip-detail-row svg {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  .trip-detail-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .trip-detail-actions button {
-    flex: 1;
-    padding: 12px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-  }
-
-  .close-detail-btn {
-    background: #f3f4f6;
-    color: #374151;
-  }
-
-  .view-trip-btn {
-    background: linear-gradient(to right, #10b981, #059669);
-    color: white;
-  }
-
-  .slots-badge {
-    padding: 4px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .slots-badge.available {
-    background: #d1fae5;
-    color: #065f46;
-  }
-
-  .slots-badge.full {
-    background: #fee2e2;
-    color: #991b1b;
+  #close-trip-detail:hover {
+    transform: scale(1.08) !important;
+    background: #fff !important;
   }
 </style>

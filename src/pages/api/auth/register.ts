@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 import {
   handleApiError,
   ValidationError,
@@ -7,6 +7,8 @@ import {
 import { commonSchemas } from "../../../lib/validation";
 import { checkRateLimit, getClientIp } from "../../../lib/rateLimit";
 import { SITE_URL } from "astro:env/server";
+import { sendWelcomeEmail, sendConfirmationEmail } from "../../../lib/email";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -16,7 +18,7 @@ const registerSchema = z.object({
 
 // check if email already exists in custom users table
 async function emailExists(email: string): Promise<boolean> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .select("user_id")
     .eq("email", email)
@@ -26,6 +28,10 @@ async function emailExists(email: string): Promise<boolean> {
     throw new Error('Database error while checking email');
   }
   return !!data; // true if exists
+}
+
+function generateConfirmationToken(): string {
+  return randomUUID();
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -61,23 +67,88 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error('Failed to check email availability');
     }
 
-    // Create new user in Supabase Auth
-    // emailRedirectTo sends confirmed users to onboarding instead of /feeds
-    const { data, error } = await supabase.auth.signUp({
+    // Check if there's an existing unconfirmed user with this email
+    const { data: existingUser } = await supabaseAdmin
+      .from("users")
+      .select("auth_id, confirmation_token")
+      .eq("email", validatedData.email)
+      .maybeSingle();
+
+    // Generate confirmation token
+    const confirmationToken = generateConfirmationToken();
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
+    // If user exists but not confirmed, update their token
+    if (existingUser && existingUser.confirmation_token) {
+      const { error: updateError } = await supabaseAdmin
+        .from("users")
+        .update({
+          confirmation_token: confirmationToken,
+          confirmation_token_expires_at: tokenExpiry
+        })
+        .eq("email", validatedData.email);
+
+      if (updateError) {
+        console.error("[Register] Failed to update existing user:", updateError);
+      } else {
+        // Send confirmation email
+        sendConfirmationEmail(validatedData.email, "Traveler", confirmationToken).catch((err) => {
+          console.error("[Register] Failed to send confirmation email:", err);
+        });
+
+        // Redirect to confirmation page
+        const headers = new Headers({
+          Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}`,
+        });
+        return new Response(null, { status: 302, headers });
+      }
+    }
+
+    // Create new user in Supabase Auth (auto-confirm disabled)
+    // We'll send custom confirmation email via MailerSend
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: validatedData.email,
       password: validatedData.password,
-      options: {
-        emailRedirectTo: `${SITE_URL}/api/auth/callback?next=/onboarding/profile`,
-      },
+      email_confirm: false, // Require email confirmation
+      user_metadata: {
+        confirmation_token: confirmationToken
+      }
     });
-    console.log(error)
-    if (error) {
-      if (error.message.includes('User already registered')) {
+
+    if (authError) {
+      console.error("[Register] Auth error:", authError);
+      if (authError.message.includes('already registered')) {
         throw new ValidationError('Email already exists', { email: 'This email is already registered' });
       }
-      
       throw new Error('Registration failed. Please try again.');
     }
+
+    console.log("[Register] Auth user created:", authData.user.id);
+
+    // Store pending confirmation in users table (use admin to bypass RLS)
+    // Use upsert to handle existing users from failed attempts
+    const { error: userError } = await supabaseAdmin
+      .from("users")
+      .upsert({
+        auth_id: authData.user.id,
+        email: validatedData.email,
+        username: `user_${validatedData.email.split('@')[0]}`,
+        confirmation_token: confirmationToken,
+        confirmation_token_expires_at: tokenExpiry,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'auth_id', ignoreDuplicates: false });
+
+    if (userError) {
+      console.error("[Register] User upsert error:", userError);
+      console.log("[Register] Will continue anyway - auth user exists:", authData.user.id);
+    } else {
+      console.log("[Register] User record created/updated successfully:", authData.user.id);
+    }
+
+    // Send confirmation email via MailerSend (non-blocking)
+    sendConfirmationEmail(validatedData.email, "Traveler", confirmationToken).catch((err) => {
+      console.error("[Register] Failed to send confirmation email:", err);
+    });
 
     // Redirect to confirmation page
     const headers = new Headers({

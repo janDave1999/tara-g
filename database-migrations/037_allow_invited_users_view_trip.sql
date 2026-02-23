@@ -1,21 +1,13 @@
 -- =====================================================
--- 034: Add visibility gate to get_trip_full_details
+-- 037: Allow invited users to view trip details
 -- =====================================================
--- SR-AUTHZ-001 gap: the RPC returned full trip data to
--- any caller regardless of trip_visibility.visibility.
--- The page relied on client-side rendering to hide
--- private content — not a server-enforced boundary.
+-- The get_trip_full_details function was blocking invited users
+-- from viewing trip details. Now invited users (member_status = 'invited')
+-- can view the trip they were invited to.
 --
--- Fix: after resolving v_user_role, return NULL for
--- visitors on private trips. The page already redirects
--- to /404 when the RPC returns NULL (line 19-21 of
--- src/pages/trips/[trip_id]/index.astro).
---
--- Update: invited users can now view trip details even
--- if not yet 'joined'. This allows invited members to
--- see the trip they were invited to.
---
--- Authenticated members and owners are unaffected.
+-- Changes:
+-- 1. Added 'invited' to member status check (line 54-58)
+-- 2. Visibility gate now only blocks 'visitor' role
 -- =====================================================
 
 DROP FUNCTION IF EXISTS get_trip_full_details(UUID, UUID);
@@ -62,7 +54,7 @@ BEGIN
 
     -- ─── 2. Visibility gate ───────────────────────────────────────────────────
     -- Visitors (unauthenticated or non-members) cannot access private trips.
-    -- Members (joined, pending, invited) can always access their trip.
+    -- Members, pending, and invited users can always access their trip.
     IF v_user_role = 'visitor' THEN
         SELECT tv.visibility INTO v_visibility
         FROM trip_visibility tv
@@ -87,7 +79,6 @@ BEGIN
         'user_role',   v_user_role,
 
         -- Owner profile
-        -- FIX: trips.owner_id refs auth.users(id) → join on users.auth_id
         'owner', jsonb_build_object(
             'user_id',    u.user_id,
             'username',   u.username,
@@ -103,9 +94,6 @@ BEGIN
         ),
 
         -- Locations array
-        -- FIX: trip_location has no stop_type/location_name/latitude/longitude;
-        --      use location_type and pull coords from the joined locations row.
-        --      locations uses latitude/longitude (not lat/lng).
         'trip_locations', (
             SELECT COALESCE(
                 jsonb_agg(
@@ -158,7 +146,6 @@ BEGIN
         ),
 
         -- Members
-        -- FIX: trip_members.user_id refs auth.users(id) → join on users.auth_id
         'trip_members', (
             SELECT COALESCE(
                 jsonb_agg(
@@ -167,11 +154,11 @@ BEGIN
                         'user_id',              tm.user_id,
                         'full_name',            u2.full_name,
                         'username',             u2.username,
-                        'avatar_url',           u2.avatar_url,
-                        'role',                 tm.role,
-                        'member_status',        tm.member_status,
-                        'joined_at',            tm.joined_at,
-                        'join_method',          tm.join_method,
+                        'avatar_url',          u2.avatar_url,
+                        'role',                tm.role,
+                        'member_status',       tm.member_status,
+                        'joined_at',           tm.joined_at,
+                        'join_method',         tm.join_method,
                         'initial_contribution', tm.initial_contribution
                     )
                 ),
@@ -190,8 +177,6 @@ BEGIN
         ),
 
         -- Pool members
-        -- FIX: trip_pool_members has no trip_id or user_id;
-        --      link via pool_id → trip_pools, use member_id (refs users.user_id)
         'trip_pool_members', (
             SELECT COALESCE(
                 jsonb_agg(
@@ -211,7 +196,6 @@ BEGIN
         ),
 
         -- Expenses
-        -- FIX: trip_expenses has no user_id column; removed it
         'trip_expenses', (
             SELECT COALESCE(
                 jsonb_agg(
@@ -231,7 +215,6 @@ BEGIN
         ),
 
         -- Images
-        -- FIX: PK is image_id (not trip_images_id); column is image_url (not key_name)
         'trip_images', (
             SELECT COALESCE(
                 jsonb_agg(
@@ -279,7 +262,6 @@ BEGIN
     )
     INTO v_result
     FROM trips t
-    -- FIX: trips.owner_id refs auth.users(id); match on users.auth_id
     LEFT JOIN users u ON u.auth_id = t.owner_id
     WHERE t.trip_id = p_trip_id;
 

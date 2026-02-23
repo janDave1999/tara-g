@@ -1,4 +1,4 @@
-import { MAILERSEND_API_KEY, MAILERSEND_FROM_EMAIL, MAILERSEND_FROM_NAME } from "astro:env/server";
+import { RESEND_API_KEY } from "astro:env/server";
 
 interface EmailOptions {
   to: string;
@@ -13,71 +13,39 @@ interface EmailResult {
   error?: string;
 }
 
+const FROM_EMAIL = "Tara G <noreply@tara-g.site>";
+
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   const { to, subject, html, text } = options;
 
-  if (!MAILERSEND_API_KEY) {
-    console.error("[Email] MAILERSEND_API_KEY not configured");
+  if (!RESEND_API_KEY) {
+    console.error("[Email] RESEND_API_KEY not configured");
     return { success: false, error: "Email service not configured" };
   }
 
-  if (!MAILERSEND_FROM_EMAIL) {
-    console.error("[Email] MAILERSEND_FROM_EMAIL not configured");
-    return { success: false, error: "Sender email not configured" };
-  }
-
-  console.log("[Email] Sending to:", to, "| From:", MAILERSEND_FROM_EMAIL);
+  console.log("[Email] Sending to:", to);
 
   try {
-    const response = await fetch("https://api.mailersend.com/v1/email", {
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-        Authorization: `Bearer ${MAILERSEND_API_KEY}`,
+        Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: {
-          email: MAILERSEND_FROM_EMAIL,
-          name: MAILERSEND_FROM_NAME || "Tara G",
-        },
-        to: [{ email: to }],
+        from: FROM_EMAIL,
+        to: [to],
         subject: subject,
         html: html,
         text: text || stripHtml(html),
       }),
     });
 
-    const responseText = await response.text();
-    
-    if (!responseText) {
-      console.error("[Email] Empty response from MailerSend, status:", response.status);
-      // 202 means email was accepted/queued successfully
-      if (response.status === 202) {
-        console.log("[Email] Email queued successfully (status 202)");
-        return { success: true, messageId: "queued" };
-      }
-      // Check if it's an auth issue
-      if (response.status === 401) {
-        return { success: false, error: "Invalid API key. Please check MAILERSEND_API_KEY" };
-      }
-      if (response.status === 422) {
-        return { success: false, error: "Sender email not verified. Please verify in MailerSend dashboard" };
-      }
-      return { success: false, error: `Email service returned empty response (status: ${response.status})` };
-    }
-
-    let data;
-    try {
-      data = JSON.parse(responseText) as { id?: string; message?: string };
-    } catch {
-      console.error("[Email] Failed to parse response:", responseText);
-      return { success: false, error: "Invalid response from email service" };
-    }
+    const data = await response.json() as { id?: string; message?: string; error?: string };
 
     if (!response.ok) {
-      console.error("[Email] MailerSend API error:", data, "Status:", response.status);
-      const errorMsg = data?.message || `Failed to send email (status: ${response.status})`;
+      console.error("[Email] Resend API error:", data, "Status:", response.status);
+      const errorMsg = data?.message || data?.error || `Failed to send email (status: ${response.status})`;
       return { success: false, error: errorMsg };
     }
 

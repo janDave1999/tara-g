@@ -61,9 +61,7 @@ export default defineConfig({
       PUBLIC_R2_URL: envField.string({ context: "client", access: "public" }),
       STRAPI_URL: envField.string({ context: "server", access: "public" }),
       STRAPI_TOKEN: envField.string({ context: "server", access: "public" }),
-      MAILERSEND_API_KEY: envField.string({ context: "server", access: "public" }),
-      MAILERSEND_FROM_EMAIL: envField.string({ context: "server", access: "public" }),
-      MAILERSEND_FROM_NAME: envField.string({ context: "server", access: "public", default: "Tara G" }),
+      RESEND_API_KEY: envField.string({ context: "server", access: "public" }),
     },
   },
   vite: {

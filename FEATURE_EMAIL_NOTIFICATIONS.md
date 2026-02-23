@@ -148,23 +148,24 @@ sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ success: boolean; messag
 
 ### Environment Variables (in .env)
 ```
-MAILERSEND_API_KEY=mlsn.xxxxxx
-MAILERSEND_FROM_EMAIL=your-verified-email@domain.com
-MAILERSEND_FROM_NAME=Tara G
+# Resend (current)
+RESEND_API_KEY=re_xxxxx
+
+# MailerSend (deprecated)
+MAILERSEND_API_KEY=
+MAILERSEND_FROM_EMAIL=
 ```
 
-> ⚠️ **IMPORTANT**: You must verify your sender email/domain in MailerSend before sending. Go to MailerSend Dashboard → Domains → Add and verify your domain, or verify a single email address.
+> ⚠️ **IMPORTANT**: You must verify your sender domain in Resend before sending. Go to Resend Dashboard → Domains → Add and verify your domain (e.g., tara-g.site)
 
 ---
 
-## MailerSend Setup Checklist
+## Resend Setup Checklist (Current)
 
-- [ ] Create MailerSend account
-- [ ] Verify sender domain or email
-- [ ] Get API key
-- [ ] Test API connection
-- [ ] Design welcome email template
-- [ ] Note: Free tier: 12,000 emails/month
+- [x] Add API key to .env
+- [ ] Verify sender domain in Resend Dashboard
+- [ ] Test email sending
+- [ ] Note: Free tier: 3,000 emails/month
 
 ---
 

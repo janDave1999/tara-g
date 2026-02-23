@@ -414,6 +414,7 @@ function buildUrl(params: Record<string, string>) {
               trip={trip}
               type={currentType}
               participationStatus={currentTab === 'member' ? trip.participation_status : undefined}
+              joinRequestCount={currentTab === 'owned' ? Number(trip.join_request_count) || 0 : undefined}
             />
           ))}
         </div>

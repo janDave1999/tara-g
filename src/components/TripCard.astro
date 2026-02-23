@@ -5,9 +5,11 @@ interface Props {
   type: 'owned' | 'member' | 'discover';
   /** Override the top-left badge with participation status (joined/pending/invited) */
   participationStatus?: 'joined' | 'pending' | 'invited';
+  /** Number of pending join requests (for owned trips) */
+  joinRequestCount?: number;
 }
 
-const { trip, type, participationStatus } = Astro.props;
+const { trip, type, participationStatus, joinRequestCount } = Astro.props;
 
 const participationMeta: Record<string, { label: string; classes: string }> = {
   joined:  { label: '✓ Joined',    classes: 'bg-emerald-100 text-emerald-800' },
@@ -88,7 +90,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
     )}
   </div>
 
-  <!-- Badges row: visibility toggle + status (above the link overlay) -->
+  <!-- Badges row: visibility toggle + status + join requests (above the link overlay) -->
   <div class="absolute top-3 right-3 z-10 flex items-center gap-2">
     {type === 'owned' && (
       <button
@@ -104,6 +106,11 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
     <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
       {trip.status}
     </span>
+    {type === 'owned' && joinRequestCount > 0 && (
+      <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-sm" title="Pending join requests">
+        {joinRequestCount}
+      </span>
+    )}
   </div>
 
   <!-- Content (relative z-[1] so it sits above the <a> overlay) -->

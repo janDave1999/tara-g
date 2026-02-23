@@ -15,14 +15,22 @@ export const POST = async ({ request }: { request: Request }) => {
   }
 
   try {
-    // Find user by email
-    const { data: user, error: userError } = await supabase
+    // Find user by email (use admin to bypass RLS)
+    const { data: user, error: userError } = await supabaseAdmin
       .from("users")
       .select("auth_id, email, confirmation_token, confirmation_token_expires_at")
       .eq("email", email)
       .maybeSingle();
 
-    if (userError || !user) {
+    if (userError) {
+      console.error("[Resend] Database error:", userError);
+      return new Response(
+        JSON.stringify({ success: false, message: "Database error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!user) {
       return new Response(
         JSON.stringify({ success: false, message: "User not found" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
@@ -61,10 +69,12 @@ export const POST = async ({ request }: { request: Request }) => {
     // Send confirmation email via MailerSend
     const result = await sendConfirmationEmail(email, "Traveler", newToken);
 
+    console.log("[Resend] Email send result:", result);
+
     if (!result.success) {
       console.error("[Resend] Failed to send email:", result.error);
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to send confirmation email" }),
+        JSON.stringify({ success: false, message: result.error || "Failed to send confirmation email" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }

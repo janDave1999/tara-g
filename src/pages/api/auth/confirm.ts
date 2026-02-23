@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { supabase, supabaseAdmin } from "../../../lib/supabase";
+import { supabaseAdmin } from "../../../lib/supabase";
 
 export const GET: APIRoute = async ({ url, redirect }) => {
   const token = url.searchParams.get("token");
@@ -9,18 +9,27 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     return new Response("Invalid confirmation link", { status: 400 });
   }
 
-  // Find user with matching token
-  const { data: user, error } = await supabase
+  console.log("[Confirm] Looking for user:", { email, token: token.substring(0, 8) + "..." });
+
+  // Find user with matching token (use admin to bypass RLS)
+  const { data: user, error } = await supabaseAdmin
     .from("users")
     .select("auth_id, email, confirmation_token, confirmation_token_expires_at")
     .eq("email", email)
     .eq("confirmation_token", token)
     .maybeSingle();
 
-  if (error || !user) {
-    console.error("[Confirm] User not found or invalid token:", { email, error });
+  if (error) {
+    console.error("[Confirm] Database error:", error);
+    return new Response("Confirmation failed. Please try again.", { status: 500 });
+  }
+
+  if (!user) {
+    console.error("[Confirm] User not found or invalid token:", { email, tokenMatch: false });
     return new Response("Invalid or expired confirmation link", { status: 400 });
   }
+
+  console.log("[Confirm] User found:", { email, hasToken: !!user.confirmation_token });
 
   // Check if token is expired
   if (new Date(user.confirmation_token_expires_at) < new Date()) {

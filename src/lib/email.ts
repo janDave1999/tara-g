@@ -52,6 +52,11 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
     
     if (!responseText) {
       console.error("[Email] Empty response from MailerSend, status:", response.status);
+      // 202 means email was accepted/queued successfully
+      if (response.status === 202) {
+        console.log("[Email] Email queued successfully (status 202)");
+        return { success: true, messageId: "queued" };
+      }
       // Check if it's an auth issue
       if (response.status === 401) {
         return { success: false, error: "Invalid API key. Please check MAILERSEND_API_KEY" };

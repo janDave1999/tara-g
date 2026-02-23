@@ -67,7 +67,7 @@ Add to `astro.config.mjs` and `.env`:
    ```
 
 3. **Create email utility** ✅
-   - `src/lib/email.ts` - Base send function + welcome email
+   - `src/lib/email.ts` - Base send function + welcome/confirmation emails
 
 ### Phase 2: Integration ✅ COMPLETED
 
@@ -87,13 +87,10 @@ Add to `astro.config.mjs` and `.env`:
    - `database-migrations/036_add_confirmation_tokens.sql`
    - Adds columns: `confirmation_token`, `confirmation_token_expires_at`, `email_confirmed_at`
 
-### Phase 3: Future Enhancements (Priority: Medium)</1. **Trip reminders**
-   - Create scheduled function or database trigger
-   - Send reminders X days before trip
+### Phase 3: Trip Reminders (Priority: Medium) - Pending
 
-2. **Email templates**
-   - Move HTML to template files
-   - Support templates with variables
+- Create scheduled function or database trigger
+- Send reminders X days before trip
 
 ### Phase 3: Future Enhancements (Priority: Medium)
 

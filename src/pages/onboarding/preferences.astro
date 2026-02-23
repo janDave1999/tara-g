@@ -67,7 +67,7 @@ const ACCOMMODATION_TYPES = [
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">Budget Range (per day)</label>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {['budget', 'mid-range', 'premium', 'luxury'].map((range) => (
+              {['budget', 'moderate', 'luxury', 'any'].map((range) => (
                 <label class="cursor-pointer">
                   <input
                     type="radio"
@@ -77,7 +77,7 @@ const ACCOMMODATION_TYPES = [
                     checked={existingPrefs.budget_range === range}
                   />
                   <div class="p-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-gray-300 transition-all capitalize text-sm font-medium text-gray-700">
-                    {range}
+                    {range === 'any' ? 'Any' : range}
                   </div>
                 </label>
               ))}
@@ -111,7 +111,7 @@ const ACCOMMODATION_TYPES = [
             <label class="block text-sm font-medium text-gray-700 mb-3">Travel Pace</label>
             <div class="grid grid-cols-3 gap-3">
               {[
-                { value: 'slow', label: 'Slow & Relaxed' },
+                { value: 'relaxed', label: 'Relaxed' },
                 { value: 'moderate', label: 'Moderate' },
                 { value: 'fast', label: 'Fast-paced' },
               ].map((pace) => (

@@ -45,6 +45,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const provider = formData.get("provider")?.toString();
 
     if (provider) {
+      console.log("[OAuth] SITE_URL:", SITE_URL);
       const validProviders = ["google", "facebook"];
       
       if (!validProviders.includes(provider)) {

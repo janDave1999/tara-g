@@ -1,8 +1,10 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
-import { SITE_URL } from "astro:env/server";
 
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+export const GET: APIRoute = async ({ url, cookies }) => {
+  // Debug: log SITE_URL
+  console.log("[Callback] import.meta.env.PROD:", import.meta.env.PROD);
+  
   // Set CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -48,6 +50,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const next = url.searchParams.get("next") || "/feeds";
   const safeNext = next.startsWith("/") ? next : "/feeds"; // only allow relative paths
 
-  // Use redirect() from context instead of Response.redirect() to properly handle cookies
-  return redirect(`${SITE_URL}${safeNext}`, 302);
+  console.log("[Callback] Redirecting to:", safeNext);
+
+  // Use relative redirect to avoid cookie issues
+  return Response.redirect(safeNext, 302);
 };

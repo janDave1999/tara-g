@@ -145,10 +145,15 @@ export const POST: APIRoute = async ({ request }) => {
       console.log("[Register] User record created/updated successfully:", authData.user.id);
     }
 
-    // Send confirmation email via MailerSend (non-blocking)
-    sendConfirmationEmail(validatedData.email, "Traveler", confirmationToken).catch((err) => {
-      console.error("[Register] Failed to send confirmation email:", err);
-    });
+    // Send confirmation email (wait for it to complete)
+    console.log("[Register] Sending confirmation email...");
+    const emailResult = await sendConfirmationEmail(validatedData.email, "Traveler", confirmationToken);
+    console.log("[Register] Email result:", emailResult);
+
+    if (!emailResult.success) {
+      console.error("[Register] Failed to send confirmation email:", emailResult.error);
+      // Continue anyway - don't block registration
+    }
 
     // Redirect to confirmation page
     const headers = new Headers({

@@ -126,13 +126,13 @@ export const POST: APIRoute = async ({ request }) => {
     console.log("[Register] Auth user created:", authData.user.id);
 
     // Store pending confirmation in users table (use admin to bypass RLS)
-    // Use upsert to handle existing users from failed attempts
+    // Username will be set during onboarding
     const { error: userError } = await supabaseAdmin
       .from("users")
       .upsert({
         auth_id: authData.user.id,
         email: validatedData.email,
-        username: `user_${validatedData.email.split('@')[0]}`,
+        username: `user_${authData.user.id.substring(0, 8)}`,
         confirmation_token: confirmationToken,
         confirmation_token_expires_at: tokenExpiry,
         created_at: new Date().toISOString()

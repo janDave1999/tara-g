@@ -39,11 +39,12 @@ const { userId } = Astro.props;
         <!-- Budget -->
         <div>
           <label class="block text-sm font-semibold text-gray-900 mb-3">Budget Range</label>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-4 gap-3">
             {[
               { value: 'budget', label: 'Budget', emoji: '💰' },
               { value: 'moderate', label: 'Moderate', emoji: '💳' },
-              { value: 'luxury', label: 'Luxury', emoji: '💎' }
+              { value: 'luxury', label: 'Luxury', emoji: '💎' },
+              { value: 'any', label: 'Any', emoji: '🌍' }
             ].map(budget => (
               <label class="cursor-pointer">
                 <input 
@@ -92,11 +93,12 @@ const { userId } = Astro.props;
         <!-- Pace -->
         <div>
           <label class="block text-sm font-semibold text-gray-900 mb-3">Trip Pace</label>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-4 gap-3">
             {[
               { value: 'relaxed', label: 'Relaxed', emoji: '🐢' },
               { value: 'moderate', label: 'Moderate', emoji: '🚶' },
-              { value: 'fast', label: 'Fast-paced', emoji: '🏃' }
+              { value: 'fast', label: 'Fast', emoji: '🏃' },
+              { value: 'any', label: 'Any', emoji: '🌍' }
             ].map(pace => (
               <label class="cursor-pointer">
                 <input 

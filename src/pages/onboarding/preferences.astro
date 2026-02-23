@@ -109,11 +109,12 @@ const ACCOMMODATION_TYPES = [
           <!-- Pace Preference -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">Travel Pace</label>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-4 gap-3">
               {[
                 { value: 'relaxed', label: 'Relaxed' },
                 { value: 'moderate', label: 'Moderate' },
-                { value: 'fast', label: 'Fast-paced' },
+                { value: 'fast', label: 'Fast' },
+                { value: 'any', label: 'Any' },
               ].map((pace) => (
                 <label class="cursor-pointer">
                   <input

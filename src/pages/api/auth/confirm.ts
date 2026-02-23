@@ -65,7 +65,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     }
 
     console.log("[Confirm] Email confirmed successfully:", email);
-    return redirect("/signin?confirmed=true", 302);
+    return redirect("/register/email-confirmed", 302);
 
   } catch (err) {
     console.error("[Confirm] Exception:", err);

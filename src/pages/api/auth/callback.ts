@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 
-export const GET: APIRoute = async ({ url, cookies }) => {
-  // Debug: log SITE_URL
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  // Debug: log import.meta.env.PROD
   console.log("[Callback] import.meta.env.PROD:", import.meta.env.PROD);
   
   // Set CORS headers
@@ -52,6 +52,6 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
   console.log("[Callback] Redirecting to:", safeNext);
 
-  // Use relative redirect to avoid cookie issues
-  return Response.redirect(safeNext, 302);
+  // Use Astro's redirect helper
+  return redirect(safeNext, 302);
 };

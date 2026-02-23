@@ -43,7 +43,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
 
     const data = await response.json() as { id?: string; message?: string; error?: string };
 
-    console.log("[Email] Resend response status:", response.status, "data:", data);
+    console.log("[Email] Full response - status:", response.status, "body:", JSON.stringify(data));
 
     if (!response.ok) {
       console.error("[Email] Resend API error:", data, "Status:", response.status);

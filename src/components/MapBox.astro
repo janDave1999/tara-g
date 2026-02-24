@@ -21,7 +21,11 @@ import MapTripDetail from "./MapTripDetail.astro";
   <MapFilterModal />
   <MapTripDetail />
 
-  <button id="search-area-btn">Search this area</button>
+<button id="search-area-btn">Search this area</button>
+  <div id="map-loading" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <span>Loading trips...</span>
+  </div>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
 
@@ -74,7 +78,7 @@ import MapTripDetail from "./MapTripDetail.astro";
     color: white;
   }
 
-  #search-area-btn {
+#search-area-btn {
     position: absolute;
     bottom: 100px;
     left: 50%;
@@ -90,6 +94,41 @@ import MapTripDetail from "./MapTripDetail.astro";
     cursor: pointer;
     display: none;
     border: none;
+  }
+
+  #map-loading {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  #map-loading.hidden {
+    display: none;
   }
 
   .custom-marker {
@@ -217,8 +256,6 @@ import MapTripDetail from "./MapTripDetail.astro";
   import { CONFIG, getRadiusByZoom } from "../scripts/map/MapConfig";
   import { createTripMarker, createClusterMarker, groupTripsByLocation, clearMarkers } from "../scripts/map/MapMarkers";
 
-  console.log('[MapBox] Script loaded');
-
   let map: mapboxgl.Map;
   let markers: mapboxgl.Marker[] = [];
   
@@ -229,19 +266,26 @@ import MapTripDetail from "./MapTripDetail.astro";
   const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
   const filterBtn = document.getElementById("filter-btn") as HTMLButtonElement;
 
-  async function loadTrips(lng: number, lat: number, zoom: number) {
-    console.log('[MapBox] Loading trips for:', { lng, lat, zoom, tags: activeTags, locationType: activeLocationType });
+async function loadTrips(lng: number, lat: number, zoom: number) {
+    const loadingEl = document.getElementById('map-loading');
+    if (loadingEl) loadingEl.classList.remove('hidden');
     
-    const trips = await fetchNearbyTrips({
-      latitude: lat,
-      longitude: lng,
-      zoom,
-      tags: activeTags.length > 0 ? activeTags : undefined,
-      locationType: activeLocationType as 'destination' | 'pickup' | 'dropoff' | 'all',
-    });
-    
-    console.log('[MapBox] Fetched trips:', trips.length, trips);
-    updateMap(trips);
+    try {
+      const trips = await fetchNearbyTrips({
+        latitude: lat,
+        longitude: lng,
+        zoom,
+        tags: activeTags.length > 0 ? activeTags : undefined,
+        locationType: activeLocationType as 'destination' | 'pickup' | 'dropoff' | 'all',
+      });
+      
+      updateMap(trips);
+    } catch (error) {
+      console.error('Error loading trips:', error);
+      alert('Failed to load trips. Please try again.');
+    } finally {
+      if (loadingEl) loadingEl.classList.add('hidden');
+    }
   }
 
   function updateMap(trips: any[]) {
@@ -348,10 +392,8 @@ import MapTripDetail from "./MapTripDetail.astro";
     await loadTrips(province.lng, province.lat, CONFIG.PROVINCE_ZOOM);
   }
 
-  async function initMap() {
-    console.log('[MapBox] initMap called');
+async function initMap() {
     const token = await getMapboxToken();
-    console.log('[MapBox] Token:', token ? 'loaded' : 'missing');
     if (!token) {
       console.error('Failed to load Mapbox token');
       return;
@@ -414,8 +456,7 @@ import MapTripDetail from "./MapTripDetail.astro";
     }) as EventListener);
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
-    console.log('[MapBox] DOMContentLoaded fired');
+window.addEventListener("DOMContentLoaded", () => {
     initMap();
   });
 </script>

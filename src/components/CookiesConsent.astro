@@ -59,7 +59,7 @@ let accepted = false;
     cookieModal.classList.remove("hidden");
   });
 
-  // Function to clear cookies if declined
+// Function to clear cookies if declined
   function clearNonEssentialCookies() {
     const cookies = document.cookie.split(";");
     for (const cookie of cookies) {
@@ -67,6 +67,5 @@ let accepted = false;
       const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
       document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
     }
-    console.log("All non-essential cookies cleared.");
   }
 </script>

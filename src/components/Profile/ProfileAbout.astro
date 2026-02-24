@@ -1,0 +1,106 @@
+---
+interface Props {
+  bio:             string;
+  locationCity:    string;
+  locationCountry: string;
+  memberSince:     string;
+}
+
+const { bio, locationCity, locationCountry, memberSince } = Astro.props;
+const locationStr = [locationCity, locationCountry].filter(Boolean).join(', ');
+---
+
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    <h2 class="section-title">About</h2>
+    <button id="bioEditToggle" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Edit</button>
+  </div>
+
+  <div class="p-5">
+    <!-- Static display -->
+    <div id="bioDisplay">
+      {bio
+        ? <p id="bioText" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{bio}</p>
+        : <p id="bioText" class="text-sm text-gray-400 italic">Share a little about your travel style…</p>
+      }
+    </div>
+
+    <!-- Inline edit form -->
+    <div id="bioEditForm" class="hidden">
+      <textarea
+        id="bioTextarea" maxlength="280" rows="3"
+        class="w-full text-sm text-gray-700 border border-blue-400 ring-2 ring-blue-100
+               rounded-xl px-3 py-2.5 resize-none outline-none"
+        placeholder="Share a little about your travel style…"
+      >{bio}</textarea>
+      <div class="flex items-center justify-between mt-2">
+        <span id="bioCharCount" class="text-xs text-gray-400">{bio.length} / 280</span>
+        <div class="flex gap-2">
+          <button id="bioCancelBtn" class="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors">Cancel</button>
+          <button id="bioSaveBtn"   class="text-xs font-semibold text-white brand-gradient px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meta -->
+    <div class="border-t border-gray-100 mt-4 pt-4 space-y-2">
+      {locationStr && (
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          {locationStr}
+        </div>
+      )}
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Member since {memberSince}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+  .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
+</style>
+
+<script>
+  const bioDisplay   = document.getElementById('bioDisplay')!;
+  const bioEditForm  = document.getElementById('bioEditForm')!;
+  const bioTextarea  = document.getElementById('bioTextarea') as HTMLTextAreaElement;
+  const bioText      = document.getElementById('bioText')!;
+  const bioCharCount = document.getElementById('bioCharCount')!;
+
+  const openBio  = () => { bioDisplay.classList.add('hidden'); bioEditForm.classList.remove('hidden'); bioTextarea.focus(); syncCount(); };
+  const closeBio = () => { bioDisplay.classList.remove('hidden'); bioEditForm.classList.add('hidden'); };
+  const syncCount = () => {
+    const n = bioTextarea.value.length;
+    bioCharCount.textContent = `${n} / 280`;
+    bioCharCount.className = `text-xs ${n >= 280 ? 'text-red-500' : n >= 250 ? 'text-orange-500' : 'text-gray-400'}`;
+  };
+
+  document.getElementById('bioEditToggle')?.addEventListener('click', openBio);
+  document.addEventListener('profile:openBioEdit', openBio);   // triggered by ProfileCompletion shortcut
+  document.getElementById('bioCancelBtn')?.addEventListener('click', closeBio);
+  bioTextarea?.addEventListener('input', syncCount);
+
+  document.getElementById('bioSaveBtn')?.addEventListener('click', async () => {
+    const val = bioTextarea.value.trim();
+    bioText.textContent = val || 'Share a little about your travel style…';
+    bioText.className   = val ? 'text-sm text-gray-700 leading-relaxed whitespace-pre-wrap' : 'text-sm text-gray-400 italic';
+    closeBio();
+    try {
+      const r = await fetch('/api/profile/bio', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio: val }),
+      });
+      document.dispatchEvent(new CustomEvent('profile:toast', { detail: r.ok ? '✅ Bio saved!' : '⚠️ Could not save bio.' }));
+    } catch {
+      document.dispatchEvent(new CustomEvent('profile:toast', { detail: '⚠️ Network error — changes may not be saved.' }));
+    }
+  });
+</script>

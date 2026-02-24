@@ -106,7 +106,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
     <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
       {trip.status}
     </span>
-    {type === 'owned' && joinRequestCount > 0 && (
+    {type === 'owned' && joinRequestCount && joinRequestCount > 0 && (
       <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-sm" title="Pending join requests">
         {joinRequestCount}
       </span>

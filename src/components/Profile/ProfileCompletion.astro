@@ -1,0 +1,83 @@
+---
+interface CheckItem {
+  label:       string;
+  done:        boolean;
+  href?:       string;    // navigate to a page
+  modalId?:    string;    // open a <dialog> by id
+  event?:      string;    // fire a CustomEvent on document
+  actionLabel: string;
+}
+
+interface Props {
+  completion: number;
+  items:      CheckItem[];
+}
+
+const { completion, items } = Astro.props;
+
+// Don't render at all when profile is fully complete
+if (completion >= 100) return;
+
+const pending = items.filter(i => !i.done).slice(0, 4);
+---
+
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+  <!-- Progress bar header -->
+  <div class="px-5 pt-4 pb-3 border-b border-gray-100">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="section-title">Profile</h2>
+      <span class="text-xs font-bold text-blue-600">{completion}%</span>
+    </div>
+    <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"
+         role="progressbar" aria-valuenow={completion} aria-valuemin={0} aria-valuemax={100}
+         aria-label={`Profile ${completion}% complete`}>
+      <div class="h-full rounded-full brand-gradient" style={`width:${completion}%`}></div>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="divide-y divide-gray-50 px-5 py-1">
+    {pending.map(item => (
+      <div class="flex items-center gap-3 py-2.5">
+        <div class="w-5 h-5 rounded-full border-2 border-gray-200 shrink-0" aria-hidden="true"></div>
+        <span class="text-xs text-gray-600 flex-1 leading-snug">{item.label}</span>
+
+        <!-- Three action types: modal / custom event / link -->
+        {item.modalId && (
+          <button onclick={`document.getElementById('${item.modalId}').showModal()`}
+            class="action-link">{item.actionLabel} →</button>
+        )}
+        {item.event && !item.modalId && (
+          <button data-event={item.event} class="action-link completion-evt-btn">
+            {item.actionLabel} →
+          </button>
+        )}
+        {item.href && !item.modalId && !item.event && (
+          <a href={item.href} class="action-link">{item.actionLabel} →</a>
+        )}
+      </div>
+    ))}
+
+    {pending.length === 0 && (
+      <p class="text-xs text-gray-400 py-3 text-center italic">Almost there!</p>
+    )}
+  </div>
+</div>
+
+<style>
+  .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+  .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
+  .action-link    { font-size: 12px; font-weight: 700; color: #2563EB; background: none; border: none; cursor: pointer; padding: 0; transition: color 0.15s; flex-shrink: 0; text-decoration: none; }
+  .action-link:hover { color: #1D4ED8; }
+</style>
+
+<script>
+  // Fire custom DOM events for "soft" shortcuts (e.g. open inline bio edit)
+  document.querySelectorAll<HTMLButtonElement>('.completion-evt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.event) {
+        document.dispatchEvent(new CustomEvent(btn.dataset.event));
+      }
+    });
+  });
+</script>

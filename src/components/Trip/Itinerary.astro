@@ -58,7 +58,6 @@ const getDisplayTime = (start: any, end: any, waiting_time: number) => {
   }
   return `${formatDate(start)}, ${formatTime(start)} — ${formatDate(end)}, ${formatTime(end)}`;
 };
-console.log(trip_location);
 // Sort timeline by start_time
 const sortedLocations = [...trip_location].sort((a, b) => 
   new Date(a.scheduled_start).getTime() - new Date(b.scheduled_end).getTime()

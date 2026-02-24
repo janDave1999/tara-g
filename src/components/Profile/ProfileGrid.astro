@@ -1,0 +1,375 @@
+---
+// components/Profile/ProfileTripGrid.astro
+//
+// Grid rules:
+//   • Always exactly 3 columns × 3 rows = 9 cells max shown
+//   • Every cell is a perfect square — enforced by aspect-ratio + object-fit:cover object-position:center
+//   • If total trips <= 9  → render all normally
+//   • If total trips > 9   → show first 8 normally; 9th cell = "+N more" overlay on top of trip #9's image
+//   • Tabs: All / Owned / Joined  (client-side fetch, no SSR trip data needed here)
+---
+
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+  <!-- Header + tabs -->
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    <h2 class="section-title">Trips</h2>
+    <div class="flex gap-1" role="tablist" aria-label="Trip filter">
+      <button data-tab="all"    class="trip-tab active" role="tab" aria-selected="true">All</button>
+      <button data-tab="owned"  class="trip-tab"        role="tab" aria-selected="false">Owned</button>
+      <button data-tab="joined" class="trip-tab"        role="tab" aria-selected="false">Joined</button>
+    </div>
+  </div>
+
+  <!--
+    Grid container.
+    background-color shows through the 2px gap between cells and acts as grid lines.
+    grid-template-columns: 3 equal cols.
+    All sizing is driven by the .trip-cell aspect-ratio so no height is needed here.
+  -->
+  <div id="tripGrid" class="trip-grid" role="tabpanel" aria-live="polite" aria-busy="true">
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+    <div style="aspect-ratio:1/1;background:#F3F4F6"></div>
+  </div>
+
+  <!-- Empty state (toggled by JS) -->
+  <div id="tripsEmpty" class="hidden py-14 px-6 text-center">
+    <div class="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-3 mx-auto">
+      <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <p class="text-sm font-semibold text-gray-700 mb-1">No trips yet</p>
+    <p class="text-xs text-gray-400 mb-4">Start planning your first adventure</p>
+    <a href="/trips/create" class="inline-block text-xs font-semibold text-white brand-gradient px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">
+      Create a trip
+    </a>
+  </div>
+</div>
+
+<style>
+  .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+  .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Tabs */
+  .trip-tab {
+    font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 8px;
+    border: none; cursor: pointer; font-family: inherit; transition: all 0.15s;
+    color: #6B7280; background: none;
+  }
+  .trip-tab.active             { background: #EFF6FF; color: #2563EB; }
+  .trip-tab:not(.active):hover { background: #F3F4F6; color: #374151; }
+
+  /* ─── Grid container ───────────────────────────────────────
+     gap: 2px  →  shows .trip-grid's bg as thin grid lines.
+     grid-template-columns: always 3 equal columns.
+  */
+  .trip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background-color: #E5E7EB; /* gap / grid-line colour */
+  }
+
+  /* ─── Every cell is a perfect square ──────────────────────
+     aspect-ratio forces 1:1 independently of image dimensions.
+     position:relative + overflow:hidden contain the absolute image.
+  */
+  .trip-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    display: block;
+    background: #F3F4F6;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  /* Image fills the square completely — cropped & centred.
+     Works for portrait, landscape, or square source images. */
+  .trip-cell img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+  .trip-cell:hover img,
+  .trip-cell:focus-visible img { transform: scale(1.05); }
+
+  /* Gradient fallback when no cover_image_url */
+  .trip-cell-fallback {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+  }
+
+  /* ─── Hover / focus overlay  ───────────────────────────── */
+  .trip-cell-overlay {
+    position: absolute;
+    inset: 0;
+    padding: 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.60) 0%, transparent 55%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+  }
+  .trip-cell:hover .trip-cell-overlay,
+  .trip-cell:focus-visible .trip-cell-overlay { opacity: 1; }
+
+  .trip-cell-name {
+    display: block; width: 100%;
+    font-size: 11px; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .trip-cell-dest {
+    display: flex; align-items: center; gap: 2px; margin-top: 1px;
+    font-size: 10px; color: rgba(255,255,255,0.75);
+  }
+
+  /* ─── "+N more" overlay on the 9th cell ───────────────────
+     Sits on top of the 9th trip's cover image.
+     Uses backdrop-filter blur for legibility.
+  */
+  .trip-cell-more {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+    transition: background 0.2s;
+  }
+  .trip-cell:hover .trip-cell-more { background: rgba(0,0,0,0.62); }
+
+  .trip-cell-more-count {
+    font-size: 28px; font-weight: 900; color: #fff; line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .trip-cell-more-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.82); text-transform: uppercase;
+  }
+
+  /* ─── Skeleton loaders ─────────────────────────────────── */
+  .trip-skeleton {
+    aspect-ratio: 1 / 1;
+    background: #F3F4F6;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%,100% { opacity: 1;   }
+    50%      { opacity: 0.45; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .trip-skeleton          { animation: none; }
+    .trip-cell img          { transition: none; }
+    .trip-cell-overlay      { transition: none; }
+    .trip-cell-more         { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
+</style>
+
+<script>
+  type Trip = {
+    id: string;
+    title: string;
+    cover_image_url: string | null;
+    destination?: string;
+  };
+
+  const grid  = document.getElementById('tripGrid')!;
+  const empty = document.getElementById('tripsEmpty')!;
+  const tabs  = document.querySelectorAll<HTMLButtonElement>('.trip-tab');
+
+  const GRID_SLOTS = 9; // always a 3×3 grid
+
+  // ── Tab switching ──────────────────────────────────────────
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      loadTrips(tab.dataset.tab ?? 'all');
+    });
+  });
+
+  // ── HTML helpers ───────────────────────────────────────────
+  const esc = (s: string) =>
+    s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const pinSvg = `<svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+  </svg>`;
+
+  // ── Shared inline styles (bypass Astro scoped CSS for JS-injected HTML) ──
+  const CELL_STYLE = `
+    position:relative;
+    aspect-ratio:1/1;
+    overflow:hidden;
+    display:block;
+    background:#F3F4F6;
+    cursor:pointer;
+    text-decoration:none;
+  `.replace(/\s+/g,' ').trim();
+
+  const IMG_STYLE = `
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+    display:block;
+    transition:transform 0.3s ease;
+  `.replace(/\s+/g,' ').trim();
+
+  const FALLBACK_STYLE = `
+    position:absolute;
+    inset:0;
+    background:linear-gradient(135deg,#3B82F6,#2563EB);
+  `.replace(/\s+/g,' ').trim();
+
+  const OVERLAY_STYLE = `
+    position:absolute;
+    inset:0;
+    padding:8px;
+    background:linear-gradient(to top,rgba(0,0,0,0.60) 0%,transparent 55%);
+    display:flex;
+    align-items:flex-end;
+  `.replace(/\s+/g,' ').trim();
+
+  const MORE_STYLE = `
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    background:rgba(0,0,0,0.50);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+  `.replace(/\s+/g,' ').trim();
+
+  /** Standard trip tile (slots 1–8, or all if ≤9 trips) */
+  function cellHtml(trip: Trip): string {
+    const media = trip.cover_image_url
+      ? `<img src="${esc(trip.cover_image_url)}" alt="${esc(trip.title)}" loading="lazy" style="${IMG_STYLE}"/>`
+      : `<div aria-hidden="true" style="${FALLBACK_STYLE}"></div>`;
+
+    const dest = trip.destination
+      ? `<span style="display:flex;align-items:center;gap:2px;margin-top:1px;font-size:10px;color:rgba(255,255,255,0.75)">${pinSvg}${esc(trip.destination)}</span>`
+      : '';
+
+    return `
+      <a href="/trips/${esc(trip.id)}" title="${esc(trip.title)}" style="${CELL_STYLE}"
+         onmouseenter="this.querySelector('img')&&(this.querySelector('img').style.transform='scale(1.05)')"
+         onmouseleave="this.querySelector('img')&&(this.querySelector('img').style.transform='scale(1)')">
+        ${media}
+        <div aria-hidden="true" style="${OVERLAY_STYLE}">
+          <div style="width:100%">
+            <span style="display:block;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(trip.title)}</span>
+            ${dest}
+          </div>
+        </div>
+      </a>`;
+  }
+
+  /**
+   * 9th-slot "+N more" tile.
+   * Shows trip #9's image behind a semi-transparent overlay.
+   * extraCount = totalTrips - 8  (e.g. 15 trips → "+7 more")
+   */
+  function moreCellHtml(trip: Trip, extraCount: number): string {
+    const media = trip.cover_image_url
+      ? `<img src="${esc(trip.cover_image_url)}" alt="" aria-hidden="true" loading="lazy" style="${IMG_STYLE}"/>`
+      : `<div aria-hidden="true" style="${FALLBACK_STYLE}"></div>`;
+
+    return `
+      <a href="/profile/trips" aria-label="View all trips — ${extraCount} more" style="${CELL_STYLE}">
+        ${media}
+        <div style="${MORE_STYLE}">
+          <span style="font-size:28px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.5px">+${extraCount}</span>
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:rgba(255,255,255,0.82);text-transform:uppercase">more</span>
+        </div>
+      </a>`;
+  }
+
+  /** 9 uniform skeleton cells */
+  function skeletonHtml(): string {
+    return Array.from({ length: GRID_SLOTS })
+      .map(() => `<div aria-hidden="true" style="aspect-ratio:1/1;background:#F3F4F6;animation:tripShimmer 1.4s ease-in-out infinite"></div>`)
+      .join('');
+  }
+
+  // ── Fetch & render ─────────────────────────────────────────
+  async function loadTrips(filter: string) {
+    grid.setAttribute('aria-busy', 'true');
+    grid.innerHTML = skeletonHtml();
+    grid.style.display = 'grid';
+    empty.style.display = 'none';
+
+    try {
+      const res   = await fetch(`/api/profile/trips?filter=${filter}`);
+      const data  = await res.json() as { trips?: Trip[] };
+      const trips = data.trips ?? [];
+
+      grid.setAttribute('aria-busy', 'false');
+
+      if (!trips.length) {
+        grid.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      const total = trips.length;
+
+      if (total <= GRID_SLOTS) {
+        // All trips fit in the 3×3 — render every one
+        grid.innerHTML = trips.map(t => cellHtml(t)).join('');
+      } else {
+        // More than 9: show 8 normal cells + 1 "+more" cell
+        const visible    = trips.slice(0, 8);   // slots 1–8
+        const ninthTrip  = trips[8];            // slot 9 (image behind overlay)
+        const extraCount = total - 8;           // how many are hidden
+
+        grid.innerHTML =
+          visible.map(t => cellHtml(t)).join('') +
+          moreCellHtml(ninthTrip, extraCount);
+      }
+    } catch {
+      grid.setAttribute('aria-busy', 'false');
+      grid.innerHTML = `
+        <p style="grid-column:span 3;padding:2rem;text-align:center;font-size:12px;color:#9CA3AF">
+          Failed to load trips.
+        </p>`;
+    }
+  }
+
+  // Inject shimmer keyframe globally (not scoped) so inline-style skeletons animate
+  if (!document.getElementById('trip-shimmer-kf')) {
+    const s = document.createElement('style');
+    s.id = 'trip-shimmer-kf';
+    s.textContent = '@keyframes tripShimmer{0%,100%{opacity:1}50%{opacity:.45}}';
+    document.head.appendChild(s);
+  }
+
+  // Initial load on mount
+  loadTrips('all');
+</script>

@@ -2,251 +2,152 @@
 import PagePlate from "@/layouts/PagePlate.astro";
 import { supabase } from "@/lib/supabase";
 import { PUBLIC_R2_URL } from 'astro:env/client';
-import EditProfileModal from "@/components/Profile/EditProfileModal.astro";
-import AvatarEditor from "@/components/Profile/AvatarEditor.astro";
 
+import EditProfileModal  from "@/components/Profile/EditProfileModal.astro";
+import AvatarEditor      from "@/components/Profile/AvatarEditor.astro";
+import ProfileHeader     from "@/components/Profile/ProfileHeader.astro";
+import ProfileAbout      from "@/components/Profile/ProfileAbout.astro";
+import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
+import ProfileTripGrid   from "@/components/Profile/ProfileGrid.astro";
+import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
+import ProfileCompletion from "@/components/Profile/ProfileCompletion.astro";
+
+// ── Auth ──────────────────────────────────────────────────────
 const user_id = Astro.locals.user_id;
 if (!user_id) return Astro.redirect("/signin");
 
-// Fetch profile data using existing RPC
-const { data: profileData } = await supabase.rpc('get_user_profile_data', {
-  p_user_id: user_id
-});
+// ── Data ──────────────────────────────────────────────────────
+const [{ data: profileData }, { data: userStats }] = await Promise.all([
+  supabase.rpc('get_user_profile_data', { p_user_id: user_id }),
+  supabase.rpc('get_user_stats',        { p_user_id: user_id }),
+]);
 
-// Fetch user stats
-const { data: userStats } = await supabase.rpc('get_user_stats', {
-  p_user_id: user_id
-});
+const userData:      Record<string, any> = profileData?.profile      || {};
+const userInfo:      Record<string, any> = profileData?.information  || {};
+const userPrefs:     Record<string, any> = profileData?.preferences  || {};
+const userInterests: any[]               = profileData?.interests     || [];
 
-const userData = profileData?.profile || {};
-const userInfo = profileData?.information || {};
-const userPrefs = profileData?.preferences || {};
-const userInterests = profileData?.interests || [];
+// ── Avatar ────────────────────────────────────────────────────
+const getAvatarUrl = (url?: string | null) =>
+  !url ? null : url.startsWith('http') ? url : `${PUBLIC_R2_URL}${url}`;
 
-// Helper to get full avatar URL (handles both full URLs and keys)
-const getAvatarUrl = (url: string) => {
-  if (!url) return '/default-avatar.png';
-  if (url.startsWith('http')) return url; // Already a full URL
-  return `${PUBLIC_R2_URL}${url}`;
-};
-console.log(PUBLIC_R2_URL);
 const displayAvatarUrl = getAvatarUrl(userData.avatar_url);
-console.log(displayAvatarUrl);
-// Format dates
-const memberSince = userData.created_at 
-  ? new Date(userData.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  : 'Unknown';
+const initials = (userData.full_name || userData.username || 'U').charAt(0).toUpperCase();
+
+// ── Date ──────────────────────────────────────────────────────
+const fmtDate = (d?: string | null) => {
+  if (!d) return 'Unknown';
+  const date = new Date(d);
+  return isNaN(date.getTime()) ? 'Unknown'
+    : new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
+};
+const memberSince = fmtDate(userData.created_at);
+
+// ── Ring ──────────────────────────────────────────────────────
+const completion    = Number(userInfo.profile_completion_percentage) || 0;
+const circumference = 2 * Math.PI * 52;
+const dashOffset    = circumference - (completion / 100) * circumference;
+const ringColor     = completion < 50 ? '#F97316' : completion < 80 ? '#3B82F6' : '#10B981';
+
+// ── Project 82 ────────────────────────────────────────────────
+const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0;
+
+// ── Checklist ─────────────────────────────────────────────────
+const completionItems = [
+  { label: 'Add a profile photo',    done: !!userData.avatar_url,                                   modalId: 'avatar-editor-modal',    actionLabel: 'Add'    },
+  { label: 'Write a bio',            done: (userData.bio?.length ?? 0) >= 20,                       event:   'profile:openBioEdit',     actionLabel: 'Add'    },
+  { label: 'Set your location',      done: !!(userInfo.location_city || userInfo.location_country), modalId: 'edit-profile-modal',      actionLabel: 'Add'    },
+  { label: 'Add 3+ interests',       done: userInterests.length >= 3,                               href:    '/onboarding/interests',   actionLabel: 'Add'    },
+  { label: 'Set travel preferences', done: !!userPrefs.budget_range,                                href:    '/onboarding/preferences', actionLabel: 'Set'    },
+  { label: 'Create your first trip', done: (userStats?.trips_owned ?? 0) > 0,                       href:    '/trips/create',           actionLabel: 'Create' },
+];
 ---
 
 <PagePlate title="My Profile">
-  <div class="min-h-screen bg-gray-50">
-    <!-- Cover Image / Banner -->
-    <div class="h-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-    
-    <div class="max-w-4xl mx-auto px-4 -mt-20">
-      <!-- Profile Header Card -->
-      <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div class="flex flex-col md:flex-row items-start md:items-end gap-6">
-          <!-- Avatar - Clickable to edit -->
-          <div class="relative group">
-            <button 
-              type="button"
-              onclick="document.getElementById('avatar-editor-modal').showModal()"
-              class="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <img 
-                src={displayAvatarUrl} 
-                alt={userData.full_name || userData.username}
-                class="w-full h-full object-cover"
-              />
-              <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                <span class="text-white text-sm font-medium">Change</span>
-              </div>
-            </button>
-            <!-- Verified Badge -->
-            {userData.is_verified && (
-              <div class="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title="Verified">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            )}
-          </div>
-          
-          <!-- Name & Username -->
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <h1 class="text-3xl font-bold text-gray-900">{userData.full_name || 'Set up your profile'}</h1>
-            </div>
-            <p class="text-gray-500">@{userData.username || 'username'}</p>
-          </div>
-          
-          <!-- Edit Profile Button -->
-          <button onclick="document.getElementById('edit-profile-modal').showModal()" class="btn btn-outline">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Edit Profile
-          </button>
-        </div>
+<div class="min-h-screen bg-gray-50 pb-24">
+  <div class="max-w-4xl mx-auto px-4 pt-5 space-y-4">
+
+    <ProfileHeader
+      userData={userData}         userInfo={userInfo}
+      userStats={userStats}       displayAvatarUrl={displayAvatarUrl}
+      initials={initials}         memberSince={memberSince}
+      ringColor={ringColor}       circumference={circumference}
+      dashOffset={dashOffset}     bucketCount={bucketCount}
+    />
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <div class="lg:col-span-2 space-y-4 left-col">
+        <ProfileAbout
+          bio={userData.bio || ''}
+          locationCity={userInfo.location_city || ''}
+          locationCountry={userInfo.location_country || ''}
+          memberSince={memberSince}
+        />
+        <ProfileInterests interests={userInterests} />
+        <ProfileTripGrid />
       </div>
 
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow p-6 text-center">
-          <div class="text-3xl font-bold text-blue-600">{userStats?.trips_owned || 0}</div>
-          <div class="text-gray-500 text-sm">Trips Owned</div>
-        </div>
-        <div class="bg-white rounded-xl shadow p-6 text-center">
-          <div class="text-3xl font-bold text-purple-600">{userStats?.trips_joined || 0}</div>
-          <div class="text-gray-500 text-sm">Trips Joined</div>
-        </div>
-        <div class="bg-white rounded-xl shadow p-6 text-center">
-          <div class="text-3xl font-bold text-pink-600">{userStats?.friends_count || 0}</div>
-          <div class="text-gray-500 text-sm">Friends</div>
-        </div>
+      <div class="space-y-4 right-col">
+        <ProfilePreferences
+          budget={userPrefs.budget_range          ?? null}
+          pace={userPrefs.pace_preference         ?? null}
+          languages={userPrefs.languages_spoken   ?? null}
+          accommodation={userPrefs.accommodation_type ?? null}
+          travelStyle={userPrefs.travel_style     ?? null}
+        />
+        <ProfileCompletion completion={completion} items={completionItems} />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Left Column - About & Interests -->
-        <div class="md:col-span-2 space-y-6">
-          <!-- About Section -->
-          <div class="bg-white rounded-xl shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">About</h2>
-            {userData.bio ? (
-              <p class="text-gray-700 whitespace-pre-wrap">{userData.bio}</p>
-            ) : (
-              <p class="text-gray-400 italic">No bio yet. <a href="/onboarding/profile" class="text-blue-600 hover:underline">Add one</a></p>
-            )}
-            
-            <div class="mt-4 pt-4 border-t border-gray-100">
-              <div class="flex items-center gap-2 text-sm text-gray-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {userInfo.location_city || userInfo.location_country ? (
-                  <span>{[userInfo.location_city, userInfo.location_country].filter(Boolean).join(', ')}</span>
-                ) : (
-                  <span>No location set</span>
-                )}
-              </div>
-              <div class="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>Member since {memberSince}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Interests Section -->
-          <div class="bg-white rounded-xl shadow p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold text-gray-900">Interests</h2>
-              <a href="/onboarding/interests" class="text-blue-600 hover:text-blue-700 text-sm">Edit</a>
-            </div>
-            {userInterests && userInterests.length > 0 ? (
-              <div class="flex flex-wrap gap-2">
-                {userInterests.map((interest: any) => (
-                  <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                    {interest.category}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p class="text-gray-400 italic">No interests added yet. <a href="/onboarding/interests" class="text-blue-600 hover:underline">Add some</a></p>
-            )}
-          </div>
-        </div>
-
-        <!-- Right Column - Travel Preferences -->
-        <div class="space-y-6">
-          <div class="bg-white rounded-xl shadow p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold text-gray-900">Travel Preferences</h2>
-              <a href="/onboarding/preferences" class="text-blue-600 hover:text-blue-700 text-sm">Edit</a>
-            </div>
-            
-            <div class="space-y-4">
-              <!-- Budget -->
-              <div>
-                <label class="text-sm text-gray-500">Budget</label>
-                <p class="font-medium capitalize">{userPrefs.budget_range || 'Not set'}</p>
-              </div>
-              
-              <!-- Travel Style -->
-              <div>
-                <label class="text-sm text-gray-500">Travel Style</label>
-                <div class="flex flex-wrap gap-1 mt-1">
-                  {userPrefs.travel_style && userPrefs.travel_style.length > 0 ? (
-                    userPrefs.travel_style.map((style: string) => (
-                      <span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">{style}</span>
-                    ))
-                  ) : (
-                    <span class="text-gray-400 text-sm">Not set</span>
-                  )}
-                </div>
-              </div>
-              
-              <!-- Pace -->
-              <div>
-                <label class="text-sm text-gray-500">Pace</label>
-                <p class="font-medium capitalize">{userPrefs.pace_preference || 'Not set'}</p>
-              </div>
-              
-              <!-- Languages -->
-              <div>
-                <label class="text-sm text-gray-500">Languages</label>
-                <div class="flex flex-wrap gap-1 mt-1">
-                  {userPrefs.languages_spoken && userPrefs.languages_spoken.length > 0 ? (
-                    userPrefs.languages_spoken.map((lang: string) => (
-                      <span class="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">{lang}</span>
-                    ))
-                  ) : (
-                    <span class="text-gray-400 text-sm">Not set</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Profile Completion -->
-          <div class="bg-white rounded-xl shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Profile Completion</h2>
-            <div class="relative pt-1">
-              <div class="flex mb-2 items-center justify-between">
-                <div>
-                  <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
-                    {userInfo.profile_completion_percentage || 0}%
-                  </span>
-                </div>
-              </div>
-              <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-100">
-                <div style={`width: ${userInfo.profile_completion_percentage || 0}%`} class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"></div>
-              </div>
-            </div>
-            {userInfo.profile_completion_percentage < 100 && (
-              <a href="/onboarding/profile" class="block text-center text-blue-600 hover:text-blue-700 text-sm mt-2">
-                Complete your profile →
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   </div>
-  
-  <!-- Edit Profile Modal -->
-  <EditProfileModal profile={{
-    username: userData.username || '',
-    full_name: userData.full_name || '',
-    bio: userData.bio || '',
-    avatar_url: userData.avatar_url || '',
-    location_city: userInfo.location_city || '',
-    location_country: userInfo.location_country || ''
-  }} />
-  
-  <!-- Avatar Editor Modal -->
-  <AvatarEditor currentAvatarUrl={userData.avatar_url || ''} />
+</div>
+
+<EditProfileModal profile={{
+  username: userData.username || '', full_name: userData.full_name || '',
+  bio: userData.bio || '',           avatar_url: userData.avatar_url || '',
+  location_city: userInfo.location_city || '',
+  location_country: userInfo.location_country || '',
+}} />
+<AvatarEditor currentAvatarUrl={userData.avatar_url || ''} />
+
+<div id="profileToast"
+     role="status" aria-live="polite"
+     class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white
+            text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0
+            pointer-events-none transition-all duration-200 z-[200] translate-y-2">
+</div>
 </PagePlate>
+
+<style>
+  .left-col  > :global(.bg-white):nth-child(1) { animation: fadeUp 0.35s 0.07s ease both; }
+  .left-col  > :global(.bg-white):nth-child(2) { animation: fadeUp 0.35s 0.13s ease both; }
+  .left-col  > :global(.bg-white):nth-child(3) { animation: fadeUp 0.35s 0.19s ease both; }
+  .right-col > :global(.bg-white):nth-child(1) { animation: fadeUp 0.35s 0.10s ease both; }
+  .right-col > :global(.bg-white):nth-child(2) { animation: fadeUp 0.35s 0.16s ease both; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .left-col  > :global(.bg-white),
+    .right-col > :global(.bg-white) { animation: none; opacity: 1; }
+  }
+
+  #profileToast.show {
+    opacity: 1 !important; pointer-events: auto;
+    transform: translateX(-50%) translateY(0) !important;
+  }
+</style>
+
+<script>
+  const toast = document.getElementById('profileToast')!;
+  let timer: ReturnType<typeof setTimeout>;
+  document.addEventListener('profile:toast', (e: Event) => {
+    toast.textContent = (e as CustomEvent<string>).detail;
+    toast.classList.add('show');
+    clearTimeout(timer);
+    timer = setTimeout(() => toast.classList.remove('show'), 2200);
+  });
+</script>

@@ -86,7 +86,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | `Trip/modal/PreferenceModal.astro` | Edit gender preference and max participants |
 | `Trip/modal/BudgetModal.astro` | Edit cost sharing and estimated budget |
 | `Trip/modal/DescriptionModal.astro` | Edit trip description and tags |
-| `TripCard.astro` | Trip card for listings; visibility toggle (owned) cycles private→public→friends |
+| `TripCard.astro` | Trip card for listings; visibility toggle (owned) cycles private→public→friends; organizer section shows owner name, avatar, location, and completed trips count for discover/member tabs |
 
 ---
 
@@ -154,6 +154,25 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US9c | As a user, I want to set travel preferences | Modal prompts for budget, style, pace preferences |
 | US9d | As a user, I want to skip preference setup | "Skip" shows generic trips; can re-prompt later |
 | US9e | As a user, I don't want to be prompted too often | "Don't show for 7 days" option defers prompt |
+| US9f | As a user, I want to see organizer details on trip cards | TripCard shows organizer name, avatar, location, and completed trips count for discover/member tabs |
+
+### 2.2b Trip Card Organizer Details (P0)
+
+> **Added:** 2026-02-24
+
+| # | Story | Acceptance Criteria | Status |
+|---|-------|---------------------|--------|
+| US-ORG1 | As a user, I want to see where the organizer is located | TripCard displays organizer's location (city, country) from user_information table | ✅ Pass |
+| US-ORG2 | As a user, I want to see the organizer's trip history | TripCard displays number of completed trips organized by the trip owner | ✅ Pass |
+| US-ORG3 | As a user, I want to see organizer details in both Discover and Joined tabs | TripCard shows organizer info for both `type='discover'` and `type='member'` | ✅ Pass |
+
+**Technical Implementation:**
+
+| Component | Change |
+|-----------|--------|
+| `get_discover_trips` RPC | Add `owner_location` (TEXT), `owner_completed_trips_count` (INTEGER) to RETURNS TABLE |
+| `get_user_participating_trips` RPC | Add `owner_location` (TEXT), `owner_completed_trips_count` (INTEGER) to RETURNS TABLE |
+| `TripCard.astro` | Add organizer section below description showing: avatar, name, location icon + text, checkmark badge + completed trips count |
 
 ### 2.3 Trip Participation (P0)
 
@@ -270,7 +289,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 |----------|-----------|------------|---------|
 | `get_user_owned_trips` | `011`, `025` | `p_user_id, p_search, p_status, p_limit, p_offset` | Trips owned by user + `member_count`, `visibility`, `total_count` |
 | `get_user_member_trips` | `011` | `p_user_id, p_search, p_member_status, p_limit, p_offset` | Trips user joined (status = 'joined') + `role`, `owner_name`, `owner_avatar`, `total_count` — kept for legacy API use |
-| `get_user_participating_trips` | `028` | `p_user_id, p_search, p_status, p_limit, p_offset` | All trips the user participates in (joined + pending request + invited) — excludes owned trips; adds `participation_status` ('joined'/'pending'/'invited'), `invitation_id` for invited rows + `total_count` |
+| `get_user_participating_trips` | `028` | `p_user_id, p_search, p_status, p_limit, p_offset` | All trips the user participates in (joined + pending request + invited) — excludes owned trips; adds `participation_status` ('joined'/'pending'/'invited'), `invitation_id` for invited rows + `total_count`, `owner_location`, `owner_completed_trips_count` |
 | `get_recent_trips` | `011` | `p_user_id, p_search, p_tags, p_region, p_limit, p_offset` | Public active trips, block-filtered + `total_count` |
 | `get_suggested_trips` | `011` | `p_user_id, p_limit` | Preference-scored trip suggestions + `match_score` |
 
@@ -278,7 +297,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 | Function | Migration | Parameters | Returns |
 |----------|-----------|------------|---------|
-| `get_discover_trips` | `010`, `031`, `032` | `p_user_id, p_search, p_region, p_budget, p_travel_style, p_pace, p_limit, p_offset` | Preference-filtered public trips + `owner_name`, `owner_avatar`, `total_count`; excludes caller's own trips |
+| `get_discover_trips` | `010`, `031`, `032`, `039` | `p_user_id, p_search, p_region, p_budget, p_travel_style, p_pace, p_limit, p_offset` | Preference-filtered public trips + `owner_name`, `owner_avatar`, `owner_location`, `owner_completed_trips_count`, `total_count`; excludes caller's own trips |
 
 #### Itinerary Management
 
@@ -370,6 +389,7 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~SR-AUTHZ-001: Delete 5 legacy `/api/trips/*` REST routes (accepted `userId` from client input, IDOR risk)~~
 - [x] ~~SR-AUTHZ-001: Create `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (migration 033)~~
 - [x] ~~SR-AUTHZ-001: Add visibility gate to `get_trip_full_details` — visitors on private trips receive NULL, page redirects to /404 (migration 034)~~
+- [ ] Add organizer details to TripCard (owner_location, owner_completed_trips_count)
 - [ ] Verify member management works (join/leave/remove)
 - [ ] Complete trip search and filtering
 
@@ -465,7 +485,8 @@ database-migrations/
 ├── 032_fix_discover_trips_type_cast.sql    # Fix 031: add ::INTEGER casts for max_pax/current_participants/estimated_budget (SMALLINT→INTEGER mismatch, code 42804)
 ├── 033_create_trip_edit_rpcs.sql           # SR-AUTHZ-001: update_trip_dates, update_trip_preferences, update_trip_budget, update_trip_description — all with server-side ownership validation
 ├── 034_visibility_gate_get_trip_full_details.sql  # SR-AUTHZ-001: add visibility gate to get_trip_full_details; visitors on private trips receive NULL → /404 redirect
-└── 035_get_nearby_trips.sql                 # Maps: new get_nearby_trips RPC function with lat/lng coordinates for map markers
+├── 035_get_nearby_trips.sql                 # Maps: new get_nearby_trips RPC function with lat/lng coordinates for map markers
+└── 039_add_organizer_details_to_trip_listings.sql  # Add owner_location, owner_completed_trips_count to get_discover_trips, get_user_participating_trips
 
 src/
 ├── pages/
@@ -567,3 +588,4 @@ src/
 *Updated: Member section and itinerary gated by role. `currentPax` now counts only `joined` members. `Member.astro` hidden from non-members. Itinerary defaults to members-only; owner can expose it via `🔒/🌐` toggle in `ItineraryHeader` (`trip_visibility.itinerary_public`, migration 029, `updateItineraryPublic` action). Avatar rendering in `renderers.ts` fixed to show `<img>` when URL present, initials fallback otherwise.*
 *Updated (session 3): Discover tab fixed — `get_discover_trips` rebuilt (031) with `owner_name`/`owner_avatar`, no 30-day cap, caller's own trips excluded; `SMALLINT`→`INTEGER` cast fix (032). `get_user_owned_trips` visibility fix (030). `TripCard` avatar URL handling unified for both R2 paths and full OAuth URLs.*
 *Updated (session 4): SR-AUTHZ-001 compliance — deleted 5 legacy `/api/trips/*` REST routes (IDOR risk). Created `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (033). Added visibility gate to `get_trip_full_details`: visitors on private trips receive NULL → page redirects /404 (034).*
+*Updated (session 5): Added organizer details to TripCard — new `owner_location` and `owner_completed_trips_count` columns to `get_discover_trips` and `get_user_participating_trips` RPCs; TripCard displays organizer section with location icon and completed trips badge for discover/member tabs.*

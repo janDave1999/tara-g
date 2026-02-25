@@ -301,6 +301,9 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
     }
   }
 
+  // Store eventSource globally so we can close it on page unload
+  let eventSource: EventSource | null = null;
+
   async function startSSEConnection(token: string | null, userEmail: string) {
     if (!token) {
       console.log('[SSE] No session token, falling back to manual sign-in');
@@ -312,7 +315,7 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
     updateStatus('connecting', 'Connecting...');
 
     try {
-      const eventSource = new EventSource(`/api/auth/confirmation-status?token=${token}&email=${encodeURIComponent(userEmail)}`);
+      eventSource = new EventSource(`/api/auth/confirmation-status?token=${token}&email=${encodeURIComponent(userEmail)}`);
 
       eventSource.onopen = () => {
         console.log('[SSE] Connected');
@@ -329,7 +332,7 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
           updateStatus('waiting', 'Waiting for email confirmation...');
         }
         else if (data.status === 'confirmed') {
-          eventSource.close();
+          if (eventSource) eventSource.close();
           showStatusIcon('success');
           updateStatus('confirmed', 'Email confirmed! Signing you in...');
 
@@ -353,7 +356,7 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
           }
         }
         else if (data.status === 'confirmed_redirect') {
-          eventSource.close();
+          if (eventSource) eventSource.close();
           showStatusIcon('success');
           updateStatus('confirmed', 'Email confirmed! Redirecting...');
           setTimeout(() => {
@@ -361,12 +364,12 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
           }, 1500);
         }
         else if (data.status === 'expired' || data.status === 'timeout') {
-          eventSource.close();
+          if (eventSource) eventSource.close();
           showStatusIcon('email');
           updateStatus('expired', 'Session expired. Please resend confirmation email.');
         }
         else if (data.status === 'error') {
-          eventSource.close();
+          if (eventSource) eventSource.close();
           showStatusIcon('error');
           updateStatus('error', data.message || 'An error occurred. Please try again.');
         }
@@ -374,7 +377,7 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
 
       eventSource.onerror = (error) => {
         console.error('[SSE] Error:', error);
-        eventSource.close();
+        if (eventSource) eventSource.close();
         // Don't disrupt user - fallback is still available
       };
     } catch (error) {
@@ -402,6 +405,25 @@ const sessionToken = Astro.url.searchParams.get("token") || "";
   } else {
     console.log('[SSE] No session token available, using manual flow');
   }
+  
+  // Cleanup: Close SSE connection when user leaves page
+  function cleanupSSE() {
+    if (eventSource) {
+      console.log('[SSE] Closing connection on page unload');
+      eventSource.close();
+      eventSource = null;
+    }
+  }
+  
+  // Close on page unload
+  window.addEventListener('beforeunload', cleanupSSE);
+  
+  // Close when page becomes hidden (user switches tabs)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      cleanupSSE();
+    }
+  });
   
   // Refresh button handler
   const refreshBtn = document.getElementById('refreshSessionBtn');

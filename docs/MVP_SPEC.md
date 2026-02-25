@@ -134,6 +134,7 @@ The following features are **NOT** in the beta release:
 | Project 82 | P1 | Can be added later |
 | Friend System | P1 | Core trips work without |
 | Email Notifications | P1 | In-app notifications sufficient |
+| Push Notifications | P2 | Phase 2 |
 | Expense Tracking | P1 | Add after core is stable |
 | Offline Mode | P2 | PH-specific, lower priority |
 | Emergency Contacts | P2 | Requires data sourcing |
@@ -246,9 +247,10 @@ The following features are **NOT** in the beta release:
 ### Phase 2 (Q2 2026)
 
 1. **Project 82** — Province tracking feature
-2. **Email Notifications** — Action notifications
-3. **Profile Enhancement** — Edit profile, completion UI
-4. **Friend System** — Add friends, view list
+2. **Push Notifications** — Browser push notifications
+3. **Email Notifications** — Action notifications via email
+4. **Profile Enhancement** — Edit profile, completion UI
+5. **Friend System** — Add friends, view list
 
 ### Phase 3 (Q3 2026)
 

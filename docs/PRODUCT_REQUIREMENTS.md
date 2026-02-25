@@ -149,15 +149,42 @@ Friend connections and social interactions.
 - Unfriend functionality
 - Block/unblock users
 
-#### 2.2.8 Email Notifications (P1)
+#### 2.2.8 Notifications (P1)
 
-Notification system for user actions.
+In-app notification system for user actions with the following notification types:
+
+**Notification Types:**
+
+| Type | Trigger | Data Format |
+|------|---------|-------------|
+| `trip_join_request` | User requests to join trip | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_join_approved` | Owner approves join request | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_join_declined` | Owner declines join request | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_invite` | Owner invites user to trip | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_invite_accepted` | User accepts invitation | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_invite_declined` | User declines invitation | `{trip_id, trip_title, avatar_url, username}` |
+| `trip_member_removed` | Owner removes member | `{trip_id, trip_title, avatar_url, username}` |
+
+**Data Format:**
+All notifications use a standardized JSONB structure:
+```json
+{
+  "trip_id": "uuid",
+  "trip_title": "Trip Name",
+  "avatar_url": "path/to/avatar.jpg",
+  "username": "User Name"
+}
+```
 
 **Components:**
 - Trip join request notifications
-- Trip approval/rejection notifications
+- Trip approval/rejection notifications  
+- Trip invitation notifications
+- Trip member removed notifications
 - Trip update notifications
 - Friend request notifications
+- In-app notification bell with dropdown
+- Push notifications (Phase 2)
 
 #### 2.2.9 Expense Tracking (P1)
 

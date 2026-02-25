@@ -232,6 +232,29 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 | US35 | As a user, I want to get notified when my request is approved/rejected | Notification + email |
 | US36 | As a trip owner, I want to notify members of trip updates | Broadcast to all members |
 
+#### Notification Types & Data Format
+
+All trip notifications use a standardized JSONB structure:
+
+```json
+{
+  "trip_id": "uuid",
+  "trip_title": "Trip Name",
+  "avatar_url": "path/to/avatar.jpg",
+  "username": "User Name"
+}
+```
+
+| Notification Type | Trigger Event | Recipient |
+|-------------------|---------------|-----------|
+| `trip_join_request` | User requests to join trip | Trip owner |
+| `trip_join_approved` | Owner approves join request | Requester |
+| `trip_join_declined` | Owner declines join request | Requester |
+| `trip_invite` | Owner sends invitation | Invited user |
+| `trip_invite_accepted` | Invited user accepts | Trip owner |
+| `trip_invite_declined` | Invited user declines | Trip owner |
+| `trip_member_removed` | Owner removes member | Removed member |
+
 ### 2.9 Trip Analytics (P2)
 
 | # | Story | Acceptance Criteria |

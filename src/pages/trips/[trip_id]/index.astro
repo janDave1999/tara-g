@@ -193,14 +193,93 @@ const tripProps = {
   import { actions, ActionError } from 'astro:actions';
   import { createConfirmModal } from '@/scripts/Modal';
 
-  const joinBtn = document.getElementById('join-btn') as HTMLButtonElement;
-  const cancelRequestBtn = document.getElementById('cancel-req-btn') as HTMLButtonElement;
-  const leaveTripBtn = document.getElementById('leave-trip-btn') as HTMLButtonElement;
+  const joinBtns = document.querySelectorAll('.join-btn') as NodeListOf<HTMLButtonElement>;
+  const cancelRequestBtns = document.querySelectorAll('.cancel-req-btn') as NodeListOf<HTMLButtonElement>;
+  const leaveTripBtns = document.querySelectorAll('.leave-trip-btn') as NodeListOf<HTMLButtonElement>;
+  const deleteTripBtns = document.querySelectorAll('.delete-trip-btn') as NodeListOf<HTMLButtonElement>;
   const acceptInviteBtn = document.getElementById('accept-invite-btn') as HTMLButtonElement | null;
   const declineInviteBtn = document.getElementById('decline-invite-btn') as HTMLButtonElement | null;
 
   const tripId = window.location.pathname.split('/').pop();
 
+  // Join button handler - works for both desktop and mobile
+  joinBtns.forEach(joinBtn => {
+    joinBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to join this trip?',
+        confirmText: 'Join',
+        onConfirm: async () => {
+          const { error } = await actions.trip.joinTrip({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Joined trip successfully!', type: 'success' });
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        },
+      });
+    });
+  });
+
+  // Cancel request button handler
+  cancelRequestBtns.forEach(cancelRequestBtn => {
+    cancelRequestBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to cancel your request to join this trip?',
+        confirmText: 'Yes, cancel request',
+        onConfirm: async () => {
+          const { error } = await actions.trip.cancelJoinRequest({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Request cancelled.', type: 'info' });
+            setTimeout(() => window.location.reload(), 1200);
+          }
+        },
+      });
+    });
+  });
+
+  // Leave trip button handler
+  leaveTripBtns.forEach(leaveTripBtn => {
+    leaveTripBtn.addEventListener('click', async () => {
+      createConfirmModal({
+        message: 'Are you sure you want to leave this trip?',
+        confirmText: 'Yes, leave trip',
+        onConfirm: async () => {
+          const { error } = await actions.trip.leaveTrip({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Left trip successfully!', type: 'success' });
+            setTimeout(() => (window.location.href = '/trips'), 1500);
+          }
+        },
+      });
+    });
+  });
+
+  // Delete trip button handler
+  deleteTripBtns.forEach(deleteTripBtn => {
+    deleteTripBtn.addEventListener('click', async () => {
+      (createConfirmModal as any)({
+        message: 'Are you sure you want to delete this trip? This action cannot be undone.',
+        confirmText: 'Yes, delete trip',
+        confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
+        onConfirm: async () => {
+          const { error } = await (actions.trip as any).deleteTrip({ trip_id: tripId! });
+          if (error instanceof ActionError) {
+            showToast({ message: error.message, type: 'error' });
+          } else {
+            showToast({ message: 'Trip deleted successfully!', type: 'success' });
+            setTimeout(() => (window.location.href = '/trips'), 1500);
+          }
+        },
+      });
+    });
+  });
+
+  // Accept/decline invitation handlers
   if (acceptInviteBtn) {
     acceptInviteBtn.addEventListener('click', async () => {
       const invitationId = acceptInviteBtn.dataset.invitationId!;
@@ -238,80 +317,6 @@ const tripProps = {
         showToast({ message: 'Invitation declined.', type: 'info' });
         setTimeout(() => window.location.href = '/trips', 1200);
       }
-    });
-  }
-
-  if (joinBtn) {
-    joinBtn.addEventListener('click', async () => {
-      createConfirmModal({
-        message: 'Are you sure you want to join this trip?',
-        confirmText: 'Join',
-        onConfirm: async () => {
-          const { error } = await actions.trip.joinTrip({ trip_id: tripId! });
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: 'error' });
-          } else {
-            showToast({ message: 'Joined trip successfully!', type: 'success' });
-            setTimeout(() => window.location.reload(), 1500);
-          }
-        },
-      });
-    });
-  }
-
-  if (cancelRequestBtn) {
-    cancelRequestBtn.addEventListener('click', async () => {
-      createConfirmModal({
-        message: 'Are you sure you want to cancel your request to join this trip?',
-        confirmText: 'Yes, cancel request',
-        onConfirm: async () => {
-          const { error } = await actions.trip.cancelJoinRequest({ trip_id: tripId! });
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: 'error' });
-          } else {
-            showToast({ message: 'Canceled trip request successfully!', type: 'success' });
-            setTimeout(() => window.location.reload(), 1500);
-          }
-        },
-      });
-    });
-  }
-
-  if (leaveTripBtn) {
-    leaveTripBtn.addEventListener('click', async () => {
-      createConfirmModal({
-        message: 'Are you sure you want to leave this trip?',
-        confirmText: 'Yes, leave trip',
-        onConfirm: async () => {
-          const { error } = await actions.trip.leaveTrip({ trip_id: tripId! });
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: 'error' });
-          } else {
-            showToast({ message: 'Left trip successfully!', type: 'success' });
-            setTimeout(() => (window.location.href = '/trips'), 1500);
-          }
-        },
-      });
-    });
-  }
-
-  const deleteTripBtn = document.getElementById('delete-trip-btn') as HTMLButtonElement | null;
-  if (deleteTripBtn) {
-    deleteTripBtn.addEventListener('click', async () => {
-      createConfirmModal({
-        message: 'Are you sure you want to delete this trip? This action cannot be undone.',
-        confirmText: 'Yes, delete trip',
-        confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
-        onConfirm: async () => {
-          const { error } = await actions.trip.deleteTrip({ trip_id: tripId! });
-          if (error instanceof ActionError) {
-            showToast({ message: error.message, type: 'error' });
-          } else {
-            showToast({ message: 'Trip deleted successfully!', type: 'success' });
-            setTimeout(() => (window.location.href = '/trips'), 1500);
-          }
-        },
-      });
     });
   }
 </script>

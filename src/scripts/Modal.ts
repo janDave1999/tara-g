@@ -40,6 +40,8 @@ export function createConfirmModal({ message = "Are you sure?", confirmText = "D
 type ConfirmModalOptions = {
   message: string;
   confirmText?: string;
+  cancelText?: string;
+  confirmClass?: string;
   onConfirm?: () => void;
 };
 

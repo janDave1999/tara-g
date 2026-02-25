@@ -1,0 +1,332 @@
+---
+import { actions } from "astro:actions";
+
+const userId = Astro.locals.user_id || "";
+console.log('[NOTIFICATION] UserId in NotificationBell:', userId);
+---
+
+{userId && (
+  <div class="relative" id="notification-container">
+    <button 
+      id="notification-bell-btn"
+      class="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer pointer-events-auto"
+      style="pointer-events: auto; z-index: 50;"
+      aria-label="Notifications"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+      <!-- Unread badge -->
+      <span 
+        id="notification-badge"
+        class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full px-1"
+      >
+        0
+      </span>
+    </button>
+
+    <!-- Notification Dropdown -->
+    <div 
+      id="notification-dropdown"
+      class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-[100] overflow-hidden"
+    >
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-800">Notifications</h3>
+        <button 
+          id="mark-all-read-btn"
+          class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+        >
+          Mark all read
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-gray-200">
+        <button 
+          class="flex-1 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600"
+          data-tab="all"
+        >
+          All
+        </button>
+        <button 
+          class="flex-1 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700"
+          data-tab="unread"
+        >
+          Unread
+        </button>
+      </div>
+
+      <!-- Notification List -->
+      <div id="notification-list" class="max-h-[400px] overflow-y-auto">
+        <!-- Loading state -->
+        <div id="notification-loading" class="p-8 text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
+        </div>
+        
+        <!-- Empty state -->
+        <div id="notification-empty" class="hidden p-8 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <p class="text-sm text-gray-500 mt-2">No notifications yet</p>
+        </div>
+
+        <!-- Notifications will be rendered here -->
+        <div id="notifications-content" class="hidden"></div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
+        <a href="/notifications" class="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium">
+          View all notifications
+        </a>
+      </div>
+    </div>
+  </div>
+)}
+
+<script>
+  import { actions } from "astro:actions";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  // State
+  let notifications: any[] = [];
+  let unreadCount = 0;
+  let currentTab = 'all';
+
+  // DOM Elements
+  const bellBtn = document.getElementById('notification-bell-btn') as HTMLButtonElement;
+  const dropdown = document.getElementById('notification-dropdown');
+  const badge = document.getElementById('notification-badge');
+  const loading = document.getElementById('notification-loading');
+  const empty = document.getElementById('notification-empty');
+  const content = document.getElementById('notifications-content');
+  const markAllReadBtn = document.getElementById('mark-all-read-btn');
+  const tabs = document.querySelectorAll('[data-tab]');
+
+  console.log('[NOTIFICATION] Bell button element:', bellBtn);
+  console.log('[NOTIFICATION] Bell button found:', !!bellBtn);
+
+  // Toggle dropdown
+  bellBtn?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    console.log('[NOTIFICATION] Bell button clicked!');
+    dropdown?.classList.toggle('hidden');
+    
+    if (!dropdown?.classList.contains('hidden')) {
+      await loadNotifications();
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('#notification-container')) {
+      dropdown?.classList.add('hidden');
+    }
+  });
+
+  // Tab switching
+  tabs.forEach(tab => {
+    tab.addEventListener('click', async () => {
+      const tabName = tab.getAttribute('data-tab') || 'all';
+      currentTab = tabName;
+      
+      // Update tab styles
+      tabs.forEach(t => {
+        t.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+        t.classList.add('text-gray-500');
+      });
+      tab.classList.remove('text-gray-500');
+      tab.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+      
+      await loadNotifications();
+    });
+  });
+
+  // Mark all as read
+  markAllReadBtn?.addEventListener('click', async () => {
+    const result = await actions.notifications.markAllAsRead({});
+    if (result.data?.success) {
+      unreadCount = 0;
+      updateBadge();
+      await loadNotifications();
+    }
+  });
+
+  // Load notifications
+  async function loadNotifications() {
+    console.log('[NOTIFICATION] Loading notifications...');
+    loading?.classList.remove('hidden');
+    empty?.classList.add('hidden');
+    content?.classList.add('hidden');
+
+    try {
+      const result = await actions.notifications.getNotifications({
+        limit: 20,
+        offset: 0,
+        unreadOnly: currentTab === 'unread',
+      });
+
+      console.log('[NOTIFICATION] Get notifications result:', result);
+
+      if (result.data) {
+        notifications = result.data.notifications || [];
+        unreadCount = result.data.unreadCount || 0;
+        console.log('[NOTIFICATION] Notifications loaded:', notifications.length, 'unread:', unreadCount);
+        
+        renderNotifications();
+        updateBadge();
+      }
+    } catch (error) {
+      console.error('[NOTIFICATION] Error loading notifications:', error);
+    } finally {
+      loading?.classList.add('hidden');
+    }
+  }
+
+  // Update badge
+  function updateBadge() {
+    if (badge) {
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+  }
+
+  // Render notifications
+  function renderNotifications() {
+    console.log('[NOTIFICATION] Rendering notifications:', notifications.length);
+    if (!content) return;
+
+    if (notifications.length === 0) {
+      console.log('[NOTIFICATION] No notifications to display');
+      empty?.classList.remove('hidden');
+      content.classList.add('hidden');
+      return;
+    }
+
+    empty?.classList.add('hidden');
+    content.classList.remove('hidden');
+
+    console.log('[NOTIFICATION] Rendering notification items:', notifications);
+
+    content.innerHTML = notifications.map(notification => {
+      console.log('[NOTIFICATION] Processing notification:', notification);
+      const avatar = notification.data?.avatar_url;
+      const avatarHtml = avatar 
+        ? `<img src="${avatar.startsWith('http') ? avatar : PUBLIC_R2_URL + avatar}" alt="" class="w-10 h-10 rounded-full object-cover" />`
+        : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+            ${(notification.data?.username || '?').charAt(0).toUpperCase()}
+          </div>`;
+
+      const timeAgo = getTimeAgo(new Date(notification.created_at));
+      const unreadDot = !notification.is_read 
+        ? '<span class="w-2 h-2 bg-blue-500 rounded-full shrink-0"></span>' 
+        : '';
+
+      const iconType = getNotificationIcon(notification.type);
+
+      return `
+        <div 
+          class="notification-item flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${!notification.is_read ? 'bg-blue-50/50' : ''}"
+          data-id="${notification.notification_id}"
+          data-url="${notification.action_url || ''}"
+        >
+          <div class="shrink-0 relative">
+            ${avatarHtml}
+            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center">
+              ${iconType}
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-gray-800">
+              <span class="font-semibold">${notification.data?.username || 'Someone'}</span>
+              ${notification.message}
+            </p>
+            <p class="text-xs text-gray-500 mt-0.5">${timeAgo}</p>
+          </div>
+          <div class="shrink-0">
+            ${unreadDot}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Add click handlers
+    content.querySelectorAll('.notification-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const id = item.getAttribute('data-id');
+        const url = item.getAttribute('data-url');
+
+        // Mark as read
+        if (id) {
+          await actions.notifications.markAsRead({ notificationId: id });
+        }
+
+        // Navigate if URL exists
+        if (url) {
+          window.location.href = url;
+        } else {
+          dropdown?.classList.add('hidden');
+          await loadNotifications();
+        }
+      });
+    });
+  }
+
+  // Get notification icon based on type
+  function getNotificationIcon(type: string): string {
+    const icons: Record<string, string> = {
+      'trip_join_request': '<svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>',
+      'trip_join_approved': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'trip_join_declined': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+      'trip_invite': '<svg class="w-3 h-3 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>',
+      'trip_invite_accepted': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'trip_invite_declined': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+      'trip_member_added': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"/></svg>',
+      'trip_member_removed': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/></svg>',
+      'trip_update': '<svg class="w-3 h-3 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>',
+      'friend_request': '<svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z"/></svg>',
+      'friend_accepted': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'system_announcement': '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>',
+    };
+    return icons[type] || icons['system_announcement'];
+  }
+
+  // Get time ago
+  function getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
+  }
+
+  // Initialize - fetch unread count on load
+  (async () => {
+    console.log('[NOTIFICATION] Initializing notification bell...');
+    try {
+      const result = await actions.notifications.getUnreadCount({});
+      console.log('[NOTIFICATION] Unread count result:', result);
+      if (result.data) {
+        unreadCount = result.data.count || 0;
+        updateBadge();
+        console.log('[NOTIFICATION] Initial unread count:', unreadCount);
+      }
+    } catch (error) {
+      console.error('[NOTIFICATION] Error fetching unread count:', error);
+    }
+  })();
+</script>

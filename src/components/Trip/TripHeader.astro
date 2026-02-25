@@ -134,7 +134,7 @@ const statusBadgeClass: Record<string, string> = {
       <!-- Desktop: Action buttons next to share -->
       {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
         <button
-          id="join-btn"
+          id="join-btn-desktop"
           class="hidden md:block px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
         >
           Request to Join
@@ -149,7 +149,7 @@ const statusBadgeClass: Record<string, string> = {
 
       {userRole === 'pending' && (
         <button
-          id="cancel-req-btn"
+          id="cancel-req-btn-desktop"
           class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
         >
           Cancel Request
@@ -168,7 +168,7 @@ const statusBadgeClass: Record<string, string> = {
       {userRole === 'owner' && (
         <button
           id="delete-trip-btn"
-          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+          class="delete-trip-btn hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
         >
           Delete Trip
         </button>
@@ -257,8 +257,8 @@ const statusBadgeClass: Record<string, string> = {
   <div class="flex items-center gap-2 justify-center">
     {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
       <button
-        id="join-btn"
-        class="flex-1 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+        id="join-btn-mobile"
+        class="join-btn flex-1 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
       >
         Request to Join
       </button>
@@ -272,8 +272,8 @@ const statusBadgeClass: Record<string, string> = {
 
     {userRole === 'pending' && (
       <button
-        id="cancel-req-btn"
-        class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+        id="cancel-req-btn-mobile"
+        class="cancel-req-btn flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
       >
         Cancel Request
       </button>
@@ -281,8 +281,8 @@ const statusBadgeClass: Record<string, string> = {
 
     {userRole === 'member' && (
       <button
-        id="leave-trip-btn"
-        class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+        id="leave-trip-btn-mobile"
+        class="leave-trip-btn flex-1 px-4 py-3 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
       >
         Leave Trip
       </button>
@@ -291,8 +291,8 @@ const statusBadgeClass: Record<string, string> = {
     {userRole === 'owner' && (
       <>
         <button
-          id="delete-trip-btn"
-          class="flex-1 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+          id="delete-trip-btn-mobile"
+          class="delete-trip-btn flex-1 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
         >
           Delete Trip
         </button>

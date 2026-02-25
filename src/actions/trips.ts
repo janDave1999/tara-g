@@ -7,6 +7,39 @@ import { uploadToR2 } from "@/scripts/R2/upload";
 import { defineProtectedAction } from "./utils";
 import type { JoinRequest, PendingInvitation, MembersSummary, CompleteMembersData } from "@/types/trip";
 
+// Helper function to send notification
+async function sendNotification(
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  data: Record<string, any> = {},
+  actionUrl?: string,
+  priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal'
+) {
+  console.log('[NOTIFICATION] Creating notification for:', { userId, type, title });
+  
+  try {
+    const { data: result, error } = await supabaseAdmin.rpc('create_notification', {
+      p_user_id: userId,  // Now passing internal user_id directly
+      p_type: type,
+      p_title: title,
+      p_message: message,
+      p_data: data,
+      p_action_url: actionUrl,
+      p_priority: priority,
+    });
+    
+    if (error) {
+      console.error('[NOTIFICATION] Error creating notification:', error);
+    } else {
+      console.log('[NOTIFICATION] Notification created successfully:', result);
+    }
+  } catch (error) {
+    console.error('[NOTIFICATION] Exception creating notification:', error);
+  }
+}
+
 // Type definition for optimized search result
 interface OptimizedSearchResult {
   trip_id: string;
@@ -568,7 +601,7 @@ export const trip = {
       trip_id: z.string(),
     }),
     
-    handler: defineProtectedAction(async (input, {userId}) => {
+    handler: defineProtectedAction(async (input, {userId, avatarUrl}) => {
       const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: userId });
       let message = data[0].message
       if (error) {
@@ -584,6 +617,73 @@ export const trip = {
           code: "BAD_REQUEST"
         })
       }
+
+      // Get trip info and notify owner
+      const { data: tripData, error: tripError } = await supabaseAdmin
+        .rpc('get_trip_full_details', {
+          p_trip_id: input.trip_id,
+          p_current_user_id: userId
+        });
+
+      console.log('[NOTIFICATION] Trip data:', tripData);
+      console.log('[NOTIFICATION] Current userId:', userId);
+
+      // tripData.owner.user_id is the internal user_id
+      const ownerInternalId = tripData?.owner?.user_id;
+      console.log('[NOTIFICATION] Owner internal user_id:', ownerInternalId);
+
+      // Get current user's full name for the notification
+      console.log('[NOTIFICATION] Looking up user info for auth_id:', userId);
+      let { data: currentUser, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('username, full_name, avatar_url')
+        .eq('auth_id', userId)
+        .single();
+      
+      // If user not found, create them
+      if (userError && userError.code === 'PGRST116') {
+        console.log('[NOTIFICATION] User not found in users table, creating record...');
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (authUser?.user) {
+          const { data: newUser, error: createError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              auth_id: userId,
+              email: authUser.user.email,
+              username: `user_${userId.slice(0, 8)}`,
+              full_name: authUser.user.user_metadata?.full_name || authUser.user.user_metadata?.name || null,
+              avatar_url: authUser.user.user_metadata?.avatar_url || null,
+            })
+            .select('username, full_name, avatar_url')
+            .single();
+          
+          if (!createError && newUser) {
+            currentUser = newUser;
+            console.log('[NOTIFICATION] Created user record:', newUser);
+          }
+        }
+      }
+      
+      console.log('[NOTIFICATION] Current user data:', currentUser);
+      
+      const requesterName = currentUser?.full_name || currentUser?.username || 'Someone';
+      const requesterAvatar = currentUser?.avatar_url || avatarUrl || null;
+      console.log('[NOTIFICATION] Requester name:', requesterName, 'avatar:', requesterAvatar);
+
+      if (tripData && ownerInternalId && ownerInternalId !== userId) {
+        console.log('[NOTIFICATION] Sending notification to owner:', ownerInternalId);
+        await sendNotification(
+          ownerInternalId,
+          'trip_join_request',
+          'New Join Request',
+          `${requesterName} wants to join your "${tripData.title}" trip`,
+          { trip_id: input.trip_id, trip_title: tripData.title, avatar_url: requesterAvatar, username: requesterName },
+          `/trips/${input.trip_id}`
+        );
+      } else {
+        console.log('[NOTIFICATION] NOT sending notification - user is owner or trip not found');
+      }
+
       return data
     })
     
@@ -1305,6 +1405,25 @@ getNearbyTrips: defineAction({
       if (error || !data?.success) {
         throw new Error(data?.message || error?.message || 'Failed to approve request');
       }
+
+      // Notify the requester they were approved
+      const { data: tripData } = await supabaseAdmin
+        .from('trips')
+        .select('title')
+        .eq('trip_id', input.tripId)
+        .single();
+
+      if (data.user_id && tripData) {
+        await sendNotification(
+          data.user_id,
+          'trip_join_approved',
+          'Join Request Approved',
+          'Your request to join has been approved!',
+          { trip_id: input.tripId, trip_title: tripData.title },
+          `/trips/${input.tripId}`,
+          'high'
+        );
+      }
       
       return {
         success: true,
@@ -1336,6 +1455,25 @@ getNearbyTrips: defineAction({
       if (error || !data?.success) {
         throw new Error(data?.message || error?.message || 'Failed to reject request');
       }
+
+      // Notify the requester they were rejected
+      const { data: tripData } = await supabaseAdmin
+        .from('trips')
+        .select('title')
+        .eq('trip_id', input.tripId)
+        .single();
+
+      if (data.user_id && tripData) {
+        await sendNotification(
+          data.user_id,
+          'trip_join_declined',
+          'Join Request Declined',
+          'Your request to join has been declined.',
+          { trip_id: input.tripId, trip_title: tripData.title },
+          undefined,
+          'normal'
+        );
+      }
       
       return {
         success: true,
@@ -1343,7 +1481,7 @@ getNearbyTrips: defineAction({
       };
     },
   }),
-  
+
   removeTripMember : defineAction({
     input: z.object({
       memberId: z.string().uuid(),
@@ -1365,6 +1503,25 @@ getNearbyTrips: defineAction({
       
       if (error || !data?.success) {
         throw new Error(data?.message || error?.message || 'Failed to remove member');
+      }
+
+      // Notify the removed member
+      const { data: tripData } = await supabaseAdmin
+        .from('trips')
+        .select('title')
+        .eq('trip_id', input.tripId)
+        .single();
+
+      if (data.user_id && tripData) {
+        await sendNotification(
+          data.user_id,
+          'trip_member_removed',
+          'Removed from Trip',
+          'You have been removed from the trip.',
+          { trip_id: input.tripId, trip_title: tripData.title },
+          undefined,
+          'normal'
+        );
       }
       
       return {

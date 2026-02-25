@@ -1,6 +1,7 @@
 ---
 import ThemeController from "@/components/ThemeController.astro";
 import { PUBLIC_R2_URL } from "astro:env/client";
+import NotificationBell from "@/components/Notification/NotificationBell.astro";
 
 let avatarUrl = Astro.locals.avatar_url || "";
 let userID = Astro.locals.user_id || "";
@@ -35,7 +36,10 @@ let userID = Astro.locals.user_id || "";
       <li><a href="/blogs" class="hover:text-blue-600 transition-colors">Blogs</a></li>
     </ul>
 
-    <div class="relative">
+    <div class="relative flex items-center gap-3" style="z-index: 9999;">
+      <!-- Notification Bell -->
+      <NotificationBell />
+
 {userID ? (
         <button id="profile-btn" class="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-1 transition-all">
 

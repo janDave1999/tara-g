@@ -129,8 +129,52 @@ const statusBadgeClass: Record<string, string> = {
       )}
     </div>
 
-    <!-- Right: Share button only -->
+    <!-- Right: Share button (mobile) + Action buttons (desktop) -->
     <div class="flex items-center gap-2 shrink-0 pt-0.5">
+      <!-- Desktop: Action buttons next to share -->
+      {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
+        <button
+          id="join-btn"
+          class="hidden md:block px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+        >
+          Request to Join
+        </button>
+      )}
+
+      {userRole === 'visitor' && !isInvited && isFull && (
+        <span class="hidden md:block px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
+          Trip Full
+        </span>
+      )}
+
+      {userRole === 'pending' && (
+        <button
+          id="cancel-req-btn"
+          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+        >
+          Cancel Request
+        </button>
+      )}
+
+      {userRole === 'member' && (
+        <button
+          id="leave-trip-btn"
+          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+        >
+          Leave Trip
+        </button>
+      )}
+
+      {userRole === 'owner' && (
+        <button
+          id="delete-trip-btn"
+          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+        >
+          Delete Trip
+        </button>
+      )}
+
+      <!-- Share button (visible on all sizes) -->
       <button
         id="share-trip-btn"
         class="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all focus:ring-2 focus:ring-gray-300 focus:outline-none"
@@ -257,51 +301,6 @@ const statusBadgeClass: Record<string, string> = {
   </div>
 </div>
 
-<!-- Desktop Action Buttons (hidden on mobile) -->
-<div class="hidden md:flex items-center gap-2">
-  {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
-    <button
-      id="join-btn"
-      class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
-    >
-      Request to Join
-    </button>
-  )}
-
-  {userRole === 'visitor' && !isInvited && isFull && (
-    <span class="px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
-      Trip Full
-    </span>
-  )}
-
-  {userRole === 'pending' && (
-    <button
-      id="cancel-req-btn"
-      class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
-    >
-      Cancel Request
-    </button>
-  )}
-
-  {userRole === 'member' && (
-    <button
-      id="leave-trip-btn"
-      class="px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
-    >
-      Leave Trip
-    </button>
-  )}
-
-  {userRole === 'owner' && (
-    <button
-      id="delete-trip-btn"
-      class="px-4 py-2 rounded-xl border border-gray-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
-    >
-      Delete Trip
-    </button>
-  )}
-</div>
-
 <!-- Desktop: Owner sees request/invitation count -->
 {isOwner && (pendingRequestsCount > 0 || pendingInvitationsCount > 0) && (
   <div class="hidden md:flex items-center justify-center gap-4 mt-3 pt-3 border-t border-gray-100">
@@ -363,6 +362,14 @@ const statusBadgeClass: Record<string, string> = {
         </span>
       </div>
     )}
+    
+    <!-- View Requests Button -->
+    <button
+      id="view-requests-btn"
+      class="ml-2 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+    >
+      View All
+    </button>
   </div>
 )}
 
@@ -382,5 +389,11 @@ const statusBadgeClass: Record<string, string> = {
     } else {
       try { await navigator.clipboard.writeText(url); } catch {}
     }
+  });
+
+  // View All requests button - triggers member modal
+  document.getElementById('view-requests-btn')?.addEventListener('click', () => {
+    const memberBtn = document.getElementById('member-btn') as HTMLButtonElement | null;
+    memberBtn?.click();
   });
 </script>

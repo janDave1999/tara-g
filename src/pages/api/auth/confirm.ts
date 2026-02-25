@@ -38,6 +38,29 @@ export const GET: APIRoute = async ({ url, redirect }) => {
   }
 
   try {
+    console.log('[Confirm] Marking session as used for user auth_id:', user.auth_id);
+    
+    // Mark confirmation session as used (for SSE to detect)
+    // Try to find and update the session - we need to find it by user_id
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from("users")
+      .select("user_id")
+      .eq("auth_id", user.auth_id)
+      .single();
+
+    console.log('[Confirm] Found user_id:', userData?.user_id, 'error:', userError);
+
+    if (userData) {
+      // Find any pending session for this user and mark as used
+      const { data: updateResult, error: updateError } = await supabaseAdmin
+        .from("confirmation_sessions")
+        .update({ used_at: new Date().toISOString() })
+        .eq("user_id", userData.user_id)
+        .is("used_at", null);
+      
+      console.log('[Confirm] Session marked as used, result:', updateResult, 'error:', updateError);
+    }
+
     // Confirm user in Supabase Auth
     const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
       user.auth_id,

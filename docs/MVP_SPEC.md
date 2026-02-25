@@ -26,7 +26,7 @@ The **Minimum Viable Product (MVP)** for the beta release includes all core feat
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Email/password registration | ✅ Included | With DB trigger auto-population |
-| Email confirmation | ✅ Included | Redirect to onboarding after confirm |
+| Email confirmation | ✅ Included | Auto sign-in via WebSocket, redirect to onboarding |
 | Sign in | ✅ Included | With rate limiting |
 | Sign out | ✅ Included | |
 | Forgot password | ✅ Included | |
@@ -271,6 +271,16 @@ The following features are **NOT** in the beta release:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | Feb 2026 | Initial MVP specification |
+
+---
+
+## Related Feature Specs
+
+| Feature | File |
+|---------|------|
+| Auto Sign-In After Email Confirmation | `FEATURE_AUTO_SIGNIN_EMAIL_CONFIRMATION.md` |
+| Email Notifications | `FEATURE_EMAIL_NOTIFICATIONS.md` |
+| Join Request Badge | `FEATURE_JOIN_REQUEST_BADGE.md` |
 
 ---
 

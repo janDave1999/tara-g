@@ -12,33 +12,62 @@ if (accessToken && refreshToken) {
 
 const email = Astro.url.searchParams.get("email") || "";
 const displayEmail = email ? decodeURIComponent(email) : "";
+const sessionToken = Astro.url.searchParams.get("token") || "";
 ---
 
 <AuthLayout title="Check your email — Tara G!" noIndex>
   <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-8 space-y-6 text-center">
-    <!-- Icon -->
+    <!-- Status Indicator with Animation -->
     <div class="flex justify-center">
-      <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
+      <div id="statusIcon" class="relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500"
+           id="statusContainer">
+        <!-- Background pulse -->
+        <div id="pulseBg" class="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-50"></div>
+        
+        <div class="relative z-10">
+          <!-- Email icon (waiting) -->
+          <svg id="emailIcon" class="w-10 h-10 text-blue-600 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          
+          <!-- Success icon (confirmed) -->
+          <svg id="successIcon" class="w-10 h-10 text-green-600 hidden transition-all duration-300 scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          
+          <!-- Loading icon (connecting) -->
+          <svg id="loadingIcon" class="w-10 h-10 text-blue-600 hidden animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          
+          <!-- Error icon -->
+          <svg id="errorIcon" class="w-10 h-10 text-red-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
       </div>
     </div>
 
-    <!-- Heading -->
-    <div>
-      <h1 class="text-2xl sm:text-3xl font-semibold text-gray-900">Check your email</h1>
+    <!-- Status Message -->
+    <div id="statusMessage" class="min-h-[3rem]">
+      <h1 id="mainTitle" class="text-2xl sm:text-3xl font-semibold text-gray-900">Check your email</h1>
       <p class="text-gray-600 mt-2 text-sm sm:text-base">
         We sent a confirmation link to
         {displayEmail && (
           <span class="font-medium text-gray-900 block mt-1">{displayEmail}</span>
         )}
       </p>
+      {sessionToken && (
+        <p id="statusText" class="text-blue-600 mt-3 text-sm font-medium animate-pulse">
+          Waiting for email confirmation...
+        </p>
+      )}
     </div>
 
     <!-- Instructions -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+    <div id="instructionsBox" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left transition-all duration-300">
       <p class="text-sm text-blue-800 font-medium mb-2">What to do next:</p>
       <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
         <li>Open the email we just sent you</li>
@@ -70,6 +99,19 @@ const displayEmail = email ? decodeURIComponent(email) : "";
       <div id="resendFeedback" class="hidden text-sm"></div>
     </div>
 
+    <!-- Auto-timeout fallback (5 minutes) -->
+    {sessionToken && (
+      <div id="timeoutWarning" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
+        <p class="text-sm text-amber-800">
+          Taking too long? 
+          <button id="refreshSessionBtn" class="text-blue-600 font-medium hover:underline">
+            Refresh page
+          </button>
+          to try again.
+        </p>
+      </div>
+    )}
+
     <!-- Footer -->
     <div class="pt-4 border-t border-gray-100">
       <p class="text-sm text-gray-500">
@@ -88,6 +130,9 @@ const displayEmail = email ? decodeURIComponent(email) : "";
 
 <script>
   const email = new URLSearchParams(window.location.search).get('email') || '';
+  const displayEmail = email ? decodeURIComponent(email) : '';
+  const sessionToken = new URLSearchParams(window.location.search).get('token') || '';
+  
   const resendButton = document.getElementById('resendButton') as HTMLButtonElement;
   const resendText = document.getElementById('resendText')!;
   const resendSpinner = document.getElementById('resendSpinner')!;
@@ -121,6 +166,18 @@ const displayEmail = email ? decodeURIComponent(email) : "";
       resendFeedback.classList.remove('hidden');
 
       if (response.ok) {
+        // Get new session token from response or regenerate
+        const newToken = result.session_token;
+        if (newToken) {
+          // Update URL with new token
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', newToken);
+          window.history.replaceState({}, '', url);
+          
+          // Restart SSE connection
+          startSSEConnection(newToken, email);
+        }
+        
         // 60-second cooldown after successful resend
         cooldown = true;
         let seconds = 60;
@@ -151,4 +208,206 @@ const displayEmail = email ? decodeURIComponent(email) : "";
       resendText.classList.remove('hidden');
     }
   });
+
+  // ===== SSE Connection for Auto Sign-In =====
+  
+  // Update status with animation
+  function updateStatus(status: string, message?: string) {
+    const statusText = document.getElementById('statusText');
+    const mainTitle = document.getElementById('mainTitle');
+    const instructionsBox = document.getElementById('instructionsBox');
+    
+    if (statusText) {
+      statusText.textContent = message || status;
+      
+      // Update styling based on status
+      statusText.classList.remove('text-blue-600', 'text-green-600', 'text-red-600', 'animate-pulse');
+      
+      if (status === 'connected' || status === 'waiting') {
+        statusText.classList.add('text-blue-600', 'animate-pulse');
+      } else if (status === 'confirmed') {
+        statusText.classList.add('text-green-600');
+      } else if (status === 'expired' || status === 'error') {
+        statusText.classList.add('text-red-600');
+      }
+    }
+    
+    if (mainTitle && (status === 'confirmed' || status === 'confirmed_redirect')) {
+      mainTitle.textContent = 'Email Confirmed!';
+    }
+    
+    if (instructionsBox) {
+      if (status === 'confirmed') {
+        instructionsBox.className = 'bg-green-50 border border-green-200 rounded-lg p-4 text-left transition-all duration-300';
+        instructionsBox.innerHTML = `
+          <p class="text-sm text-green-800 font-medium mb-2">Success!</p>
+          <p class="text-sm text-green-700">Redirecting you to set up your profile...</p>
+        `;
+      } else if (status === 'expired') {
+        instructionsBox.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-left transition-all duration-300';
+        instructionsBox.innerHTML = `
+          <p class="text-sm text-red-800 font-medium mb-2">Session Expired</p>
+          <p class="text-sm text-red-700">Please resend the confirmation email to continue.</p>
+        `;
+      }
+    }
+  }
+
+  function showStatusIcon(icon: 'email' | 'success' | 'loading' | 'error') {
+    const emailIcon = document.getElementById('emailIcon');
+    const successIcon = document.getElementById('successIcon');
+    const loadingIcon = document.getElementById('loadingIcon');
+    const errorIcon = document.getElementById('errorIcon');
+    const statusContainer = document.getElementById('statusContainer');
+    const pulseBg = document.getElementById('pulseBg');
+    
+    [emailIcon, successIcon, loadingIcon, errorIcon].forEach(el => {
+      if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('scale-100');
+        el.classList.add('scale-0');
+      }
+    });
+    
+    if (statusContainer && pulseBg) {
+      statusContainer.classList.remove('bg-blue-100', 'bg-green-100', 'bg-red-100');
+      
+      if (icon === 'email') {
+        emailIcon?.classList.remove('hidden');
+        emailIcon?.classList.add('scale-100');
+        emailIcon?.classList.remove('scale-0');
+        statusContainer.classList.add('bg-blue-100');
+        pulseBg.classList.remove('hidden');
+      }
+      else if (icon === 'success') {
+        successIcon?.classList.remove('hidden');
+        successIcon?.classList.add('scale-100');
+        successIcon?.classList.remove('scale-0');
+        statusContainer.classList.add('bg-green-100');
+        pulseBg.classList.add('hidden');
+      }
+      else if (icon === 'loading') {
+        loadingIcon?.classList.remove('hidden');
+        statusContainer.classList.add('bg-blue-100');
+        pulseBg.classList.remove('hidden');
+      }
+      else if (icon === 'error') {
+        errorIcon?.classList.remove('hidden');
+        errorIcon?.classList.add('scale-100');
+        errorIcon?.classList.remove('scale-0');
+        statusContainer.classList.add('bg-red-100');
+        pulseBg.classList.add('hidden');
+      }
+    }
+  }
+
+  async function startSSEConnection(token: string | null, userEmail: string) {
+    if (!token) {
+      console.log('[SSE] No session token, falling back to manual sign-in');
+      return;
+    }
+
+    console.log('[SSE] Starting connection with token:', token.substring(0, 8) + '...');
+    showStatusIcon('email');
+    updateStatus('connecting', 'Connecting...');
+
+    try {
+      const eventSource = new EventSource(`/api/auth/confirmation-status?token=${token}&email=${encodeURIComponent(userEmail)}`);
+
+      eventSource.onopen = () => {
+        console.log('[SSE] Connected');
+        showStatusIcon('loading');
+        updateStatus('waiting', 'Waiting for email confirmation...');
+      };
+
+      eventSource.onmessage = async (event) => {
+        console.log('[SSE] Received:', event.data);
+        const data = JSON.parse(event.data);
+
+        if (data.status === 'connected') {
+          showStatusIcon('loading');
+          updateStatus('waiting', 'Waiting for email confirmation...');
+        }
+        else if (data.status === 'confirmed') {
+          eventSource.close();
+          showStatusIcon('success');
+          updateStatus('confirmed', 'Email confirmed! Signing you in...');
+
+          if (data.access_token && data.refresh_token) {
+            // Store tokens in cookies
+            const expires = new Date();
+            expires.setDate(expires.getDate() + 7);
+            
+            document.cookie = `sb-access-token=${data.access_token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax; secure`;
+            document.cookie = `sb-refresh-token=${data.refresh_token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax; secure`;
+
+            // Short delay then redirect
+            setTimeout(() => {
+              window.location.href = '/onboarding/profile';
+            }, 1500);
+          } else {
+            // Fallback: redirect to sign-in
+            setTimeout(() => {
+              window.location.href = '/signin';
+            }, 1500);
+          }
+        }
+        else if (data.status === 'confirmed_redirect') {
+          eventSource.close();
+          showStatusIcon('success');
+          updateStatus('confirmed', 'Email confirmed! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/signin';
+          }, 1500);
+        }
+        else if (data.status === 'expired' || data.status === 'timeout') {
+          eventSource.close();
+          showStatusIcon('email');
+          updateStatus('expired', 'Session expired. Please resend confirmation email.');
+        }
+        else if (data.status === 'error') {
+          eventSource.close();
+          showStatusIcon('error');
+          updateStatus('error', data.message || 'An error occurred. Please try again.');
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('[SSE] Error:', error);
+        eventSource.close();
+        // Don't disrupt user - fallback is still available
+      };
+    } catch (error) {
+      console.error('[SSE] Failed to connect:', error);
+      // Fall back to manual sign-in
+    }
+  }
+
+  // Start SSE connection if we have a token
+  if (sessionToken && displayEmail) {
+    startSSEConnection(sessionToken, displayEmail);
+    
+    // Show timeout warning after 4 minutes (session expires at 5)
+    setTimeout(() => {
+      const timeoutWarning = document.getElementById('timeoutWarning');
+      if (timeoutWarning) {
+        timeoutWarning.classList.remove('hidden');
+      }
+    }, 240000); // 4 minutes
+    
+    // Auto-refresh page after 5 minutes
+    setTimeout(() => {
+      window.location.reload();
+    }, 300000); // 5 minutes
+  } else {
+    console.log('[SSE] No session token available, using manual flow');
+  }
+  
+  // Refresh button handler
+  const refreshBtn = document.getElementById('refreshSessionBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
 </script>

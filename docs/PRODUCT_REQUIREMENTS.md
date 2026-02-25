@@ -269,11 +269,21 @@ All data access uses **Astro Actions** with **Security DEFINER RPCs**:
 4. Supabase creates auth.users row
 5. DB trigger auto-creates public.users row
 6. User receives confirmation email
-7. User clicks confirmation link
-8. Redirects to /onboarding/profile
-9. Completes 3-step onboarding
-10. Redirects to /trips (Discover tab)
+7. User stays on /register/confirmation (WebSocket waits)
+8. User clicks confirmation link
+9. WebSocket notifies client of confirmation
+10. User automatically signed in
+11. Redirects to /onboarding/profile
+12. Completes 3-step onboarding
+13. Redirects to /trips (Discover tab)
 ```
+
+**Auto Sign-In Enhancement:**
+- Use WebSocket on `/register/confirmation` to detect email confirmation in real-time
+- Automatically sign in user after confirmation
+- Redirect to profile setup without manual sign-in
+- Fallback countdown timer if WebSocket fails
+- See: `FEATURE_AUTO_SIGNIN_EMAIL_CONFIRMATION.md`
 
 ### 4.2 Trip Creation Flow
 

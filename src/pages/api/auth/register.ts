@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Check if there's an existing unconfirmed user with this email
     const { data: existingUser } = await supabaseAdmin
       .from("users")
-      .select("auth_id, confirmation_token")
+      .select("user_id, auth_id, confirmation_token")
       .eq("email", validatedData.email)
       .maybeSingle();
 
@@ -96,11 +96,26 @@ export const POST: APIRoute = async ({ request }) => {
           console.error("[Register] Failed to send confirmation email:", err);
         });
 
-        // Redirect to confirmation page
-        const headers = new Headers({
-          Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}`,
-        });
-        return new Response(null, { status: 302, headers });
+        // Create confirmation session for WebSocket auto sign-in
+        if (existingUser?.user_id) {
+          const sessionToken = randomUUID();
+          try {
+            await supabaseAdmin.rpc('create_confirmation_session', {
+              p_user_id: existingUser.user_id,
+              p_email: validatedData.email,
+              p_token: sessionToken,
+              p_expires_minutes: 5
+            });
+          } catch (sessionError) {
+            console.error("[Register] Failed to create confirmation session:", sessionError);
+          }
+
+          // Redirect to confirmation page with session token
+          const headers = new Headers({
+            Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}&token=${sessionToken}`,
+          });
+          return new Response(null, { status: 302, headers });
+        }
       }
     }
 
@@ -155,9 +170,38 @@ export const POST: APIRoute = async ({ request }) => {
       // Continue anyway - don't block registration
     }
 
-    // Redirect to confirmation page
+    // Create confirmation session for WebSocket auto sign-in
+    const sessionToken = randomUUID();
+    console.log('[Register] Creating confirmation session for:', validatedData.email);
+    try {
+      // Get the user_id from the users table
+      const { data: newUser } = await supabaseAdmin
+        .from("users")
+        .select("user_id")
+        .eq("auth_id", authData.user.id)
+        .single();
+      
+      console.log('[Register] Found user_id:', newUser?.user_id);
+      
+      if (newUser?.user_id) {
+        const { data: sessionData, error: sessionError } = await supabaseAdmin.rpc('create_confirmation_session', {
+          p_user_id: newUser.user_id,
+          p_email: validatedData.email,
+          p_token: sessionToken,
+          p_expires_minutes: 5
+        });
+        
+        console.log('[Register] Session created:', sessionData, 'error:', sessionError);
+        console.log("[Register] Confirmation session created:", sessionToken);
+      }
+    } catch (sessionError) {
+      console.error("[Register] Failed to create confirmation session:", sessionError);
+      // Continue anyway - WebSocket fallback will work
+    }
+
+    // Redirect to confirmation page with session token
     const headers = new Headers({
-      Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}`,
+      Location: `/register/confirmation?email=${encodeURIComponent(validatedData.email)}&token=${sessionToken}`,
     });
     return new Response(null, { status: 302, headers });
     

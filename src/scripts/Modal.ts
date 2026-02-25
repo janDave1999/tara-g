@@ -1,4 +1,4 @@
-export function createConfirmModal({ message = "Are you sure?", confirmText = "Delete", cancelText = "Cancel", onConfirm: onConfirm }: { message?: string; confirmText?: string; cancelText?: string; onConfirm?: () => void }) {
+export function createConfirmModal({ message = "Are you sure?", confirmText = "Delete", cancelText = "Cancel", confirmClass = "", onConfirm: onConfirm }: { message?: string; confirmText?: string; cancelText?: string; confirmClass?: string; onConfirm?: () => void }) {
   // Remove any existing modal first
   const existing = document.getElementById("dynamic-confirm-modal");
   if (existing) existing.remove();
@@ -13,7 +13,7 @@ export function createConfirmModal({ message = "Are you sure?", confirmText = "D
     <div class="bg-white p-6 rounded-md shadow-lg m-4 max-w-sm w-full">
       <p class="text-md font-medium text-center mb-6">${message}</p>
       <div class="flex justify-center gap-4">
-        <button id="modal-confirm" class="bg-green-100 text-green-700 px-4 py-2 rounded-md transition">${confirmText}</button>
+        <button id="modal-confirm" class="${confirmClass || 'bg-green-100 text-green-700'} px-4 py-2 rounded-md transition">${confirmText}</button>
         <button id="modal-cancel" class="bg-gray-100 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 transition">${cancelText}</button>
       </div>
     </div>

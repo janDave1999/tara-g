@@ -1374,6 +1374,34 @@ getNearbyTrips: defineAction({
     },
   }),
 
+  deleteTrip: defineAction({
+    input: z.object({
+      trip_id: z.string().uuid(),
+    }),
+    handler: async (input, context) => {
+      const supabase = getSupabaseClient(context.cookies);
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('You must be logged in');
+      }
+      
+      const { data, error } = await supabase.rpc('delete_trip', {
+        p_trip_id: input.trip_id,
+        p_user_id: user.id,
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(data?.message || error?.message || 'Failed to delete trip');
+      }
+      
+      return {
+        success: true,
+        message: data.message,
+      };
+    },
+  }),
+
     getUserOwnedTrips: defineAction({
     input: z.object({
       userId: z.string().uuid(),

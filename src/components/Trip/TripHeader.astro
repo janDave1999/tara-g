@@ -3,6 +3,7 @@ import { Share2Icon, MapPin } from '@lucide/astro';
 import TripStatusBadge from './TripStatusBadge.astro';
 import VisibilityModal from './modal/VisibilityModal.astro';
 import StatusModal from './modal/StatusModal.astro';
+import { PUBLIC_R2_URL } from 'astro:env/client';
 
 const {
   title,
@@ -15,6 +16,8 @@ const {
   currentPax,
   maxPax,
   isInvited = false,
+  pendingRequests = [],
+  pendingInvitations = [],
 } = Astro.props;
 
 let tagsArray: string[] = [];
@@ -26,13 +29,21 @@ if (Array.isArray(tags)) {
     try {
       tagsArray = JSON.parse(cleaned);
     } catch {
-      tagsArray = cleaned.split(',').map((t) => t.trim()).filter(Boolean);
+      tagsArray = cleaned.split(',').map((t: string) => t.trim()).filter(Boolean);
     }
   }
 }
 
 const isOwner = userRole === 'owner';
 const isFull = (currentPax ?? 0) >= (maxPax ?? 1);
+
+const pendingRequestsCount = Array.isArray(pendingRequests) ? pendingRequests.length : 0;
+const pendingInvitationsCount = Array.isArray(pendingInvitations) ? pendingInvitations.length : 0;
+
+function getAvatarUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${PUBLIC_R2_URL}${url}`;
+}
 
 const visibilityIcon: Record<string, string> = {
   private: '🔒',
@@ -118,7 +129,7 @@ const statusBadgeClass: Record<string, string> = {
       )}
     </div>
 
-    <!-- Right: Action buttons -->
+    <!-- Right: Share button only -->
     <div class="flex items-center gap-2 shrink-0 pt-0.5">
       <button
         id="share-trip-btn"
@@ -127,42 +138,233 @@ const statusBadgeClass: Record<string, string> = {
       >
         <Share2Icon class="w-5 h-5" />
       </button>
-
-      {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
-        <button
-          id="join-btn"
-          class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
-        >
-          Request to Join
-        </button>
-      )}
-
-      {userRole === 'visitor' && !isInvited && isFull && (
-        <span class="px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
-          Trip Full
-        </span>
-      )}
-
-      {userRole === 'pending' && (
-        <button
-          id="cancel-req-btn"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
-        >
-          Cancel Request
-        </button>
-      )}
-
-      {userRole === 'member' && (
-        <button
-          id="leave-trip-btn"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
-        >
-          Leave Trip
-        </button>
-      )}
     </div>
   </div>
 </div>
+
+<!-- Sticky Action Footer (Mobile) -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-40 shadow-lg">
+  <!-- Pending Requests/Invitations Banner (for owner) -->
+  {isOwner && (pendingRequestsCount > 0 || pendingInvitationsCount > 0) && (
+    <div class="flex items-center justify-center gap-3 mb-3 pb-3 border-b border-gray-100">
+      <!-- Request avatars -->
+      {pendingRequestsCount > 0 && (
+        <div class="flex items-center gap-2">
+          <div class="flex -space-x-2">
+            {pendingRequests.slice(0, 3).map((request: any) => (
+              request.avatar_url ? (
+                <img 
+                  src={getAvatarUrl(request.avatar_url)} 
+                  alt={request.username || ''}
+                  title={request.full_name || request.username}
+                  class="w-8 h-8 rounded-full border-2 border-white object-cover"
+                />
+              ) : (
+                <div class="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                  {(request.username || request.full_name || '?').charAt(0).toUpperCase()}
+                </div>
+              )
+            ))}
+            {pendingRequestsCount > 3 && (
+              <div class="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+                +{pendingRequestsCount - 3}
+              </div>
+            )}
+          </div>
+          <span class="text-sm font-medium text-gray-700">
+            {pendingRequestsCount} request{pendingRequestsCount !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+      
+      <!-- Invitation avatars -->
+      {pendingInvitationsCount > 0 && (
+        <div class="flex items-center gap-2">
+          {pendingRequestsCount > 0 && <span class="text-gray-300">•</span>}
+          <div class="flex -space-x-2">
+            {pendingInvitations.slice(0, 3).map((inv: any) => (
+              inv.invitee_avatar ? (
+                <img 
+                  src={getAvatarUrl(inv.invitee_avatar)} 
+                  alt={inv.invitee_username || ''}
+                  title={inv.invitee_name || inv.invitee_username}
+                  class="w-8 h-8 rounded-full border-2 border-white object-cover"
+                />
+              ) : (
+                <div class="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">
+                  {(inv.invitee_name || inv.invitee_username || '?').charAt(0).toUpperCase()}
+                </div>
+              )
+            ))}
+            {pendingInvitationsCount > 3 && (
+              <div class="w-8 h-8 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
+                +{pendingInvitationsCount - 3}
+              </div>
+            )}
+          </div>
+          <span class="text-sm font-medium text-blue-600 ml-1">
+            {pendingInvitationsCount} invite{pendingInvitationsCount !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+    </div>
+  )}
+  
+  <div class="flex items-center gap-2 justify-center">
+    {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
+      <button
+        id="join-btn"
+        class="flex-1 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+      >
+        Request to Join
+      </button>
+    )}
+
+    {userRole === 'visitor' && !isInvited && isFull && (
+      <span class="flex-1 px-5 py-3 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium text-center cursor-not-allowed select-none">
+        Trip Full
+      </span>
+    )}
+
+    {userRole === 'pending' && (
+      <button
+        id="cancel-req-btn"
+        class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+      >
+        Cancel Request
+      </button>
+    )}
+
+    {userRole === 'member' && (
+      <button
+        id="leave-trip-btn"
+        class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+      >
+        Leave Trip
+      </button>
+    )}
+
+    {userRole === 'owner' && (
+      <>
+        <button
+          id="delete-trip-btn"
+          class="flex-1 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+        >
+          Delete Trip
+        </button>
+      </>
+    )}
+  </div>
+</div>
+
+<!-- Desktop Action Buttons (hidden on mobile) -->
+<div class="hidden md:flex items-center gap-2">
+  {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
+    <button
+      id="join-btn"
+      class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+    >
+      Request to Join
+    </button>
+  )}
+
+  {userRole === 'visitor' && !isInvited && isFull && (
+    <span class="px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
+      Trip Full
+    </span>
+  )}
+
+  {userRole === 'pending' && (
+    <button
+      id="cancel-req-btn"
+      class="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+    >
+      Cancel Request
+    </button>
+  )}
+
+  {userRole === 'member' && (
+    <button
+      id="leave-trip-btn"
+      class="px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+    >
+      Leave Trip
+    </button>
+  )}
+
+  {userRole === 'owner' && (
+    <button
+      id="delete-trip-btn"
+      class="px-4 py-2 rounded-xl border border-gray-200 text-red-600 text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+    >
+      Delete Trip
+    </button>
+  )}
+</div>
+
+<!-- Desktop: Owner sees request/invitation count -->
+{isOwner && (pendingRequestsCount > 0 || pendingInvitationsCount > 0) && (
+  <div class="hidden md:flex items-center justify-center gap-4 mt-3 pt-3 border-t border-gray-100">
+    {pendingRequestsCount > 0 && (
+      <div class="flex items-center gap-2">
+        <div class="flex -space-x-2">
+          {pendingRequests.slice(0, 3).map((request: any) => (
+            request.avatar_url ? (
+              <img 
+                src={getAvatarUrl(request.avatar_url)} 
+                alt={request.username || ''}
+                title={request.full_name || request.username}
+                class="w-7 h-7 rounded-full border-2 border-white object-cover"
+              />
+            ) : (
+              <div class="w-7 h-7 rounded-full border-2 border-white bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                {(request.username || request.full_name || '?').charAt(0).toUpperCase()}
+              </div>
+            )
+          ))}
+          {pendingRequestsCount > 3 && (
+            <div class="w-7 h-7 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+              +{pendingRequestsCount - 3}
+            </div>
+          )}
+        </div>
+        <span class="text-sm font-medium text-gray-700">
+          {pendingRequestsCount} pending request{pendingRequestsCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+    )}
+    
+    {pendingInvitationsCount > 0 && (
+      <div class="flex items-center gap-2">
+        {pendingRequestsCount > 0 && <span class="text-gray-300">•</span>}
+        <div class="flex -space-x-2">
+          {pendingInvitations.slice(0, 3).map((inv: any) => (
+            inv.invitee_avatar ? (
+              <img 
+                src={getAvatarUrl(inv.invitee_avatar)} 
+                alt={inv.invitee_username || ''}
+                title={inv.invitee_name || inv.invitee_username}
+                class="w-7 h-7 rounded-full border-2 border-white object-cover"
+              />
+            ) : (
+              <div class="w-7 h-7 rounded-full border-2 border-white bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">
+                {(inv.invitee_name || inv.invitee_username || '?').charAt(0).toUpperCase()}
+              </div>
+            )
+          ))}
+          {pendingInvitationsCount > 3 && (
+            <div class="w-7 h-7 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
+              +{pendingInvitationsCount - 3}
+            </div>
+          )}
+        </div>
+        <span class="text-sm font-medium text-blue-600">
+          {pendingInvitationsCount} pending invite{pendingInvitationsCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+    )}
+  </div>
+)}
 
 {isOwner && <VisibilityModal tripId={tripId} currentVisibility={visibility ?? 'private'} />}
 {isOwner && tripStatus && <StatusModal tripId={tripId} currentStatus={tripStatus} />}

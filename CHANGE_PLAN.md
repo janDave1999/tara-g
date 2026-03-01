@@ -101,10 +101,11 @@
 - [x] ~~Add toggleable preference filters in Discover tab~~
 - [x] ~~Create PreferencesPrompt modal component~~
 - [x] ~~Add user settings and travel preferences actions (settings.update, travelPreferences.update)~~
+- [x] ~~Complete trip search and filtering — Discover tab with province/region destination dropdown (all 82 PH provinces), budget filter, multi-select tag pills (migrations 044 & 045), select-then-apply pattern~~
 - [ ] Fix bugs in trip creation flow
 - [ ] Verify trip status transitions work correctly
 - [ ] Verify member management (join/leave/remove)
-- [ ] Complete trip search and filtering
+- [ ] Add organizer information section to trip detail page
 
 **Phase 2: Itinerary Enhancement (P1)**
 - [ ] Full drag-drop itinerary builder component
@@ -119,6 +120,11 @@
 - [ ] Export expense reports
 
 **Phase 4: Notifications & Social (P1)**
+- [x] ~~In-app notification bell with badge, dropdown, mark-as-read~~
+- [x] ~~/notifications page — full notification center with filter tabs (All/Unread/Trip Invites/Join Requests), pagination, mark-all-read~~
+- [x] ~~Inline action buttons for trip_invite (Accept/Decline) and trip_join_request (Approve/Reject) in bell dropdown and notifications page~~
+- [x] ~~Real-time badge polling (30s interval, paused when tab hidden, resumes on visibility)~~
+- [x] ~~Fixed missing public.users row bug that broke notification lookup (PGRST116)~~
 - [ ] Email notification system for trip updates
 - [ ] Push notifications
 - [ ] Trip sharing to social media

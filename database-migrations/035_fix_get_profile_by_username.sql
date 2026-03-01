@@ -48,32 +48,30 @@ BEGIN
   FROM public.user_travel_preferences utp
   WHERE utp.user_id = v_user_record.user_id;
 
-  -- Fetch interests
+  -- Fetch interests (user_interests stores category directly — no separate interests table)
   SELECT jsonb_agg(
     jsonb_build_object(
-      'id', i.id,
-      'category', i.category,
-      'icon', i.icon
+      'category',    ui2.interest_category,
+      'subcategory', ui2.interest_subcategory,
+      'priority',    ui2.priority
     )
   ) INTO v_interests
   FROM public.user_interests ui2
-  JOIN public.interests i ON ui2.interest_id = i.id
   WHERE ui2.user_id = v_user_record.user_id;
 
   -- Build result
   result := jsonb_build_object(
     'found', true,
     'profile', jsonb_build_object(
-      'user_id',         v_user_record.user_id,
-      'auth_id',         v_user_record.auth_id,
-      'username',        v_user_record.username,
-      'full_name',       v_user_record.full_name,
-      'avatar_url',      v_user_record.avatar_url,
-      'cover_image_url', v_user_record.cover_image_url,
-      'bio',             v_user_record.bio,
-      'is_verified',     v_user_record.is_verified,
-      'created_at',      v_user_record.created_at,
-      'privacy_mode',    v_user_record.privacy_mode
+      'user_id',     v_user_record.user_id,
+      'auth_id',     v_user_record.auth_id,
+      'username',    v_user_record.username,
+      'full_name',   v_user_record.full_name,
+      'avatar_url',  v_user_record.avatar_url,
+      'bio',         v_user_record.bio,
+      'is_verified', v_user_record.is_verified,
+      'is_private',  v_user_record.is_private,
+      'created_at',  v_user_record.created_at
     ),
     'information', CASE WHEN v_info_record IS NOT NULL THEN
       jsonb_build_object(
@@ -86,12 +84,11 @@ BEGIN
     ELSE jsonb_build_object() END,
     'preferences', CASE WHEN v_prefs_record IS NOT NULL THEN
       jsonb_build_object(
-        'budget_range',          v_prefs_record.budget_range,
-        'travel_style',          COALESCE(v_prefs_record.travel_style, '[]'::jsonb),
-        'pace_preference',       v_prefs_record.pace_preference,
-        'languages_spoken',      COALESCE(v_prefs_record.languages_spoken, '[]'::jsonb),
-        'accommodation_type',    v_prefs_record.accommodation_type,
-        'preferred_activities',  COALESCE(v_prefs_record.preferred_activities, '[]'::jsonb)
+        'budget_range',       v_prefs_record.budget_range,
+        'travel_style',       to_jsonb(COALESCE(v_prefs_record.travel_style, '{}'::text[])),
+        'pace_preference',    v_prefs_record.pace_preference,
+        'languages_spoken',   to_jsonb(COALESCE(v_prefs_record.languages_spoken, '{}'::text[])),
+        'accommodation_type', to_jsonb(COALESCE(v_prefs_record.accommodation_type, '{}'::text[]))
       )
     ELSE jsonb_build_object() END,
     'interests', COALESCE(v_interests, '[]'::jsonb)

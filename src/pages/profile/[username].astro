@@ -1,6 +1,10 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
 import { supabaseAdmin } from "@/lib/supabase";
+import { PUBLIC_R2_URL } from 'astro:env/client';
+
+import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
+import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
 
 const { username } = Astro.params;
 if (!username) return Astro.redirect("/");
@@ -9,28 +13,33 @@ if (!username) return Astro.redirect("/");
 const viewer_id = Astro.locals.user_id;
 
 // Fetch profile by username
-const { data: profileData } = await supabaseAdmin.rpc('get_profile_by_username', {
+const { data: profileData, error: profileError } = await supabaseAdmin.rpc('get_profile_by_username', {
   p_username: username
 });
 
-if (!profileData?.found) {
+if (profileError || !profileData?.found) {
   return Astro.redirect("/404");
 }
 
-const profile = profileData.profile;
-const userInfo = profileData.information;
-const userPrefs = profileData.preferences;
-const userInterests = profileData.interests;
+const profile      = profileData.profile;
+const userInfo     = profileData.information  ?? {};
+const userPrefs    = profileData.preferences  ?? {};
+const userInterests: any[] = profileData.interests ?? [];
 
 // viewer_id is auth.users.id; profile.auth_id is also auth.users.id — same space, safe to compare
 const isOwner = !!viewer_id && viewer_id === profile.auth_id;
 
+// Fetch stats via RPC (p_user_id = auth.users.id = profile.auth_id)
+const { data: userStats } = await supabaseAdmin.rpc('get_user_stats', {
+  p_user_id: profile.auth_id
+});
+
 // Check friendship status if viewer is logged in and not owner
-let friendshipStatus = null;
-let friendRequestStatus = null;
+let friendshipStatus: string | null = null;
+let friendRequestStatus: string | null = null;
 
 if (viewer_id && !isOwner) {
-  // Resolve viewer's internal user_id (friends/friend_requests use users.user_id, not auth_id)
+  // Resolve viewer's internal user_id
   const { data: viewerUser } = await supabaseAdmin
     .from('users')
     .select('user_id')
@@ -40,7 +49,6 @@ if (viewer_id && !isOwner) {
   const viewerUserId = viewerUser?.user_id;
 
   if (viewerUserId) {
-    // Check if they are friends (friends table uses users.user_id)
     const { data: friendship } = await supabaseAdmin
       .from('friends')
       .select('user_id')
@@ -49,7 +57,6 @@ if (viewer_id && !isOwner) {
 
     friendshipStatus = friendship ? 'friends' : null;
 
-    // Check for pending friend request (columns: sender_id, receiver_id — not from_user/to_user)
     if (!friendshipStatus) {
       const { data: request } = await supabaseAdmin
         .from('friend_requests')
@@ -64,318 +71,326 @@ if (viewer_id && !isOwner) {
   }
 }
 
-// Determine privacy level
-const privacyMode = profile.privacy_mode || 'public';
+// Privacy gate — uses is_private boolean
+const isPrivate = !!profile.is_private;
 let canViewFullProfile = true;
-
-if (!isOwner && viewer_id) {
-  if (privacyMode === 'private') {
-    canViewFullProfile = false;
-  } else if (privacyMode === 'friends' && friendshipStatus !== 'friends') {
-    canViewFullProfile = false;
-  }
-} else if (!viewer_id && privacyMode !== 'public') {
-  canViewFullProfile = false;
+if (!isOwner && isPrivate) {
+  canViewFullProfile = friendshipStatus === 'friends';
 }
 
-// Format dates
-const memberSince = profile.created_at 
-  ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+// Avatar
+const getAvatarUrl = (url?: string | null) =>
+  !url ? null : url.startsWith('http') ? url : `${PUBLIC_R2_URL}${url}`;
+
+const displayAvatarUrl = getAvatarUrl(profile.avatar_url);
+const initials = (profile.full_name || username || 'U').charAt(0).toUpperCase();
+
+// Member since
+const memberSince = profile.created_at
+  ? new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(profile.created_at))
   : 'Unknown';
+
+const locationStr = [userInfo.location_city, userInfo.location_country].filter(Boolean).join(', ');
+
+// Stats
+const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0;
 ---
 
 <PagePlate title={`${profile.full_name || username} (@${username}) | Tara G!`}>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Cover Image / Banner -->
-    <div class="h-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
-      {profile.cover_image_url && (
-        <img src={profile.cover_image_url} alt="Cover" class="w-full h-full object-cover" />
-      )}
-    </div>
-    
-    <div class="max-w-4xl mx-auto px-4 -mt-20">
-      <!-- Profile Header Card -->
-      <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div class="flex flex-col md:flex-row items-start md:items-end gap-6">
-          <!-- Avatar -->
-          <div class="relative">
-            <div class="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md">
-              <img 
-                src={profile.avatar_url || "/default-avatar.png"} 
-                alt={profile.full_name || username}
-                class="w-full h-full object-cover"
-              />
-            </div>
-            <!-- Verified Badge -->
-            {profile.is_verified && (
-              <div class="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title="Verified">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            )}
+<div class="min-h-screen bg-gray-50 pb-24">
+  <div class="max-w-4xl mx-auto px-4 pt-5 space-y-4">
+
+    <!-- Profile Header Card -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-md p-5 sm:p-6">
+
+      <!-- Avatar -->
+      <div class="relative shrink-0 mb-4">
+        <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-md">
+          {displayAvatarUrl
+            ? <img src={displayAvatarUrl} alt={profile.full_name || username} class="w-full h-full object-cover" />
+            : <div class="w-full h-full brand-gradient flex items-center justify-center text-white font-bold text-3xl">{initials}</div>
+          }
+        </div>
+        {profile.is_verified && (
+          <div class="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white p-1 rounded-full border-2 border-white shadow-sm" title="Verified Traveler">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
           </div>
-          
-          <!-- Name & Username -->
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <h1 class="text-3xl font-bold text-gray-900">{profile.full_name || username}</h1>
-            </div>
-            <p class="text-gray-500">@{username}</p>
-          </div>
-          
-          <!-- Action Buttons -->
-          <div class="flex gap-3">
-            {isOwner ? (
-              <a href="/onboarding/profile" class="btn btn-outline">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                Edit Profile
-              </a>
-            ) : (
-              <>
-                {friendRequestStatus === 'sent' ? (
-                  <button disabled class="btn btn-outline opacity-50 cursor-not-allowed">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Request Sent
-                  </button>
-                ) : friendRequestStatus === 'received' ? (
-                  <a href="/friends/requests" class="btn btn-primary">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    Respond to Request
-                  </a>
-                ) : friendshipStatus === 'friends' ? (
-                  <button class="btn btn-outline" disabled>
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Friends
-                  </button>
-                ) : (
-                  <button 
-                    class="btn btn-primary add-friend-btn" 
-                    data-user-id={profile.user_id}
-                  >
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    Add Friend
-                  </button>
-                )}
-                <button class="btn btn-outline message-btn" data-user-id={profile.user_id}>
-                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  Message
-                </button>
-              </>
-            )}
-          </div>
+        )}
+      </div>
+
+      <!-- Identity -->
+      <div class="mb-4">
+        <div class="flex items-center gap-2 flex-wrap mb-0.5">
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            {profile.full_name || username}
+          </h1>
+          {profile.is_verified && (
+            <span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Verified
+            </span>
+          )}
+        </div>
+        <p class="text-sm text-gray-400 mb-2">@{username}</p>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {locationStr && (
+            <span class="flex items-center gap-1 text-xs text-gray-500">
+              <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              {locationStr}
+            </span>
+          )}
+          <span class="flex items-center gap-1 text-xs text-gray-400">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            Joined {memberSince}
+          </span>
         </div>
       </div>
 
-      {canViewFullProfile ? (
-        <>
-          <!-- Stats Cards -->
-          <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow p-6 text-center">
-              <div class="text-3xl font-bold text-blue-600">{profile.trips_owned || 0}</div>
-              <div class="text-gray-500 text-sm">Trips Owned</div>
-            </div>
-            <div class="bg-white rounded-xl shadow p-6 text-center">
-              <div class="text-3xl font-bold text-purple-600">{profile.trips_joined || 0}</div>
-              <div class="text-gray-500 text-sm">Trips Joined</div>
-            </div>
-            <div class="bg-white rounded-xl shadow p-6 text-center">
-              <div class="text-3xl font-bold text-pink-600">{profile.friends_count || 0}</div>
-              <div class="text-gray-500 text-sm">Friends</div>
-            </div>
+      <!-- Action buttons -->
+      <div class="flex items-center gap-3 mb-5">
+        {isOwner ? (
+          <a href="/onboarding/profile"
+            class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-700
+                   border border-gray-200 hover:border-gray-300 hover:bg-gray-50
+                   rounded-xl px-4 py-2.5 transition-all duration-150">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            Edit Profile
+          </a>
+        ) : (
+          <>
+            {friendRequestStatus === 'sent' ? (
+              <button disabled
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-400
+                       border border-gray-200 rounded-xl px-4 py-2.5 opacity-60 cursor-not-allowed">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Request Sent
+              </button>
+            ) : friendRequestStatus === 'received' ? (
+              <a href="/friends/requests"
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white
+                       bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-all">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Respond to Request
+              </a>
+            ) : friendshipStatus === 'friends' ? (
+              <button disabled
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-green-700
+                       border border-green-200 bg-green-50 rounded-xl px-4 py-2.5">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                Friends
+              </button>
+            ) : viewer_id ? (
+              <button id="addFriendBtn" data-user-id={profile.user_id}
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white
+                       bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-all">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Add Friend
+              </button>
+            ) : (
+              <a href={`/signin?redirect=/profile/${username}`}
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white
+                       bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-all">
+                Sign in to connect
+              </a>
+            )}
+            {viewer_id && (
+              <button id="messageBtnPublic" data-user-id={profile.user_id}
+                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-700
+                       border border-gray-200 hover:border-gray-300 hover:bg-gray-50
+                       rounded-xl px-4 py-2.5 transition-all">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Message
+              </button>
+            )}
+          </>
+        )}
+        <!-- Share icon button -->
+        <button id="shareProfileBtn" aria-label="Share profile"
+          class="w-10 h-10 flex items-center justify-center text-gray-500
+                 border border-gray-200 hover:border-gray-300 hover:bg-gray-50
+                 rounded-xl transition-all duration-150 shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+        </button>
+      </div>
+
+      <!-- Stat strip -->
+      <dl class="flex items-stretch divide-x divide-gray-100 border-t border-gray-100 pt-5">
+        {[
+          { label: 'Created', value: userStats?.trips_owned   ?? 0 },
+          { label: 'Joined',  value: userStats?.trips_joined  ?? 0 },
+          { label: 'Friends', value: userStats?.friends_count ?? 0 },
+        ].map(s => (
+          <div class="flex-1 text-center px-2 flex flex-col items-center">
+            <dt class="stat-label">{s.label}</dt>
+            <dd class="stat-num">{s.value}</dd>
           </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Left Column - About & Interests -->
-            <div class="md:col-span-2 space-y-6">
-              <!-- About Section -->
-              <div class="bg-white rounded-xl shadow p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">About</h2>
-                {profile.bio ? (
-                  <p class="text-gray-700 whitespace-pre-wrap">{profile.bio}</p>
-                ) : (
-                  <p class="text-gray-400 italic">No bio yet.</p>
-                )}
-                
-                <div class="mt-4 pt-4 border-t border-gray-100">
-                  <div class="flex items-center gap-2 text-sm text-gray-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {userInfo.location_city || userInfo.location_country ? (
-                      <span>{[userInfo.location_city, userInfo.location_country].filter(Boolean).join(', ')}</span>
-                    ) : (
-                      <span>No location set</span>
-                    )}
-                  </div>
-                  <div class="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span>Member since {memberSince}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Interests Section -->
-              {userInterests && userInterests.length > 0 && (
-                <div class="bg-white rounded-xl shadow p-6">
-                  <h2 class="text-xl font-semibold text-gray-900 mb-4">Interests</h2>
-                  <div class="flex flex-wrap gap-2">
-                    {userInterests.map((interest: any) => (
-                      <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                        {interest.category}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <!-- Right Column - Travel Preferences -->
-            <div class="space-y-6">
-              <div class="bg-white rounded-xl shadow p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Travel Preferences</h2>
-                
-                <div class="space-y-4">
-                  <!-- Budget -->
-                  <div>
-                    <label class="text-sm text-gray-500">Budget</label>
-                    <p class="font-medium capitalize">{userPrefs.budget_range || 'Not set'}</p>
-                  </div>
-                  
-                  <!-- Travel Style -->
-                  <div>
-                    <label class="text-sm text-gray-500">Travel Style</label>
-                    <div class="flex flex-wrap gap-1 mt-1">
-                      {userPrefs.travel_style && userPrefs.travel_style.length > 0 ? (
-                        userPrefs.travel_style.map((style: string) => (
-                          <span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">{style}</span>
-                        ))
-                      ) : (
-                        <span class="text-gray-400 text-sm">Not set</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <!-- Pace -->
-                  <div>
-                    <label class="text-sm text-gray-500">Pace</label>
-                    <p class="font-medium capitalize">{userPrefs.pace_preference || 'Not set'}</p>
-                  </div>
-                  
-                  <!-- Languages -->
-                  <div>
-                    <label class="text-sm text-gray-500">Languages</label>
-                    <div class="flex flex-wrap gap-1 mt-1">
-                      {userPrefs.languages_spoken && userPrefs.languages_spoken.length > 0 ? (
-                        userPrefs.languages_spoken.map((lang: string) => (
-                          <span class="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs">{lang}</span>
-                        ))
-                      ) : (
-                        <span class="text-gray-400 text-sm">Not set</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        <!-- Private Profile Message -->
-        <div class="bg-white rounded-xl shadow p-12 text-center">
-          <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          <h2 class="text-2xl font-bold text-gray-900 mb-2">Private Profile</h2>
-          <p class="text-gray-500 mb-6">
-            {viewer_id 
-              ? "This user's profile is private. Add them as a friend to see their full profile."
-              : "This user's profile is private. Sign in and add them as a friend to see their full profile."
-            }
-          </p>
-          {!viewer_id && (
-            <a href="/signin" class="btn btn-primary">
-              Sign In
-            </a>
-          )}
-          {viewer_id && (
-            <button 
-              class="btn btn-primary add-friend-btn" 
-              data-user-id={profile.user_id}
-            >
-              Add Friend
-            </button>
-          )}
+        ))}
+        <div class="flex-1 text-center px-2 flex flex-col items-center">
+          <dt class="stat-label">Bucket</dt>
+          <dd class="text-xl font-bold text-gray-900 mt-0.5 leading-none">
+            {bucketCount}<span class="text-sm font-semibold text-gray-400">/82</span>
+          </dd>
+          <span class="inline-flex items-center mt-1.5 text-[9px] font-bold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full tracking-wide">
+            Project 82
+          </span>
         </div>
-      )}
+      </dl>
     </div>
+
+    {canViewFullProfile ? (
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <div class="lg:col-span-2 space-y-4">
+          <!-- About -->
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div class="px-5 py-4 border-b border-gray-100">
+              <h2 class="section-title">About</h2>
+            </div>
+            <div class="p-5">
+              {profile.bio
+                ? <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
+                : <p class="text-sm text-gray-400 italic">No bio yet.</p>
+              }
+              <div class="border-t border-gray-100 mt-4 pt-4 space-y-2">
+                {locationStr && (
+                  <div class="flex items-center gap-2 text-xs text-gray-500">
+                    <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {locationStr}
+                  </div>
+                )}
+                <div class="flex items-center gap-2 text-xs text-gray-400">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  Member since {memberSince}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ProfileInterests interests={userInterests} />
+        </div>
+
+        <div class="space-y-4">
+          <ProfilePreferences
+            budget={userPrefs.budget_range         ?? null}
+            pace={userPrefs.pace_preference        ?? null}
+            languages={userPrefs.languages_spoken  ?? null}
+            accommodation={userPrefs.accommodation_type ?? null}
+            travelStyle={userPrefs.travel_style    ?? null}
+          />
+        </div>
+
+      </div>
+    ) : (
+      <!-- Private Profile -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="text-lg font-bold text-gray-900 mb-1">Private Profile</h2>
+        <p class="text-sm text-gray-500 mb-6">
+          {viewer_id
+            ? "This profile is private. Add them as a friend to see their full profile."
+            : "This profile is private. Sign in and add them as a friend to view it."
+          }
+        </p>
+        {!viewer_id && (
+          <a href={`/signin?redirect=/profile/${username}`}
+            class="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-2.5 transition-all">
+            Sign In
+          </a>
+        )}
+        {viewer_id && (
+          <button id="addFriendBtn" data-user-id={profile.user_id}
+            class="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-2.5 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+            Add Friend
+          </button>
+        )}
+      </div>
+    )}
+
   </div>
+</div>
 
-  <script>
-    // Add Friend functionality
-    document.querySelectorAll('.add-friend-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const userId = (btn as HTMLElement).dataset.userId;
-        if (!userId) return;
-        
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          import.meta.env.PUBLIC_SUPABASE_URL,
-          import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-        );
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          window.location.href = '/signin';
-          return;
-        }
+<div id="profileToast"
+     role="status" aria-live="polite"
+     class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white
+            text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0
+            pointer-events-none transition-all duration-200 z-[200] translate-y-2">
+</div>
 
-        // Resolve auth UUID → internal user_id (sender_id/receiver_id are users.user_id)
-        const { data: senderRow } = await supabase
-          .from('users')
-          .select('user_id')
-          .eq('auth_id', user.id)
-          .single();
+<style>
+  .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+  .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-label     { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-num       { font-size: 24px; font-weight: 800; color: #111827; margin-top: 2px; display: block; }
+</style>
 
-        if (!senderRow?.user_id) return;
+<script>
+  import { actions, ActionError } from 'astro:actions';
 
-        const { error } = await supabase
-          .from('friend_requests')
-          .insert({
-            sender_id: senderRow.user_id,
-            receiver_id: userId,
-            status: 'pending'
-          });
-        
-        if (!error) {
-          btn.textContent = 'Request Sent';
-          (btn as HTMLButtonElement).disabled = true;
-          btn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-      });
-    });
+  const toast = document.getElementById('profileToast')!;
 
-    // Message button functionality
-    document.querySelectorAll('.message-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const userId = (btn as HTMLElement).dataset.userId;
-        window.location.href = `/messages?user=${userId}`;
-      });
-    });
-  </script>
+  function showToast(msg: string) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // Add Friend
+  document.getElementById('addFriendBtn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const targetUserId = btn.dataset.userId;
+    if (!targetUserId) return;
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    const { error } = await actions.friends.sendFriendRequest({ targetUserId });
+
+    if (error instanceof ActionError) {
+      showToast(`⚠️ ${error.message}`);
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    } else {
+      btn.textContent = 'Request Sent';
+      showToast('✅ Friend request sent!');
+    }
+  });
+
+  // Message
+  document.getElementById('messageBtnPublic')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    window.location.href = `/messages?user=${btn.dataset.userId}`;
+  });
+
+  // Share
+  document.getElementById('shareProfileBtn')?.addEventListener('click', async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url: window.location.href });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast('✅ Profile link copied!');
+      }
+    } catch {}
+  });
+</script>
+
+<style>
+  #profileToast.show {
+    opacity: 1 !important;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) !important;
+  }
+</style>
 </PagePlate>

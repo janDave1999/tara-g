@@ -155,16 +155,12 @@ const userId = Astro.locals.user_id || "";
     empty?.classList.add('hidden');
     content?.classList.add('hidden');
 
-    console.log('[NOTIF:bell] loadNotifications() — tab:', currentTab);
-
     try {
       const result = await actions.notifications.getNotifications({
         limit: 20,
         offset: 0,
         unreadOnly: currentTab === 'unread',
       });
-
-      console.log('[NOTIF:bell] getNotifications result:', result);
 
       if (result.error) {
         console.error('[NOTIF:bell] getNotifications error:', result.error);
@@ -173,7 +169,6 @@ const userId = Astro.locals.user_id || "";
       if (result.data) {
         notifications = result.data.notifications || [];
         unreadCount = result.data.unreadCount || 0;
-        console.log('[NOTIF:bell] loaded', notifications.length, 'notifications, unreadCount:', unreadCount);
         renderNotifications();
         updateBadge();
       }
@@ -234,6 +229,7 @@ const userId = Astro.locals.user_id || "";
           data-trip-id="${notification.data?.trip_id || ''}"
           data-invitation-id="${notification.data?.invitation_id || ''}"
           data-member-id="${notification.data?.member_id || ''}"
+          data-sender-id="${notification.data?.sender_user_id || ''}"
         >
           <div class="shrink-0 relative">
             ${avatarHtml}
@@ -290,6 +286,8 @@ const userId = Astro.locals.user_id || "";
         const invitationId = notifItem?.getAttribute('data-invitation-id') || '';
         const memberId = notifItem?.getAttribute('data-member-id') || '';
 
+        const senderId = notifItem?.getAttribute('data-sender-id') || '';
+
         const actionsContainer = btn.closest('.notif-actions');
         if (actionsContainer) {
           (actionsContainer as HTMLElement).innerHTML = `<span class="text-xs text-gray-400 italic">Processing...</span>`;
@@ -299,26 +297,28 @@ const userId = Astro.locals.user_id || "";
           let success = false;
           let label = '';
 
-          console.log('[NOTIF:bell] action button clicked:', action, { notifId, tripId, invitationId, memberId });
-
           if (action === 'accept_invite' && invitationId) {
             const res = await actions.trip.acceptTripInvitation({ invitationId });
-            console.log('[NOTIF:bell] acceptTripInvitation result:', res);
             success = !!res.data?.success;
             label = 'Accepted';
           } else if (action === 'decline_invite' && invitationId) {
             const res = await actions.trip.declineTripInvitation({ invitationId });
-            console.log('[NOTIF:bell] declineTripInvitation result:', res);
             success = !!res.data?.success;
             label = 'Declined';
           } else if (action === 'approve_join' && memberId && tripId) {
             const res = await actions.trip.approveJoinRequest({ memberId, tripId });
-            console.log('[NOTIF:bell] approveJoinRequest result:', res);
             success = !!res.data?.success;
             label = 'Approved';
           } else if (action === 'reject_join' && memberId && tripId) {
             const res = await actions.trip.rejectJoinRequest({ memberId, tripId });
-            console.log('[NOTIF:bell] rejectJoinRequest result:', res);
+            success = !!res.data?.success;
+            label = 'Declined';
+          } else if (action === 'accept_friend' && senderId) {
+            const res = await actions.friends.acceptFriendRequest({ senderUserId: senderId });
+            success = !!res.data?.success;
+            label = 'Accepted';
+          } else if (action === 'decline_friend' && senderId) {
+            const res = await actions.friends.declineFriendRequest({ senderUserId: senderId });
             success = !!res.data?.success;
             label = 'Declined';
           }
@@ -356,6 +356,7 @@ const userId = Astro.locals.user_id || "";
     const type = notification.type;
     const invitationId = notification.data?.invitation_id;
     const memberId = notification.data?.member_id;
+    const senderUserId = notification.data?.sender_user_id;
 
     if (type === 'trip_invite' && invitationId && !notification.is_read) {
       return `
@@ -371,6 +372,15 @@ const userId = Astro.locals.user_id || "";
         <div class="notif-actions flex gap-2 mt-2">
           <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors" data-action="approve_join">Approve</button>
           <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-white text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors" data-action="reject_join">Decline</button>
+        </div>
+      `;
+    }
+
+    if (type === 'friend_request' && senderUserId && !notification.is_read) {
+      return `
+        <div class="notif-actions flex gap-2 mt-2">
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" data-action="accept_friend">Accept</button>
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-white text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors" data-action="decline_friend">Decline</button>
         </div>
       `;
     }
@@ -454,16 +464,13 @@ const userId = Astro.locals.user_id || "";
 
   // Initialize - fetch unread count and start polling
   (async () => {
-    console.log('[NOTIF:bell] init — fetching unread count');
     try {
       const result = await actions.notifications.getUnreadCount({});
-      console.log('[NOTIF:bell] getUnreadCount result:', result);
       if (result.error) {
         console.error('[NOTIF:bell] getUnreadCount error:', result.error);
       }
       if (result.data) {
         unreadCount = result.data.count || 0;
-        console.log('[NOTIF:bell] unreadCount:', unreadCount);
         updateBadge();
       }
     } catch (error) {

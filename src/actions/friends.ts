@@ -101,21 +101,16 @@ export const friends = {
       const callerUserId = await getInternalUserId(authId);
       if (!callerUserId) throw new ActionError({ code: 'UNAUTHORIZED', message: 'User not found.' });
 
+      // Updating status to 'accepted' fires the trigger_create_friendship trigger,
+      // which inserts both bidirectional rows into friends automatically.
       const { error: updateError } = await supabaseAdmin
         .from('friend_requests')
-        .update({ status: 'accepted', responded_at: new Date().toISOString() })
+        .update({ status: 'accepted' })
         .eq('sender_id', senderUserId)
         .eq('receiver_id', callerUserId)
         .eq('status', 'pending');
 
       if (updateError) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to accept request.' });
-
-      const { error: friendError } = await supabaseAdmin.from('friends').insert([
-        { user_id: callerUserId, friend_id: senderUserId },
-        { user_id: senderUserId, friend_id: callerUserId },
-      ]);
-
-      if (friendError) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to create friendship.' });
 
       const { data: callerUser } = await supabaseAdmin
         .from('users')

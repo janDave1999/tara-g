@@ -49,23 +49,39 @@ if (viewer_id && !isOwner) {
   const viewerUserId = viewerUser?.user_id;
 
   if (viewerUserId) {
+    // Check friendship — friends table is bidirectional so one row suffices
     const { data: friendship } = await supabaseAdmin
       .from('friends')
       .select('user_id')
-      .or(`and(user_id.eq.${viewerUserId},friend_id.eq.${profile.user_id}),and(user_id.eq.${profile.user_id},friend_id.eq.${viewerUserId})`)
-      .single();
+      .eq('user_id', viewerUserId)
+      .eq('friend_id', profile.user_id)
+      .maybeSingle();
 
     friendshipStatus = friendship ? 'friends' : null;
 
     if (!friendshipStatus) {
-      const { data: request } = await supabaseAdmin
+      // Check if viewer sent a request to the profile owner
+      const { data: sentReq } = await supabaseAdmin
         .from('friend_requests')
         .select('sender_id')
-        .or(`and(sender_id.eq.${viewerUserId},receiver_id.eq.${profile.user_id},status.eq.pending),and(sender_id.eq.${profile.user_id},receiver_id.eq.${viewerUserId},status.eq.pending)`)
-        .single();
+        .eq('sender_id', viewerUserId)
+        .eq('receiver_id', profile.user_id)
+        .eq('status', 'pending')
+        .maybeSingle();
 
-      if (request) {
-        friendRequestStatus = request.sender_id === viewerUserId ? 'sent' : 'received';
+      if (sentReq) {
+        friendRequestStatus = 'sent';
+      } else {
+        // Check if the profile owner sent a request to the viewer
+        const { data: receivedReq } = await supabaseAdmin
+          .from('friend_requests')
+          .select('sender_id')
+          .eq('sender_id', profile.user_id)
+          .eq('receiver_id', viewerUserId)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (receivedReq) friendRequestStatus = 'received';
       }
     }
   }
@@ -172,12 +188,19 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
                 Request Sent
               </button>
             ) : friendRequestStatus === 'received' ? (
-              <a href="/friends/requests"
-                class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white
-                       bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-all">
-                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                Respond to Request
-              </a>
+              <>
+                <button id="acceptFriendBtn" data-sender-id={profile.user_id}
+                  class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white
+                         bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-all">
+                  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                  Accept
+                </button>
+                <button id="declineFriendBtn" data-sender-id={profile.user_id}
+                  class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-700
+                         border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl px-4 py-2.5 transition-all">
+                  Decline
+                </button>
+              </>
             ) : friendshipStatus === 'friends' ? (
               <button disabled
                 class="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-green-700
@@ -364,6 +387,54 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
     } else {
       btn.textContent = 'Request Sent';
       showToast('✅ Friend request sent!');
+    }
+  });
+
+  // Accept friend request (viewer received a request from the profile owner)
+  document.getElementById('acceptFriendBtn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const senderUserId = btn.dataset.senderId;
+    if (!senderUserId) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Accepting…';
+    const declineBtn = document.getElementById('declineFriendBtn') as HTMLButtonElement | null;
+    if (declineBtn) declineBtn.disabled = true;
+
+    const { error } = await actions.friends.acceptFriendRequest({ senderUserId });
+
+    if (error instanceof ActionError) {
+      showToast(`⚠️ ${error.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Accept';
+      if (declineBtn) declineBtn.disabled = false;
+    } else {
+      showToast('✅ You are now friends!');
+      setTimeout(() => window.location.reload(), 1200);
+    }
+  });
+
+  // Decline friend request
+  document.getElementById('declineFriendBtn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const senderUserId = btn.dataset.senderId;
+    if (!senderUserId) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Declining…';
+    const acceptBtn = document.getElementById('acceptFriendBtn') as HTMLButtonElement | null;
+    if (acceptBtn) acceptBtn.disabled = true;
+
+    const { error } = await actions.friends.declineFriendRequest({ senderUserId });
+
+    if (error instanceof ActionError) {
+      showToast(`⚠️ ${error.message}`);
+      btn.disabled = false;
+      btn.textContent = 'Decline';
+      if (acceptBtn) acceptBtn.disabled = false;
+    } else {
+      showToast('Request declined.');
+      setTimeout(() => window.location.reload(), 1200);
     }
   });
 

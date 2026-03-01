@@ -5,6 +5,7 @@ import TripCard from "@/components/TripCard.astro";
 import SuggestedTripCard from "@/components/SuggestedTripCard.astro";
 import PreferencesPrompt from "@/components/PreferencesPrompt.astro";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { PH_PROVINCES } from "@/data/phProvinces";
 
 const userId = Astro.locals.user_id;
 
@@ -20,7 +21,7 @@ const statusFilter = url.searchParams.get('status') || '';
 const regionFilter = url.searchParams.get('region') || '';
 const budgetFilter = url.searchParams.get('budget') || '';
 const styleFilter = url.searchParams.get('style') || '';
-const paceFilter = url.searchParams.get('pace') || '';
+const styleFilters: string[] = styleFilter ? styleFilter.split(',').filter(Boolean) : [];
 
 const itemsPerPage = 12;
 const offset = (currentPage - 1) * itemsPerPage;
@@ -56,8 +57,7 @@ const [ownedResult, participatingResult, discoverResult, suggestedResult] = awai
     p_search: currentTab === 'discover' ? (searchQuery || null) : null,
     p_region: currentTab === 'discover' ? (regionFilter || null) : null,
     p_budget: currentTab === 'discover' ? (budgetFilter || null) : null,
-    p_travel_style: currentTab === 'discover' ? (styleFilter || null) : null,
-    p_pace: currentTab === 'discover' ? (paceFilter || null) : null,
+    p_travel_style: currentTab === 'discover' ? (styleFilters.length > 0 ? styleFilters : null) : null,
     p_limit: itemsPerPage,
     p_offset: currentTab === 'discover' ? offset : 0,
   }),
@@ -66,6 +66,9 @@ const [ownedResult, participatingResult, discoverResult, suggestedResult] = awai
     p_limit: 6,
   }),
 ]);
+if (discoverResult.error) {
+  console.error('[DISCOVER] RPC error:', discoverResult.error);
+}
 const ownedTrips = ownedResult.data || [];
 const participatingTrips = participatingResult.data || [];
 const discoverTrips = discoverResult.data || [];
@@ -90,8 +93,8 @@ if (currentTab === 'member') {
 }
 
 const totalPages = Math.ceil(currentCount / itemsPerPage);
-const hasActiveFilters = !!(searchQuery || statusFilter || regionFilter || budgetFilter || styleFilter || paceFilter);
-const activeFilterCount = [searchQuery, statusFilter, regionFilter, budgetFilter, styleFilter, paceFilter].filter(Boolean).length;
+const hasActiveFilters = !!(searchQuery || statusFilter || regionFilter || budgetFilter || styleFilter);
+const activeFilterCount = [searchQuery, statusFilter, regionFilter, budgetFilter, styleFilter].filter(Boolean).length;
 
 function buildUrl(params: Record<string, string>) {
   const newUrl = new URL(Astro.request.url);
@@ -101,6 +104,35 @@ function buildUrl(params: Record<string, string>) {
   });
   return newUrl.pathname + newUrl.search;
 }
+
+function toggleTagUrl(tag: string): string {
+  const next = styleFilters.includes(tag)
+    ? styleFilters.filter((t) => t !== tag)
+    : [...styleFilters, tag];
+  return buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: next.join(','), pace: '' });
+}
+
+const REGION_LABELS: Record<string, string> = {
+  'NCR': 'National Capital Region', 'CAR': 'Cordillera',
+  'I': 'Ilocos', 'II': 'Cagayan Valley', 'III': 'Central Luzon',
+  'IV-A': 'CALABARZON', 'IV-B': 'MIMAROPA', 'V': 'Bicol',
+  'VI': 'Western Visayas', 'VII': 'Central Visayas', 'VIII': 'Eastern Visayas',
+  'IX': 'Zamboanga Peninsula', 'X': 'Northern Mindanao', 'XI': 'Davao Region',
+  'XII': 'SOCCSKSARGEN', 'XIII': 'Caraga', 'ARMM': 'BARMM',
+};
+
+// Group provinces by region for optgroup rendering
+const provincesByRegion = PH_PROVINCES.reduce((acc, p) => {
+  if (!acc[p.region]) acc[p.region] = [];
+  acc[p.region].push(p.name);
+  return acc;
+}, {} as Record<string, string[]>);
+
+const TRIP_TAGS = [
+  'beach', 'mountains', 'waterfalls', 'adventure', 'hiking', 'diving',
+  'surfing', 'camping', 'relaxation', 'culture', 'food', 'road-trip',
+  'wildlife', 'photography', 'nightlife', 'gigs', 'festivals', 'museums',
+];
 ---
 
 <Pageplate title="My Trips">
@@ -223,7 +255,6 @@ function buildUrl(params: Record<string, string>) {
             <input type="hidden" name="region" value={regionFilter} />
             <input type="hidden" name="budget" value={budgetFilter} />
             <input type="hidden" name="style" value={styleFilter} />
-            <input type="hidden" name="pace" value={paceFilter} />
             <div class="relative">
               <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -252,33 +283,36 @@ function buildUrl(params: Record<string, string>) {
           <input type="hidden" name="tab" value={currentTab} />
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="search" value={searchQuery} />
+          {currentTab === 'discover' && <input type="hidden" name="style" value={styleFilter} />}
 
-          <!-- Status -->
-          <div class="relative">
-            <select
-              id="status-filter"
-              name="status"
-              class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                statusFilter
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
-              }`}
-            >
-              <option value="">Status</option>
-              <option value="draft" selected={statusFilter === 'draft'}>Draft</option>
-              <option value="active" selected={statusFilter === 'active'}>Active</option>
-              <option value="completed" selected={statusFilter === 'completed'}>Completed</option>
-              <option value="archived" selected={statusFilter === 'archived'}>Archived</option>
-              <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelled</option>
-            </select>
-            <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </div>
+          <!-- Status — only for My Trips and Joined tabs -->
+          {currentTab !== 'discover' && (
+            <div class="relative">
+              <select
+                id="status-filter"
+                name="status"
+                class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  statusFilter
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                <option value="">Status</option>
+                <option value="draft" selected={statusFilter === 'draft'}>Draft</option>
+                <option value="active" selected={statusFilter === 'active'}>Active</option>
+                <option value="completed" selected={statusFilter === 'completed'}>Completed</option>
+                <option value="archived" selected={statusFilter === 'archived'}>Archived</option>
+                <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelled</option>
+              </select>
+              <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          )}
 
           {currentTab === 'discover' && (
             <>
-              <!-- Region -->
+              <!-- Destination — all 82 PH provinces grouped by region -->
               <div class="relative">
                 <select
                   id="region-filter"
@@ -289,30 +323,20 @@ function buildUrl(params: Record<string, string>) {
                       : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
                   }`}
                 >
-                  <option value="">Region</option>
-                  <option value="NCR" selected={regionFilter === 'NCR'}>NCR</option>
-                  <option value="CAR" selected={regionFilter === 'CAR'}>Cordillera</option>
-                  <option value="I" selected={regionFilter === 'I'}>Ilocos</option>
-                  <option value="II" selected={regionFilter === 'II'}>Cagayan Valley</option>
-                  <option value="III" selected={regionFilter === 'III'}>Central Luzon</option>
-                  <option value="IV-A" selected={regionFilter === 'IV-A'}>CALABARZON</option>
-                  <option value="IV-B" selected={regionFilter === 'IV-B'}>MIMAROPA</option>
-                  <option value="V" selected={regionFilter === 'V'}>Bicol</option>
-                  <option value="VI" selected={regionFilter === 'VI'}>W. Visayas</option>
-                  <option value="VII" selected={regionFilter === 'VII'}>C. Visayas</option>
-                  <option value="VIII" selected={regionFilter === 'VIII'}>E. Visayas</option>
-                  <option value="IX" selected={regionFilter === 'IX'}>Zamboanga</option>
-                  <option value="X" selected={regionFilter === 'X'}>N. Mindanao</option>
-                  <option value="XI" selected={regionFilter === 'XI'}>Davao</option>
-                  <option value="XII" selected={regionFilter === 'XII'}>SOCCSKSARGEN</option>
-                  <option value="XIII" selected={regionFilter === 'XIII'}>Caraga</option>
-                  <option value="BARMM" selected={regionFilter === 'BARMM'}>BARMM</option>
+                  <option value="">Destination</option>
+                  {Object.entries(provincesByRegion).map(([regionCode, provinces]) => (
+                    <optgroup label={REGION_LABELS[regionCode] ?? regionCode}>
+                      {provinces.map((name) => (
+                        <option value={name} selected={regionFilter === name}>{name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
                 <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                 </svg>
               </div>
-              <!-- Budget -->
+              <!-- Budget (₱ PHP ranges) -->
               <div class="relative">
                 <select
                   id="budget-filter"
@@ -324,52 +348,9 @@ function buildUrl(params: Record<string, string>) {
                   }`}
                 >
                   <option value="">Budget</option>
-                  <option value="budget" selected={budgetFilter === 'budget'}>Budget-friendly</option>
-                  <option value="moderate" selected={budgetFilter === 'moderate'}>Moderate</option>
-                  <option value="luxury" selected={budgetFilter === 'luxury'}>Luxury</option>
-                </select>
-                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </div>
-              <!-- Style -->
-              <div class="relative">
-                <select
-                  id="style-filter"
-                  name="style"
-                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    styleFilter
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  <option value="">Style</option>
-                  <option value="adventure" selected={styleFilter === 'adventure'}>Adventure</option>
-                  <option value="relax" selected={styleFilter === 'relax'}>Relax</option>
-                  <option value="beach" selected={styleFilter === 'beach'}>Beach</option>
-                  <option value="mountain" selected={styleFilter === 'mountain'}>Mountain</option>
-                  <option value="cultural" selected={styleFilter === 'cultural'}>Cultural</option>
-                  <option value="food" selected={styleFilter === 'food'}>Food Trip</option>
-                </select>
-                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </div>
-              <!-- Pace -->
-              <div class="relative">
-                <select
-                  id="pace-filter"
-                  name="pace"
-                  class={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    paceFilter
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  <option value="">Pace</option>
-                  <option value="relaxed" selected={paceFilter === 'relaxed'}>Relaxed</option>
-                  <option value="moderate" selected={paceFilter === 'moderate'}>Moderate</option>
-                  <option value="fast" selected={paceFilter === 'fast'}>Fast-paced</option>
+                  <option value="budget" selected={budgetFilter === 'budget'}>Under ₱5k</option>
+                  <option value="moderate" selected={budgetFilter === 'moderate'}>₱5k – ₱15k</option>
+                  <option value="luxury" selected={budgetFilter === 'luxury'}>Above ₱15k</option>
                 </select>
                 <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
@@ -394,6 +375,36 @@ function buildUrl(params: Record<string, string>) {
             </div>
           )}
         </form>
+
+        <!-- Tag pills — Discover only, multi-select -->
+        {currentTab === 'discover' && (
+          <div class="px-4 md:px-5 pb-4 flex flex-wrap items-center gap-1.5 border-t border-gray-50 pt-3">
+            <span class="text-xs font-medium text-gray-400 self-center shrink-0 mr-0.5">Tags</span>
+            {TRIP_TAGS.map((tag) => (
+              <a
+                href={toggleTagUrl(tag)}
+                class={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  styleFilters.includes(tag)
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tag}
+              </a>
+            ))}
+            {styleFilters.length > 0 && (
+              <a
+                href={buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: '', pace: '' })}
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors ml-1"
+              >
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Clear tags
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <!-- Results meta -->
@@ -501,7 +512,7 @@ function buildUrl(params: Record<string, string>) {
         <nav class="flex justify-center items-center gap-1 mt-6 mb-2" aria-label="Pagination">
           {currentPage > 1 ? (
             <a
-              href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+              href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all"
               aria-label="Previous"
             >
@@ -517,34 +528,34 @@ function buildUrl(params: Record<string, string>) {
             </span>
           )}
 
-          <a href={buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter })}
+          <a href={buildUrl({ tab: currentTab, page: '1', search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
             class={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold transition-all ${1 === currentPage ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200'}`}>1</a>
 
           {currentPage > 3 && <span class="text-gray-300 px-1 text-sm">···</span>}
 
           {currentPage - 1 > 1 && (
-            <a href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage - 1), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all">{currentPage - 1}</a>
           )}
           {currentPage !== 1 && currentPage !== totalPages && (
-            <a href={buildUrl({ tab: currentTab, page: String(currentPage), search: searchQuery, status: statusFilter, region: regionFilter })}
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold bg-blue-600 text-white shadow-md shadow-blue-500/30">{currentPage}</a>
           )}
           {currentPage + 1 < totalPages && (
-            <a href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+            <a href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all">{currentPage + 1}</a>
           )}
 
           {currentPage < totalPages - 2 && <span class="text-gray-300 px-1 text-sm">···</span>}
 
           {totalPages > 1 && (
-            <a href={buildUrl({ tab: currentTab, page: String(totalPages), search: searchQuery, status: statusFilter, region: regionFilter })}
+            <a href={buildUrl({ tab: currentTab, page: String(totalPages), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold transition-all ${totalPages === currentPage ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200'}`}>{totalPages}</a>
           )}
 
           {currentPage < totalPages ? (
             <a
-              href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter })}
+              href={buildUrl({ tab: currentTab, page: String(currentPage + 1), search: searchQuery, status: statusFilter, region: regionFilter, budget: budgetFilter, style: styleFilter, pace: '' })}
               class="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm border border-transparent hover:border-gray-200 transition-all"
               aria-label="Next"
             >
@@ -603,7 +614,7 @@ function buildUrl(params: Record<string, string>) {
     });
 
     // Filter selects auto-submit the filter form
-    ['status-filter', 'region-filter', 'budget-filter', 'style-filter', 'pace-filter'].forEach(id => {
+    ['status-filter', 'region-filter', 'budget-filter', 'style-filter'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => {
         (document.getElementById('filter-form') as HTMLFormElement)?.submit();
       });

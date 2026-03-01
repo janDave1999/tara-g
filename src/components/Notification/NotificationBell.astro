@@ -155,6 +155,8 @@ const userId = Astro.locals.user_id || "";
     empty?.classList.add('hidden');
     content?.classList.add('hidden');
 
+    console.log('[NOTIF:bell] loadNotifications() — tab:', currentTab);
+
     try {
       const result = await actions.notifications.getNotifications({
         limit: 20,
@@ -162,9 +164,16 @@ const userId = Astro.locals.user_id || "";
         unreadOnly: currentTab === 'unread',
       });
 
+      console.log('[NOTIF:bell] getNotifications result:', result);
+
+      if (result.error) {
+        console.error('[NOTIF:bell] getNotifications error:', result.error);
+      }
+
       if (result.data) {
         notifications = result.data.notifications || [];
         unreadCount = result.data.unreadCount || 0;
+        console.log('[NOTIF:bell] loaded', notifications.length, 'notifications, unreadCount:', unreadCount);
         renderNotifications();
         updateBadge();
       }
@@ -290,20 +299,26 @@ const userId = Astro.locals.user_id || "";
           let success = false;
           let label = '';
 
+          console.log('[NOTIF:bell] action button clicked:', action, { notifId, tripId, invitationId, memberId });
+
           if (action === 'accept_invite' && invitationId) {
             const res = await actions.trip.acceptTripInvitation({ invitationId });
+            console.log('[NOTIF:bell] acceptTripInvitation result:', res);
             success = !!res.data?.success;
             label = 'Accepted';
           } else if (action === 'decline_invite' && invitationId) {
             const res = await actions.trip.declineTripInvitation({ invitationId });
+            console.log('[NOTIF:bell] declineTripInvitation result:', res);
             success = !!res.data?.success;
             label = 'Declined';
           } else if (action === 'approve_join' && memberId && tripId) {
             const res = await actions.trip.approveJoinRequest({ memberId, tripId });
+            console.log('[NOTIF:bell] approveJoinRequest result:', res);
             success = !!res.data?.success;
             label = 'Approved';
           } else if (action === 'reject_join' && memberId && tripId) {
             const res = await actions.trip.rejectJoinRequest({ memberId, tripId });
+            console.log('[NOTIF:bell] rejectJoinRequest result:', res);
             success = !!res.data?.success;
             label = 'Declined';
           }
@@ -439,10 +454,16 @@ const userId = Astro.locals.user_id || "";
 
   // Initialize - fetch unread count and start polling
   (async () => {
+    console.log('[NOTIF:bell] init — fetching unread count');
     try {
       const result = await actions.notifications.getUnreadCount({});
+      console.log('[NOTIF:bell] getUnreadCount result:', result);
+      if (result.error) {
+        console.error('[NOTIF:bell] getUnreadCount error:', result.error);
+      }
       if (result.data) {
         unreadCount = result.data.count || 0;
+        console.log('[NOTIF:bell] unreadCount:', unreadCount);
         updateBadge();
       }
     } catch (error) {

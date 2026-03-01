@@ -207,11 +207,14 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 
 ### 2.8 Notifications (P1)
 
-| # | Story | Acceptance Criteria |
-|---|-------|---------------------|
-| US34 | As a user, I want to get notified of join requests | In-app notification |
-| US35 | As a user, I want to get notified when my request is approved/rejected | Notification + email |
-| US36 | As a trip owner, I want to notify members of trip updates | Broadcast to all members |
+| # | Story | Acceptance Criteria | Status |
+|---|-------|---------------------|--------|
+| US34 | As a user, I want to get notified of join requests | In-app notification | ✅ Pass — `trip_join_request` notification sent to trip owner; payload includes `member_id` for inline Approve/Decline action buttons |
+| US35 | As a user, I want to get notified when my request is approved/rejected | Notification + email | ⚠️ Partial — `trip_join_approved` / `trip_join_declined` in-app notifications sent; email pending |
+| US35b | As a user, I want to get notified when invited to a trip | In-app notification with Accept/Decline inline actions | ✅ Pass — `trip_invite` notification sent to invitee; payload includes `invitation_id` for Accept/Decline buttons |
+| US35c | As a trip owner, I want to get notified when invite is accepted/declined | In-app notification | ✅ Pass — `trip_invite_accepted` / `trip_invite_declined` sent to trip owner |
+| US35d | As a removed member, I want to get notified | In-app notification | ✅ Pass — `trip_member_removed` notification sent on `removeTripMember` |
+| US36 | As a trip owner, I want to notify members of trip updates | Broadcast to all members | ⬜ Not started |
 
 ### 2.9 Trip Analytics (P2)
 
@@ -327,7 +330,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [ ] Trip draft auto-save — Save in-progress trips
 - [ ] Complete itinerary builder — Full drag-drop itinerary management
 - [ ] Expense splitting UI — Better cost sharing visualization
-- [ ] Email notifications — Currently notifications are in-app only
+- [ ] Email notifications — In-app notifications done; email delivery still pending
+- [ ] Trip update broadcast — `trip_update` notification to all members on trip detail changes
 - [ ] Trip calendar view — See trips on calendar
 
 ### 4.2 Medium Priority (P1) — PH-Focused
@@ -370,8 +374,8 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [x] ~~SR-AUTHZ-001: Delete 5 legacy `/api/trips/*` REST routes (accepted `userId` from client input, IDOR risk)~~
 - [x] ~~SR-AUTHZ-001: Create `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (migration 033)~~
 - [x] ~~SR-AUTHZ-001: Add visibility gate to `get_trip_full_details` — visitors on private trips receive NULL, page redirects to /404 (migration 034)~~
-- [ ] Verify member management works (join/leave/remove)
-- [ ] Complete trip search and filtering
+- [x] ~~Verify member management works (join/leave/remove)~~
+- [x] ~~Complete trip search and filtering — fixed pagination losing budget/style params across pages; removed Pace filter (no trip attribute); added style tag filter to `get_discover_trips` via `td.tags @> ARRAY[p_travel_style]` (migration 044)~~
 
 ### Phase 2: Itinerary Enhancement (P1)
 - [x] ~~Fix DaySection crash (`stops[0].stop` → `stops[0]`)~~
@@ -412,8 +416,14 @@ The **Trip** feature is the core functionality of Tara G!, enabling users to cre
 - [ ] Connectivity indicator on map
 
 ### Phase 5: Notifications & Social (P1)
+- [x] ~~In-app notification system — DB table (`notifications`), 7 RPC functions (migration 007 + 041 + 042), full Astro Actions API (`getNotifications`, `getUnreadCount`, `markAsRead`, `markAllAsRead`, `deleteNotification`, `createNotification`)~~
+- [x] ~~NotificationBell component — badge with 30s polling (pauses on tab hidden), dropdown with real-time count refresh, inline Accept/Decline buttons for `trip_invite`, inline Approve/Decline buttons for `trip_join_request`~~
+- [x] ~~/notifications page — full notification center with filter tabs (All / Unread / Trip Invites / Join Requests), paginated load-more, same inline action buttons~~
+- [x] ~~Notification triggers: `trip_join_request` (to owner), `trip_join_approved`/`declined` (to requester), `trip_invite` (to invitee), `trip_invite_accepted`/`declined` (to owner), `trip_member_removed` (to removed member)~~
+- [x] ~~Fixed auth_id → internal user_id resolution in `approveJoinRequest`, `rejectJoinRequest`, `removeTripMember` (FK constraint bug 23503)~~
 - [ ] Email notification system
 - [ ] Push notifications
+- [ ] Trip update broadcast (`trip_update` type) — notify all members when owner changes trip details
 - [ ] Trip sharing features
 - [ ] Social feed integration
 
@@ -556,7 +566,7 @@ src/
 
 ---
 
-*Last updated: 2026-02-21 (session 4)*
+*Last updated: 2026-03-01 (session 5)*
 *Updated with PH-specific features: Offline itinerary, Emergency contacts, Boat/Ferry transport*
 *Updated: Visibility and Status modals on trip detail page; `update_trip_status` RPC (026); `get_user_owned_trips` now returns visibility (025); `TripStatusActions` removed in favour of `StatusModal`*
 *Updated: `DestinationModal` uses Mapbox Searchbox autocomplete (country=PH); `update_trip_destination` RPC (027) updates `locations` row + PostGIS geometry with `ST_MakePoint(lng::float8, lat::float8)`*
@@ -567,3 +577,4 @@ src/
 *Updated: Member section and itinerary gated by role. `currentPax` now counts only `joined` members. `Member.astro` hidden from non-members. Itinerary defaults to members-only; owner can expose it via `🔒/🌐` toggle in `ItineraryHeader` (`trip_visibility.itinerary_public`, migration 029, `updateItineraryPublic` action). Avatar rendering in `renderers.ts` fixed to show `<img>` when URL present, initials fallback otherwise.*
 *Updated (session 3): Discover tab fixed — `get_discover_trips` rebuilt (031) with `owner_name`/`owner_avatar`, no 30-day cap, caller's own trips excluded; `SMALLINT`→`INTEGER` cast fix (032). `get_user_owned_trips` visibility fix (030). `TripCard` avatar URL handling unified for both R2 paths and full OAuth URLs.*
 *Updated (session 4): SR-AUTHZ-001 compliance — deleted 5 legacy `/api/trips/*` REST routes (IDOR risk). Created `update_trip_dates`, `update_trip_preferences`, `update_trip_budget`, `update_trip_description` RPCs with server-side ownership checks (033). Added visibility gate to `get_trip_full_details`: visitors on private trips receive NULL → page redirects /404 (034).*
+*Updated (session 5): Notification system fully implemented for trip events. Built `NotificationBell.astro` (30s polling, dropdown, inline action buttons), `/notifications` page (filter tabs, load-more, same actions). Fixed notification triggers in `trips.ts`: `getInternalUserId` helper extracted; `sendNotification` helper added with full logging; `trip_join_request` payload includes `member_id`; `trip_invite` payload includes `invitation_id`; `approveJoinRequest`/`rejectJoinRequest`/`removeTripMember` now resolve auth_id → internal user_id before calling `sendNotification` (fixed FK constraint error code 23503). Fixed invitee lookup bug: `.select('id')` → `.select('user_id')` (code 42703). Removed duplicate username from all message strings (UI prepends username via `notification.data.username`). US34, US35, US35b–d now ✅ Pass.*

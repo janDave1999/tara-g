@@ -52,24 +52,28 @@ if(description && !description.title){
   </Fragment>
     {clean?"":<>
       {noHeader ? "":<>
-        <Header 
-          userId={user_id} 
+        <Header
+          userId={user_id}
           avatarUrl={avatarUrl}
           username={Astro.locals.username}
-          fullName={full_name} 
+          fullName={full_name}
         />
+        <!-- Spacer so fixed header doesn't overlap content -->
+        <div class="h-14 sm:h-16" aria-hidden="true"></div>
       </>}
     </>}
     <slot name="header" />
 
 {noContainer ?<>
       <slot />
+      {user_id && <div class="h-16 md:hidden" aria-hidden="true"></div>}
       </>:<>
       <div
         class={`container mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-6 md:py-8 lg:py-12 relative ${containerClass}`}
       >
       <slot />
     </div>
+    {user_id && <div class="h-16 md:hidden" aria-hidden="true"></div>}
     </>}
     <CookiesConsent />
     <LoadModal />

@@ -54,7 +54,7 @@ export default defineConfig({
       CLOUDFLARE_SPECIFIC_BUCKET_S3_URL: envField.string({ context: "server", access: "public" }),
       CLOUDFLARE_ACCOUNT_ID: envField.string({ context: "server", access: "public" }),
       PUBLIC_R2_BUCKET: envField.string({ context: "server", access: "public" }),
-      PUBLIC_R2_URL: envField.string({ context: "client", access: "public" }),
+      PUBLIC_R2_URL: envField.string({ context: "client", access: "public", default: "https://r2.local" }),
       RESEND_API_KEY: envField.string({ context: "server", access: "public" }),
     },
   },

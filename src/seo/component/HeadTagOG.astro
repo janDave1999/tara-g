@@ -22,16 +22,19 @@ const desc = description || {};
   description={desc.description}
   openGraph={{
     basic:{
-      url: Astro.url.origin,
+      url: Astro.url.href,
       type: desc.containsArticle ? "article" : "website",
       title: desc.title || "No Title",
       image: desc.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
     },
     optional:{
       description: desc?.description,
+      siteName: 'Tara G!',
+      locale: 'en_PH',
     },
     image: desc.previewImage ? {
       url: desc.previewImage,
+      secureUrl: desc.previewImage,
       alt: desc.title,
     } : undefined,
     article: desc.containsArticle ? {

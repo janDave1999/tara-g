@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import Itinerary from '@/components/Trip/Itinerary/Itinerary.astro';
 import Hero from '@/components/Trip/Hero.astro';
 import TripOrganizer from '@/components/Trip/TripOrganizer.astro';
+import { PUBLIC_R2_URL } from 'astro:env/client';
 const slug = Astro.params.trip_id || '';
 const user = Astro.locals.user_id;
 
@@ -162,9 +163,36 @@ const tripProps = {
   // Invitation state
   isInvited,
 };
+
+// ─── SEO / Social preview ───────────────────────────────────────────────────
+const coverImage = trip_images?.find((img: any) => img.is_cover) ?? trip_images?.[0];
+const seoImage = coverImage?.image_url
+  ? (coverImage.image_url.startsWith('http')
+      ? coverImage.image_url
+      : `${PUBLIC_R2_URL}${coverImage.image_url}`)
+  : undefined;
+
+const rawDesc = (trip_details?.description || description || '').trim();
+const destinationSuffix = destination !== 'No destination set' ? ` · ${destination}` : '';
+const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a trip to ${destination} with Tara G!`;
 ---
 
-<Layout title={`${title} | Tara G`}>
+<Layout
+  title={`${title} | Tara G`}
+  description={{
+    title: `${title} | Tara G`,
+    type: 'ItemPage',
+    description: seoDescription,
+    previewImage: seoImage,
+    author: trip.owner?.full_name || trip.owner?.username,
+    authorIs: 'Person',
+    keywords: tripProps.tags?.map((t: any) => t.tag_name),
+    breadCrumb: [
+      { name: 'Trips', url: '/trips' },
+      { name: title, url: Astro.url.pathname },
+    ],
+  }}
+>
   <section class="max-w-5xl mx-auto mt-6 px-4 space-y-5 md:mb-20 pb-24 md:pb-20">
 
     <!-- Invitation Banner (only shown to invited users) -->

@@ -17,26 +17,32 @@ async function sendNotification(
   actionUrl?: string,
   priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal'
 ) {
-  console.log('[NOTIFICATION] Creating notification for:', { userId, type, title });
-  
+  console.log(`[NOTIF:send] type=${type} to user_id=${userId} title="${title}"`);
+  console.log(`[NOTIF:send] data=${JSON.stringify(data)} action_url=${actionUrl ?? 'none'}`);
+
+  if (!userId) {
+    console.error('[NOTIF:send] SKIPPED — userId is empty');
+    return;
+  }
+
   try {
     const { data: result, error } = await supabaseAdmin.rpc('create_notification', {
-      p_user_id: userId,  // Now passing internal user_id directly
+      p_user_id: userId,
       p_type: type,
       p_title: title,
       p_message: message,
       p_data: data,
-      p_action_url: actionUrl,
+      p_action_url: actionUrl ?? null,
       p_priority: priority,
     });
-    
+
     if (error) {
-      console.error('[NOTIFICATION] Error creating notification:', error);
+      console.error(`[NOTIF:send] RPC error for type=${type}:`, error);
     } else {
-      console.log('[NOTIFICATION] Notification created successfully:', result);
+      console.log(`[NOTIF:send] OK — notification_id=${result}`);
     }
-  } catch (error) {
-    console.error('[NOTIFICATION] Exception creating notification:', error);
+  } catch (err) {
+    console.error(`[NOTIF:send] Exception for type=${type}:`, err);
   }
 }
 
@@ -601,7 +607,6 @@ export const trip = {
       trip_id: z.string(),
     }),
     handler: defineProtectedAction(async (input, {userId, avatarUrl}) => {
-      console.log('[ACTION] joinTrip called for trip:', input.trip_id);
       const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: userId });
       let message = data[0].message
       if (error) {
@@ -610,7 +615,7 @@ export const trip = {
           code: "INTERNAL_SERVER_ERROR"
         })
       }
-      
+
       if (!data[0].success){
         throw new ActionError({
           message: data[0].message,
@@ -619,30 +624,26 @@ export const trip = {
       }
 
       // Get trip info and notify owner
-      const { data: tripData, error: tripError } = await supabaseAdmin
+      const { data: tripData } = await supabaseAdmin
         .rpc('get_trip_full_details', {
           p_trip_id: input.trip_id,
           p_current_user_id: userId
         });
 
-      console.log('[NOTIFICATION] Trip data:', tripData);
-      console.log('[NOTIFICATION] Current userId:', userId);
-
       // tripData.owner.user_id is the internal user_id
       const ownerInternalId = tripData?.owner?.user_id;
-      console.log('[NOTIFICATION] Owner internal user_id:', ownerInternalId);
+      console.log(`[NOTIF:joinTrip] trip_id=${input.trip_id} requester_auth_id=${userId} owner_internal_id=${ownerInternalId ?? 'NOT FOUND'} member_id=${data[0].member_id}`);
 
       // Get current user's full name for the notification
-      console.log('[NOTIFICATION] Looking up user info for auth_id:', userId);
       let { data: currentUser, error: userError } = await supabaseAdmin
         .from('users')
         .select('username, full_name, avatar_url')
         .eq('auth_id', userId)
         .single();
-      
+
       // If user not found, create them
       if (userError && userError.code === 'PGRST116') {
-        console.log('[NOTIFICATION] User not found in users table, creating record...');
+        console.warn(`[NOTIF:joinTrip] User row missing for auth_id=${userId}, creating...`);
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (authUser?.user) {
           const { data: newUser, error: createError } = await supabaseAdmin
@@ -656,33 +657,27 @@ export const trip = {
             })
             .select('username, full_name, avatar_url')
             .single();
-          
+
           if (!createError && newUser) {
             currentUser = newUser;
-            console.log('[NOTIFICATION] Created user record:', newUser);
+          } else if (createError) {
+            console.error('[NOTIF:joinTrip] Failed to create user row:', createError);
           }
         }
       }
-      
-      console.log('[NOTIFICATION] Current user data:', currentUser);
-      
+
       const requesterName = currentUser?.full_name || currentUser?.username || 'Someone';
       const requesterAvatar = currentUser?.avatar_url || avatarUrl || null;
-      console.log('[NOTIFICATION] Requester name:', requesterName, 'avatar:', requesterAvatar);
 
       if (tripData && ownerInternalId && ownerInternalId !== userId) {
-        console.log('[NOTIFY] trip_join_request - Sending to owner:', ownerInternalId, 'User:', requesterName, 'Trip:', tripData.title);
         await sendNotification(
           ownerInternalId,
           'trip_join_request',
           'New Join Request',
-          `${requesterName} wants to join your "${tripData.title}" trip`,
-          { trip_id: input.trip_id, trip_title: tripData.title, avatar_url: requesterAvatar, username: requesterName },
+          `wants to join your "${tripData.title}" trip`,
+          { trip_id: input.trip_id, trip_title: tripData.title, avatar_url: requesterAvatar, username: requesterName, member_id: data[0].member_id },
           `/trips/${input.trip_id}`
         );
-        console.log('[NOTIFY] trip_join_request - Sent successfully');
-      } else {
-        console.log('[NOTIFICATION] NOT sending notification - user is owner or trip not found');
       }
 
       return data
@@ -974,9 +969,7 @@ getNearbyTrips: defineAction({
       message: z.string().max(500).optional(),
     }),
     handler: async (input, context) => {
-      console.log('[ACTION] sendTripInvitations called for trip:', input.tripId, 'invitees:', input.invitees);
       const supabase = getSupabaseClient(context.cookies);
-      console.log("INVITED: Users", input.invitees)
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -989,7 +982,6 @@ getNearbyTrips: defineAction({
         email: invitee.email || null,
         name: invitee.name || null,
       }));
-      console.log("INVITED USERS:", formattedInvitees)
       // Call RPC function
       const { data, error } = await supabase.rpc('send_trip_invitations', {
         p_trip_id: input.tripId,
@@ -1025,23 +1017,30 @@ getNearbyTrips: defineAction({
         let internalUserId: string | null = null;
         
         // Check if invitee_id exists in users table
-        const { data: userByAuthId } = await supabaseAdmin
+        console.log(`[NOTIF:sendInvite] invitation_id=${invitation.invitation_id} invitee_auth_id=${invitation.invitee_id}`);
+        const { data: userByAuthId, error: userLookupError } = await supabaseAdmin
           .from('users')
-          .select('id')
+          .select('user_id')
           .eq('auth_id', invitation.invitee_id)
           .maybeSingle();
-        
-        if (userByAuthId) {
-          internalUserId = userByAuthId.id;
+
+        if (userLookupError) {
+          console.error(`[NOTIF:sendInvite] User lookup error for invitee_id=${invitation.invitee_id}:`, userLookupError);
         }
-        
+
+        if (userByAuthId) {
+          internalUserId = userByAuthId.user_id;
+        } else {
+          console.warn(`[NOTIF:sendInvite] No users row found for invitee_auth_id=${invitation.invitee_id} — notification skipped`);
+        }
+
         if (internalUserId) {
           await sendNotification(
             internalUserId,
             'trip_invite',
             'Trip Invitation',
-            `${inviterName} invited you to join "${tripData?.title || 'a trip'}"`,
-            { trip_id: input.tripId, trip_title: tripData?.title, avatar_url: inviterAvatar, username: inviterName },
+            `invited you to join "${tripData?.title || 'a trip'}"`,
+            { trip_id: input.tripId, trip_title: tripData?.title, avatar_url: inviterAvatar, username: inviterName, invitation_id: invitation.invitation_id },
             `/trips/${input.tripId}`,
             'high'
           );
@@ -1122,9 +1121,8 @@ getNearbyTrips: defineAction({
       invitationId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      console.log('[ACTION] acceptTripInvitation called for invitation:', input.invitationId);
       const supabase = getSupabaseClient(context.cookies);
-      
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         throw new Error('You must be logged in to accept invitations');
@@ -1164,17 +1162,15 @@ getNearbyTrips: defineAction({
         const inviterName = inviterUser?.full_name || inviterUser?.username || 'Someone';
         const inviterAvatar = inviterUser?.avatar_url || null;
 
-        console.log('[NOTIFY] trip_invite_accepted - Sending to owner:', tripData.owner_id, 'User:', inviterName, 'Trip:', tripData.title);
         await sendNotification(
           tripData.owner_id,
           'trip_invite_accepted',
           'Invitation Accepted',
-          `${inviterName} accepted your invitation to join "${tripData.title}"`,
+          `accepted your invitation to join "${tripData.title}"`,
           { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: inviterAvatar, username: inviterName },
           `/trips/${data.trip_id}`,
           'normal'
         );
-        console.log('[NOTIFY] trip_invite_accepted - Sent successfully');
       }
       
       return {
@@ -1191,7 +1187,6 @@ getNearbyTrips: defineAction({
       invitationId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      console.log('[ACTION] declineTripInvitation called for invitation:', input.invitationId);
       const supabase = getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -1233,17 +1228,15 @@ getNearbyTrips: defineAction({
         const declinerName = declinerUser?.full_name || declinerUser?.username || 'Someone';
         const declinerAvatar = declinerUser?.avatar_url || null;
 
-        console.log('[NOTIFY] trip_invite_declined - Sending to owner:', tripData.owner_id, 'User:', declinerName, 'Trip:', tripData.title);
         await sendNotification(
           tripData.owner_id,
           'trip_invite_declined',
           'Invitation Declined',
-          `${declinerName} declined your invitation to join "${tripData.title}"`,
+          `declined your invitation to join "${tripData.title}"`,
           { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: declinerAvatar, username: declinerName },
           `/trips/${data.trip_id}`,
           'low'
         );
-        console.log('[NOTIFY] trip_invite_declined - Sent successfully');
       }
       
       return {
@@ -1515,7 +1508,6 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      console.log('[ACTION] approveJoinRequest called for member:', input.memberId, 'trip:', input.tripId);
       const supabase = getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -1551,17 +1543,26 @@ getNearbyTrips: defineAction({
       const approverAvatar = approverUser?.avatar_url || null;
 
       if (data.user_id && tripData) {
-        console.log('[NOTIFY] trip_join_approved - Sending to user:', data.user_id, 'Approver:', approverName, 'Trip:', tripData.title);
-        await sendNotification(
-          data.user_id,
-          'trip_join_approved',
-          'Join Request Approved',
-          `${approverName} approved your request to join "${tripData.title}"`,
-          { trip_id: input.tripId, trip_title: tripData.title, avatar_url: approverAvatar, username: approverName },
-          `/trips/${input.tripId}`,
-          'high'
-        );
-        console.log('[NOTIFY] trip_join_approved - Sent successfully');
+        // data.user_id is auth_id from trip_members — resolve to internal user_id
+        const { data: targetUser } = await supabaseAdmin
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', data.user_id)
+          .single();
+
+        if (targetUser?.user_id) {
+          await sendNotification(
+            targetUser.user_id,
+            'trip_join_approved',
+            'Join Request Approved',
+            `approved your request to join "${tripData.title}"`,
+            { trip_id: input.tripId, trip_title: tripData.title, avatar_url: approverAvatar, username: approverName },
+            `/trips/${input.tripId}`,
+            'high'
+          );
+        } else {
+          console.error(`[NOTIF:approveJoin] Could not resolve internal user_id for auth_id=${data.user_id}`);
+        }
       }
       
       return {
@@ -1578,7 +1579,6 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      console.log('[ACTION] rejectJoinRequest called for member:', input.memberId, 'trip:', input.tripId);
       const supabase = getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -1614,17 +1614,26 @@ getNearbyTrips: defineAction({
       const rejectorAvatar = rejectorUser?.avatar_url || null;
 
       if (data.user_id && tripData) {
-        console.log('[NOTIFY] trip_join_declined - Sending to user:', data.user_id, 'Rejector:', rejectorName, 'Trip:', tripData.title);
-        await sendNotification(
-          data.user_id,
-          'trip_join_declined',
-          'Join Request Declined',
-          `${rejectorName} declined your request to join "${tripData.title}"`,
-          { trip_id: input.tripId, trip_title: tripData.title, avatar_url: rejectorAvatar, username: rejectorName },
-          undefined,
-          'normal'
-        );
-        console.log('[NOTIFY] trip_join_declined - Sent successfully');
+        // data.user_id is auth_id from trip_members — resolve to internal user_id
+        const { data: targetUser } = await supabaseAdmin
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', data.user_id)
+          .single();
+
+        if (targetUser?.user_id) {
+          await sendNotification(
+            targetUser.user_id,
+            'trip_join_declined',
+            'Join Request Declined',
+            `declined your request to join "${tripData.title}"`,
+            { trip_id: input.tripId, trip_title: tripData.title, avatar_url: rejectorAvatar, username: rejectorName },
+            undefined,
+            'normal'
+          );
+        } else {
+          console.error(`[NOTIF:rejectJoin] Could not resolve internal user_id for auth_id=${data.user_id}`);
+        }
       }
       
       return {
@@ -1676,17 +1685,26 @@ getNearbyTrips: defineAction({
       const removerAvatar = removerUser?.avatar_url || null;
 
       if (data.user_id && tripData) {
-        console.log('[NOTIFY] trip_member_removed - Sending to user:', data.user_id, 'Remover:', removerName, 'Trip:', tripData.title);
-        await sendNotification(
-          data.user_id,
-          'trip_member_removed',
-          'Removed from Trip',
-          `${removerName} removed you from "${tripData.title}"`,
-          { trip_id: input.tripId, trip_title: tripData.title, avatar_url: removerAvatar, username: removerName },
-          undefined,
-          'normal'
-        );
-        console.log('[NOTIFY] trip_member_removed - Sent successfully');
+        // data.user_id is auth_id from trip_members — resolve to internal user_id
+        const { data: targetUser } = await supabaseAdmin
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', data.user_id)
+          .single();
+
+        if (targetUser?.user_id) {
+          await sendNotification(
+            targetUser.user_id,
+            'trip_member_removed',
+            'Removed from Trip',
+            `removed you from "${tripData.title}"`,
+            { trip_id: input.tripId, trip_title: tripData.title, avatar_url: removerAvatar, username: removerName },
+            undefined,
+            'normal'
+          );
+        } else {
+          console.error(`[NOTIF:removeMember] Could not resolve internal user_id for auth_id=${data.user_id}`);
+        }
       }
       
       return {

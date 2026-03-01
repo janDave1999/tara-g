@@ -2,6 +2,21 @@ import { z } from "astro:content";
 import { supabaseAdmin, getSupabaseClient } from "@/lib/supabase";
 import { defineAction } from "astro:actions";
 
+async function getInternalUserId(authId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('user_id')
+    .eq('auth_id', authId)
+    .single();
+
+  if (error || !data?.user_id) {
+    console.error(`[NOTIF:getInternalUserId] lookup failed for auth_id=${authId}`, error ?? 'no row');
+    return null;
+  }
+
+  return data.user_id;
+}
+
 export type NotificationType = 
   | 'trip_invite'
   | 'trip_join_request'
@@ -43,14 +58,7 @@ export const notificationActions = {
         return { notifications: [], unreadCount: 0 };
       }
 
-      // Convert auth user ID to internal user ID
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', userId)
-        .single();
-      
-      const internalUserId = userData?.user_id;
+      const internalUserId = await getInternalUserId(userId);
       if (!internalUserId) {
         return { notifications: [], unreadCount: 0 };
       }
@@ -86,14 +94,7 @@ export const notificationActions = {
         return { count: 0 };
       }
 
-      // Convert auth user ID to internal user ID
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', userId)
-        .single();
-      
-      const internalUserId = userData?.user_id;
+      const internalUserId = await getInternalUserId(userId);
       if (!internalUserId) {
         return { count: 0 };
       }
@@ -121,14 +122,7 @@ export const notificationActions = {
         return { success: false, message: 'Unauthorized' };
       }
 
-      // Convert auth user ID to internal user ID
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', userId)
-        .single();
-      
-      const internalUserId = userData?.user_id;
+      const internalUserId = await getInternalUserId(userId);
       if (!internalUserId) {
         return { success: false, message: 'User not found' };
       }
@@ -155,14 +149,7 @@ export const notificationActions = {
         return { success: false, message: 'Unauthorized' };
       }
 
-      // Convert auth user ID to internal user ID
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', userId)
-        .single();
-      
-      const internalUserId = userData?.user_id;
+      const internalUserId = await getInternalUserId(userId);
       if (!internalUserId) {
         return { success: false, message: 'User not found' };
       }
@@ -190,14 +177,7 @@ export const notificationActions = {
         return { success: false, message: 'Unauthorized' };
       }
 
-      // Convert auth user ID to internal user ID
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('user_id')
-        .eq('auth_id', userId)
-        .single();
-      
-      const internalUserId = userData?.user_id;
+      const internalUserId = await getInternalUserId(userId);
       if (!internalUserId) {
         return { success: false, message: 'User not found' };
       }

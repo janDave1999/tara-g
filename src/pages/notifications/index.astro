@@ -1,0 +1,373 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+
+const userId = Astro.locals.user_id;
+if (!userId) {
+  return Astro.redirect("/signin");
+}
+---
+
+<PagePlate title="Notifications">
+  <div class="max-w-2xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
+      <button
+        id="mark-all-read-btn"
+        class="text-sm text-blue-600 hover:text-blue-800 font-medium"
+      >
+        Mark all read
+      </button>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="flex gap-2 mb-6 overflow-x-auto pb-1">
+      <button class="filter-tab active shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-blue-600 text-white" data-filter="all">All</button>
+      <button class="filter-tab shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-filter="unread">Unread</button>
+      <button class="filter-tab shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-filter="trip_invite">Trip Invites</button>
+      <button class="filter-tab shrink-0 px-4 py-2 text-sm font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200" data-filter="trip_join_request">Join Requests</button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="page-loading" class="py-16 text-center">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
+      <p class="text-sm text-gray-500 mt-3">Loading notifications...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="page-empty" class="hidden py-16 text-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+      <p class="text-gray-500 font-medium">No notifications here</p>
+      <p class="text-sm text-gray-400 mt-1">You're all caught up!</p>
+    </div>
+
+    <!-- Notification list -->
+    <div id="page-notifications" class="hidden space-y-2"></div>
+
+    <!-- Load more -->
+    <div id="load-more-container" class="hidden mt-6 text-center">
+      <button
+        id="load-more-btn"
+        class="px-6 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-full hover:bg-blue-50 transition-colors"
+      >
+        Load more
+      </button>
+    </div>
+  </div>
+</PagePlate>
+
+<script>
+  import { actions } from "astro:actions";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const LIMIT = 20;
+
+  let notifications: any[] = [];
+  let offset = 0;
+  let currentFilter = 'all';
+  let hasMore = false;
+
+  const pageLoading = document.getElementById('page-loading');
+  const pageEmpty = document.getElementById('page-empty');
+  const pageNotifications = document.getElementById('page-notifications');
+  const loadMoreContainer = document.getElementById('load-more-container');
+  const loadMoreBtn = document.getElementById('load-more-btn');
+  const markAllReadBtn = document.getElementById('mark-all-read-btn');
+  const filterTabs = document.querySelectorAll('.filter-tab');
+
+  // Filter tab switching
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => {
+        t.classList.remove('active', 'bg-blue-600', 'text-white');
+        t.classList.add('bg-gray-100', 'text-gray-600');
+      });
+      tab.classList.remove('bg-gray-100', 'text-gray-600');
+      tab.classList.add('active', 'bg-blue-600', 'text-white');
+
+      currentFilter = tab.getAttribute('data-filter') || 'all';
+      notifications = [];
+      offset = 0;
+      loadNotifications(true);
+    });
+  });
+
+  // Mark all read
+  markAllReadBtn?.addEventListener('click', async () => {
+    const result = await actions.notifications.markAllAsRead({});
+    if (result.data?.success) {
+      await loadNotifications(true);
+    }
+  });
+
+  // Load more
+  loadMoreBtn?.addEventListener('click', () => {
+    loadNotifications(false);
+  });
+
+  async function loadNotifications(reset: boolean) {
+    if (reset) {
+      notifications = [];
+      offset = 0;
+      pageNotifications!.innerHTML = '';
+    }
+
+    setLoading(true);
+
+    try {
+      const unreadOnly = currentFilter === 'unread';
+      const result = await actions.notifications.getNotifications({
+        limit: LIMIT,
+        offset,
+        unreadOnly,
+      });
+
+      if (!result.data) return;
+
+      let fetched: any[] = result.data.notifications || [];
+
+      // Client-side filter for type-specific tabs
+      if (currentFilter === 'trip_invite') {
+        fetched = fetched.filter(n => n.type === 'trip_invite');
+      } else if (currentFilter === 'trip_join_request') {
+        fetched = fetched.filter(n => n.type === 'trip_join_request');
+      }
+
+      hasMore = result.data.notifications.length === LIMIT;
+      offset += LIMIT;
+      notifications = [...notifications, ...fetched];
+
+      renderNotifications(fetched, reset);
+    } catch (error) {
+      console.error('[Notifications page] Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on: boolean) {
+    if (on && notifications.length === 0) {
+      pageLoading?.classList.remove('hidden');
+      pageEmpty?.classList.add('hidden');
+      pageNotifications?.classList.add('hidden');
+    } else {
+      pageLoading?.classList.add('hidden');
+    }
+
+    if (loadMoreContainer) {
+      loadMoreContainer.classList.toggle('hidden', !hasMore);
+    }
+  }
+
+  function renderNotifications(items: any[], reset: boolean) {
+    if (reset && notifications.length === 0) {
+      pageEmpty?.classList.remove('hidden');
+      pageNotifications?.classList.add('hidden');
+      return;
+    }
+
+    pageEmpty?.classList.add('hidden');
+    pageNotifications?.classList.remove('hidden');
+
+    const html = items.map(notification => {
+      const avatar = notification.data?.avatar_url;
+      const avatarHtml = avatar
+        ? `<img src="${avatar.startsWith('http') ? avatar : PUBLIC_R2_URL + avatar}" alt="" class="w-11 h-11 rounded-full object-cover" />`
+        : `<div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+            ${(notification.data?.username || '?').charAt(0).toUpperCase()}
+          </div>`;
+
+      const timeAgo = getTimeAgo(new Date(notification.created_at));
+      const unreadBg = !notification.is_read ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100';
+      const unreadDot = !notification.is_read
+        ? '<span class="w-2.5 h-2.5 bg-blue-500 rounded-full shrink-0 mt-1"></span>'
+        : '';
+
+      const iconHtml = getNotificationIcon(notification.type);
+      const actionButtons = getActionButtons(notification);
+
+      return `
+        <div
+          class="notification-page-item flex items-start gap-3 p-4 rounded-xl border ${unreadBg} cursor-pointer hover:shadow-sm transition-shadow"
+          data-id="${notification.notification_id}"
+          data-url="${notification.action_url || ''}"
+          data-type="${notification.type}"
+          data-trip-id="${notification.data?.trip_id || ''}"
+          data-invitation-id="${notification.data?.invitation_id || ''}"
+          data-member-id="${notification.data?.member_id || ''}"
+        >
+          <div class="shrink-0 relative">
+            ${avatarHtml}
+            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+              ${iconHtml}
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-gray-800">
+              <span class="font-semibold">${notification.data?.username || 'Someone'}</span>
+              ${notification.message}
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">${timeAgo}</p>
+            ${actionButtons}
+          </div>
+          ${unreadDot}
+        </div>
+      `;
+    }).join('');
+
+    pageNotifications!.insertAdjacentHTML('beforeend', html);
+
+    // Attach click handlers for newly added items
+    const newItems = pageNotifications!.querySelectorAll('.notification-page-item:not([data-bound])');
+    newItems.forEach(item => {
+      item.setAttribute('data-bound', '1');
+
+      item.addEventListener('click', async (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.notif-action-btn')) return;
+
+        const id = item.getAttribute('data-id');
+        const url = item.getAttribute('data-url');
+
+        if (id) {
+          await actions.notifications.markAsRead({ notificationId: id });
+          item.classList.remove('bg-blue-50', 'border-blue-100');
+          item.classList.add('bg-white', 'border-gray-100');
+          item.querySelector('.w-2\\.5')?.remove();
+        }
+
+        if (url) {
+          window.location.href = url;
+        }
+      });
+
+      // Action button handlers
+      item.querySelectorAll('.notif-action-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const action = btn.getAttribute('data-action');
+          const notifId = item.getAttribute('data-id') || '';
+          const tripId = item.getAttribute('data-trip-id') || '';
+          const invitationId = item.getAttribute('data-invitation-id') || '';
+          const memberId = item.getAttribute('data-member-id') || '';
+
+          const actionsContainer = btn.closest('.notif-actions');
+          if (actionsContainer) {
+            (actionsContainer as HTMLElement).innerHTML = `<span class="text-xs text-gray-400 italic">Processing...</span>`;
+          }
+
+          try {
+            let success = false;
+            let label = '';
+
+            if (action === 'accept_invite' && invitationId) {
+              const res = await actions.trip.acceptTripInvitation({ invitationId });
+              success = !!res.data?.success;
+              label = 'Accepted';
+            } else if (action === 'decline_invite' && invitationId) {
+              const res = await actions.trip.declineTripInvitation({ invitationId });
+              success = !!res.data?.success;
+              label = 'Declined';
+            } else if (action === 'approve_join' && memberId && tripId) {
+              const res = await actions.trip.approveJoinRequest({ memberId, tripId });
+              success = !!res.data?.success;
+              label = 'Approved';
+            } else if (action === 'reject_join' && memberId && tripId) {
+              const res = await actions.trip.rejectJoinRequest({ memberId, tripId });
+              success = !!res.data?.success;
+              label = 'Declined';
+            }
+
+            if (success) {
+              if (notifId) {
+                await actions.notifications.markAsRead({ notificationId: notifId });
+                item.classList.remove('bg-blue-50', 'border-blue-100');
+                item.classList.add('bg-white', 'border-gray-100');
+                item.querySelector('.w-2\\.5')?.remove();
+              }
+              if (actionsContainer) {
+                const color = label === 'Declined' ? 'text-red-500' : 'text-green-600';
+                (actionsContainer as HTMLElement).innerHTML = `<span class="text-xs font-medium ${color}">${label}</span>`;
+              }
+            } else {
+              if (actionsContainer) {
+                (actionsContainer as HTMLElement).innerHTML = `<span class="text-xs text-red-500">Failed. Try again.</span>`;
+              }
+            }
+          } catch {
+            if (actionsContainer) {
+              (actionsContainer as HTMLElement).innerHTML = `<span class="text-xs text-red-500">Failed. Try again.</span>`;
+            }
+          }
+        });
+      });
+    });
+
+    if (loadMoreContainer) {
+      loadMoreContainer.classList.toggle('hidden', !hasMore);
+    }
+  }
+
+  function getActionButtons(notification: any): string {
+    const type = notification.type;
+    const invitationId = notification.data?.invitation_id;
+    const memberId = notification.data?.member_id;
+
+    if (type === 'trip_invite' && invitationId && !notification.is_read) {
+      return `
+        <div class="notif-actions flex gap-2 mt-2">
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors" data-action="accept_invite">Accept</button>
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-white text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors" data-action="decline_invite">Decline</button>
+        </div>
+      `;
+    }
+
+    if (type === 'trip_join_request' && memberId && !notification.is_read) {
+      return `
+        <div class="notif-actions flex gap-2 mt-2">
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors" data-action="approve_join">Approve</button>
+          <button class="notif-action-btn px-3 py-1 text-xs font-medium bg-white text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors" data-action="reject_join">Decline</button>
+        </div>
+      `;
+    }
+
+    return '';
+  }
+
+  function getNotificationIcon(type: string): string {
+    const icons: Record<string, string> = {
+      'trip_join_request': '<svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>',
+      'trip_join_approved': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'trip_join_declined': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+      'trip_invite': '<svg class="w-3 h-3 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>',
+      'trip_invite_accepted': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'trip_invite_declined': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+      'trip_member_added': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"/></svg>',
+      'trip_member_removed': '<svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/></svg>',
+      'trip_update': '<svg class="w-3 h-3 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>',
+      'friend_request': '<svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z"/></svg>',
+      'friend_accepted': '<svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'system_announcement': '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>',
+    };
+    return icons[type] || icons['system_announcement'];
+  }
+
+  function getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
+  }
+
+  // Initial load
+  loadNotifications(true);
+</script>

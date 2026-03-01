@@ -85,7 +85,8 @@ export const onboarding = defineMiddleware(async (ctx, next) => {
   }
 
   if (micromatch.isMatch(pathname, protectedRoutes) && !locals.user_id) {
-    return redirect("/signin");
+    const next = encodeURIComponent(url.pathname + url.search);
+    return redirect(`/signin?next=${next}`);
   }
 
   if (

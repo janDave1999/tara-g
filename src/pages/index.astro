@@ -1,6 +1,7 @@
 ---
 import PagePlate from "../layouts/PagePlate.astro";
 import Blog from "@/components/Blog/Blog.astro";
+import FeaturedTrips from "@/components/FeaturedTrips.astro";
 import Skeleton from "@/components/Skeleton.astro";
 ---
 
@@ -93,6 +94,11 @@ import Skeleton from "@/components/Skeleton.astro";
       </div>
     </div>
   </section>
+
+  <!-- ── Featured Trips (deferred) ───────────────────────────── -->
+  <FeaturedTrips server:defer>
+    <Skeleton slot="fallback" />
+  </FeaturedTrips>
 
   <!-- ── CTA Banner ───────────────────────────────────────────── -->
   <section class="py-20 px-6 bg-white text-center">

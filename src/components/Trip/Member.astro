@@ -96,6 +96,9 @@ const { tripId } = Astro.props;
     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
       <div id="available-spots" class="text-xs text-slate-600"></div>
       <div class="flex gap-2">
+        <button id="generate-share-link-btn" class="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors hidden">
+          Generate Share Link
+        </button>
         <button id="invite-btn" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors hidden">
           Invite Members
         </button>
@@ -106,6 +109,83 @@ const { tripId } = Astro.props;
           Close
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share Link Modal -->
+<div 
+  id="share-link-modal" 
+  class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+>
+  <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="text-lg font-bold text-slate-800">Share Trip Link</h3>
+        <p class="text-xs text-slate-500">Create a shareable link for this trip</p>
+      </div>
+      <button id="close-share-link-modal" class="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="px-6 py-4 space-y-4">
+      <div>
+        <label for="share-link-uses" class="block text-sm font-medium text-slate-700 mb-1">
+          Maximum Uses
+        </label>
+        <input 
+          type="number" 
+          id="share-link-uses"
+          min="1"
+          max="100"
+          value="5"
+          class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+        />
+        <p class="text-xs text-slate-500 mt-1">How many people can use this link (1-100)</p>
+      </div>
+
+      <div>
+        <label for="share-link-days" class="block text-sm font-medium text-slate-700 mb-1">
+          Expires In
+        </label>
+        <select 
+          id="share-link-days"
+          class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+        >
+          <option value="7">7 days</option>
+          <option value="14">14 days</option>
+          <option value="30" selected>30 days</option>
+          <option value="60">60 days</option>
+          <option value="90">90 days</option>
+        </select>
+      </div>
+
+      <button 
+        id="create-share-link-btn" 
+        class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+      >
+        Generate Share Link
+      </button>
+    </div>
+
+    <!-- Existing Share Links -->
+    <div class="px-6 py-4 border-t border-slate-100">
+      <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Active Share Links</h4>
+      <div id="share-links-list" class="space-y-3">
+        <p class="text-sm text-slate-500 text-center py-4">No active share links</p>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+      <button 
+        id="close-share-link-modal-btn" 
+        class="w-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+      >
+        Done
+      </button>
     </div>
   </div>
 </div>
@@ -327,6 +407,14 @@ const { tripId } = Astro.props;
       showElement(inviteBtn);
     }
 
+    // Show generate share link button if user is owner
+    if (summary.user_role === 'owner') {
+      const generateShareLinkBtn = getElement<HTMLButtonElement>('generate-share-link-btn');
+      if (generateShareLinkBtn) {
+        showElement(generateShareLinkBtn);
+      }
+    }
+
     // Render members
     memberRenderer.render(members, summary.user_role);
 
@@ -406,13 +494,126 @@ const { tripId } = Astro.props;
     // Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (!inviteModal.classList.contains('hidden')) {
+        const shareLinkModal = getElement('share-link-modal');
+        if (shareLinkModal && !shareLinkModal.classList.contains('hidden')) {
+          shareLinkModal.classList.add('hidden');
+          shareLinkModal.classList.remove('flex');
+        } else if (!inviteModal.classList.contains('hidden')) {
           inviteManager.close();
         } else if (!modal_el.classList.contains('hidden')) {
           closeMembersModal();
         }
       }
     });
+
+    // Share link modal
+    const shareLinkModal = getElement('share-link-modal');
+    const generateShareLinkBtn = getElement<HTMLButtonElement>('generate-share-link-btn');
+    const createShareLinkBtn = getElement<HTMLButtonElement>('create-share-link-btn');
+
+    generateShareLinkBtn?.addEventListener('click', async () => {
+      shareLinkModal?.classList.remove('hidden');
+      shareLinkModal?.classList.add('flex');
+      await loadShareLinks();
+    });
+
+    getElement('close-share-link-modal')?.addEventListener('click', () => {
+      shareLinkModal?.classList.add('hidden');
+      shareLinkModal?.classList.remove('flex');
+    });
+
+    getElement('close-share-link-modal-btn')?.addEventListener('click', () => {
+      shareLinkModal?.classList.add('hidden');
+      shareLinkModal?.classList.remove('flex');
+    });
+
+    shareLinkModal?.addEventListener('click', (e) => {
+      if (e.target === shareLinkModal) {
+        shareLinkModal.classList.add('hidden');
+        shareLinkModal.classList.remove('flex');
+      }
+    });
+
+    createShareLinkBtn?.addEventListener('click', async () => {
+      const maxUsesInput = getElement<HTMLInputElement>('share-link-uses');
+      const maxUses = maxUsesInput ? parseInt(maxUsesInput.value) : 5;
+      const expiresInDaysSelect = getElement('share-link-days') as HTMLSelectElement | null;
+      const expiresInDays = expiresInDaysSelect ? parseInt(expiresInDaysSelect.value) : 30;
+
+      createShareLinkBtn.disabled = true;
+      createShareLinkBtn.textContent = 'Generating...';
+
+      try {
+        const { data, error } = await actions.trip.createShareLink({
+          trip_id: tripId,
+          max_uses: maxUses,
+          expires_in_days: expiresInDays,
+        });
+
+        if (error) {
+          alert(error.message);
+        } else if (data?.success) {
+          await loadShareLinks();
+        }
+      } catch (err: any) {
+        alert(err.message || 'Failed to create share link');
+      } finally {
+        createShareLinkBtn.disabled = false;
+        createShareLinkBtn.textContent = 'Generate Share Link';
+      }
+    });
+
+    async function loadShareLinks() {
+      const shareLinksList = getElement('share-links-list');
+      if (!shareLinksList) return;
+
+      try {
+        const { data, error } = await actions.trip.getShareLinks({ trip_id: tripId });
+
+        if (error) {
+          shareLinksList.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Failed to load share links</p>';
+          return;
+        }
+
+        if (!data?.links || data.links.length === 0) {
+          shareLinksList.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">No active share links</p>';
+          return;
+        }
+
+        shareLinksList.innerHTML = data.links.map((link: any) => `
+          <div class="bg-slate-50 rounded-lg p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">
+                ${link.current_uses}/${link.max_uses} uses • Expires ${new Date(link.expires_at).toLocaleDateString()}
+              </span>
+              <button class="copy-link-btn text-xs text-blue-600 hover:text-blue-700 font-medium" data-link="/trips/${tripId}?invite=${link.share_code}">
+                Copy
+              </button>
+            </div>
+            <input 
+              type="text" 
+              readonly 
+              value="${window.location.origin}/trips/${tripId}?invite=${link.share_code}"
+              class="w-full px-3 py-2 bg-white border border-slate-200 rounded text-xs text-slate-600"
+            />
+          </div>
+        `).join('');
+
+        // Add copy functionality
+        shareLinksList.querySelectorAll('.copy-link-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const link = btn.getAttribute('data-link');
+            if (link) {
+              await navigator.clipboard.writeText(window.location.origin + link);
+              btn.textContent = 'Copied!';
+              setTimeout(() => btn.textContent = 'Copy', 2000);
+            }
+          });
+        });
+      } catch (err) {
+        shareLinksList.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Failed to load share links</p>';
+      }
+    }
   }
 
   setupEventListeners();

@@ -605,8 +605,41 @@ export const trip = {
   joinTrip: defineAction({
     input: z.object({
       trip_id: z.string(),
+      share_code: z.string().optional(),
     }),
     handler: defineProtectedAction(async (input, {userId, avatarUrl}) => {
+      let autoAccepted = false;
+
+      // If share_code provided, validate and auto-accept
+      if (input.share_code) {
+        const { data: validateData, error: validateError } = await supabaseAdmin.rpc(
+          'validate_and_use_share_link',
+          {
+            p_share_code: input.share_code,
+            p_user_id: userId,
+          }
+        );
+
+        if (validateError) {
+          throw new ActionError({
+            message: validateError.message,
+            code: 'INTERNAL_SERVER_ERROR',
+          });
+        }
+
+        const result = Array.isArray(validateData) ? validateData[0] : validateData;
+
+        if (!result?.valid) {
+          throw new ActionError({
+            message: result?.error_message || 'Invalid or expired share link',
+            code: 'BAD_REQUEST',
+          });
+        }
+
+        autoAccepted = true;
+        console.log(`[joinTrip] Auto-accepting via share link: ${input.share_code}`);
+      }
+
       const { data, error } = await supabaseAdmin.rpc("join_trip", { p_trip_id: input.trip_id, p_user_id: userId });
       let message = data[0].message
       if (error) {
@@ -623,6 +656,21 @@ export const trip = {
         })
       }
 
+      // Auto-accept if from valid share link — bypass owner permission check,
+      // share link was already validated above so we can approve directly.
+      if (autoAccepted && data[0].member_id) {
+        const { error: approveError } = await supabaseAdmin
+          .from('trip_members')
+          .update({ member_status: 'joined' })
+          .eq('id', data[0].member_id);
+
+        if (approveError) {
+          console.error('Auto-approve failed:', approveError);
+        } else {
+          console.log(`[joinTrip] Auto-approved member ${data[0].member_id} from share link`);
+        }
+      }
+
       // Get trip info and notify owner
       const { data: tripData } = await supabaseAdmin
         .rpc('get_trip_full_details', {
@@ -632,7 +680,7 @@ export const trip = {
 
       // tripData.owner.user_id is the internal user_id
       const ownerInternalId = tripData?.owner?.user_id;
-      console.log(`[NOTIF:joinTrip] trip_id=${input.trip_id} requester_auth_id=${userId} owner_internal_id=${ownerInternalId ?? 'NOT FOUND'} member_id=${data[0].member_id}`);
+      console.log(`[joinTrip] trip_id=${input.trip_id} requester_auth_id=${userId} owner_internal_id=${ownerInternalId ?? 'NOT FOUND'} member_id=${data[0].member_id} auto_accept=${autoAccepted}`);
 
       // Get current user's full name for the notification
       let { data: currentUser, error: userError } = await supabaseAdmin
@@ -643,7 +691,7 @@ export const trip = {
 
       // If user not found, create them
       if (userError && userError.code === 'PGRST116') {
-        console.warn(`[NOTIF:joinTrip] User row missing for auth_id=${userId}, creating...`);
+        console.warn(`[joinTrip] User row missing for auth_id=${userId}, creating...`);
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (authUser?.user) {
           const { data: newUser, error: createError } = await supabaseAdmin
@@ -661,20 +709,27 @@ export const trip = {
           if (!createError && newUser) {
             currentUser = newUser;
           } else if (createError) {
-            console.error('[NOTIF:joinTrip] Failed to create user row:', createError);
+            console.error('[joinTrip] Failed to create user row:', createError);
           }
         }
       }
 
       const requesterName = currentUser?.full_name || currentUser?.username || 'Someone';
       const requesterAvatar = currentUser?.avatar_url || avatarUrl || null;
+      const wasAutoAccepted = !!input.share_code;
 
       if (tripData && ownerInternalId && ownerInternalId !== userId) {
+        // Different notification message for auto-accepted members
+        const notifTitle = wasAutoAccepted ? 'New Member' : 'New Join Request';
+        const notifMessage = wasAutoAccepted
+          ? `joined your "${tripData.title}" trip via share link`
+          : `wants to join your "${tripData.title}" trip`;
+
         await sendNotification(
           ownerInternalId,
-          'trip_join_request',
-          'New Join Request',
-          `wants to join your "${tripData.title}" trip`,
+          wasAutoAccepted ? 'trip_member_added' : 'trip_join_request',
+          notifTitle,
+          notifMessage,
           { trip_id: input.trip_id, trip_title: tripData.title, avatar_url: requesterAvatar, username: requesterName, member_id: data[0].member_id },
           `/trips/${input.trip_id}`
         );
@@ -2385,6 +2440,103 @@ getNearbyTrips: defineAction({
 
       return { success: true };
     },
+  }),
+
+  createShareLink: defineAction({
+    input: z.object({
+      trip_id: z.string().uuid(),
+      max_uses: z.number().min(1).max(100).default(5),
+      expires_in_days: z.number().min(1).max(365).default(30),
+    }),
+    handler: defineProtectedAction(async (input, { userId }) => {
+      const { data, error } = await supabaseAdmin.rpc('create_trip_share_link', {
+        p_trip_id: input.trip_id,
+        p_creator_id: userId,
+        p_max_uses: input.max_uses,
+        p_expires_in_days: input.expires_in_days,
+      });
+
+      if (error) {
+        throw new ActionError({
+          message: error.message,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result?.invitation_id) {
+        throw new ActionError({
+          message: 'Failed to create share link',
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+
+      return {
+        success: true,
+        invitation_id: result.invitation_id,
+        share_code: result.share_code,
+        share_url: result.share_url,
+      };
+    }),
+  }),
+
+  getShareLinks: defineAction({
+    input: z.object({
+      trip_id: z.string().uuid(),
+    }),
+    handler: defineProtectedAction(async (input, { userId }) => {
+      const { data, error } = await supabaseAdmin.rpc('get_trip_share_links', {
+        p_trip_id: input.trip_id,
+        p_user_id: userId,
+      });
+
+      if (error) {
+        throw new ActionError({
+          message: error.message,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+
+      return {
+        success: true,
+        links: data || [],
+      };
+    }),
+  }),
+
+  validateShareLink: defineAction({
+    input: z.object({
+      share_code: z.string(),
+    }),
+    handler: defineProtectedAction(async (input, { userId }) => {
+      const { data, error } = await supabaseAdmin.rpc('validate_and_use_share_link', {
+        p_share_code: input.share_code,
+        p_user_id: userId,
+      });
+
+      if (error) {
+        throw new ActionError({
+          message: error.message,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+
+      const result = Array.isArray(data) ? data[0] : data;
+      
+      if (!result?.valid) {
+        throw new ActionError({
+          message: result?.error_message || 'Invalid share link',
+          code: 'BAD_REQUEST',
+        });
+      }
+
+      return {
+        success: true,
+        trip_id: result.trip_id,
+        invitation_id: result.invitation_id,
+        inviter_id: result.inviter_id,
+      };
+    }),
   }),
 }
 

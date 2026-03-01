@@ -1,0 +1,121 @@
+---
+import { supabaseAdmin } from "@/lib/supabase";
+import TripCard from "@/components/TripCard.astro";
+
+// Fetch 3 newest public active trips (include owner_id for user lookup)
+const { data: trips, error: tripsError } = await supabaseAdmin
+  .from("trips")
+  .select("trip_id, title, status, owner_id, created_at, trip_visibility!inner(visibility)")
+  .eq("status", "active")
+  .eq("trip_visibility.visibility", "public")
+  .order("created_at", { ascending: false })
+  .limit(3);
+
+console.log("[FeaturedTrips] trips query:", { count: trips?.length ?? 0, error: tripsError });
+
+if (!trips || trips.length === 0) {
+  console.log("[FeaturedTrips] no public active trips found — section hidden");
+  return;
+}
+
+const tripIds = trips.map((t) => t.trip_id);
+const ownerAuthIds = [...new Set(trips.map((t) => t.owner_id).filter(Boolean))];
+
+const [
+  { data: coverImages, error: coverError },
+  { data: tripDetails, error: detailsError },
+  { data: owners, error: ownersError },
+  { data: memberRows, error: memberError },
+] = await Promise.all([
+  supabaseAdmin
+    .from("trip_images")
+    .select("trip_id, image_url")
+    .in("trip_id", tripIds)
+    .eq("is_cover", true),
+  supabaseAdmin
+    .from("trip_details")
+    .select("trip_id, start_date, end_date, max_pax, region")
+    .in("trip_id", tripIds),
+  ownerAuthIds.length > 0
+    ? supabaseAdmin
+        .from("users")
+        .select("auth_id, username, avatar_url")
+        .in("auth_id", ownerAuthIds)
+    : Promise.resolve({ data: [], error: null }),
+  supabaseAdmin
+    .from("trip_members")
+    .select("trip_id")
+    .in("trip_id", tripIds)
+    .eq("member_status", "joined"),
+]);
+
+console.log("[FeaturedTrips] cover images:", { count: coverImages?.length ?? 0, error: coverError });
+console.log("[FeaturedTrips] trip details:", { count: tripDetails?.length ?? 0, error: detailsError });
+console.log("[FeaturedTrips] owners:", { count: owners?.length ?? 0, error: ownersError });
+console.log("[FeaturedTrips] members:", { count: memberRows?.length ?? 0, error: memberError });
+
+const coverMap = new Map((coverImages ?? []).map((c) => [c.trip_id, c.image_url]));
+const detailsMap = new Map((tripDetails ?? []).map((d) => [d.trip_id, d]));
+const ownerMap = new Map((owners ?? []).map((u) => [u.auth_id, u]));
+
+const memberCountMap = new Map<string, number>();
+for (const m of memberRows ?? []) {
+  memberCountMap.set(m.trip_id, (memberCountMap.get(m.trip_id) ?? 0) + 1);
+}
+
+// Shape data to match TripCard's expected trip prop for type="discover"
+const cards = trips.map((t) => {
+  const detail = detailsMap.get(t.trip_id);
+  const owner = ownerMap.get(t.owner_id);
+  return {
+    trip_id: t.trip_id,
+    title: t.title,
+    status: t.status,
+    created_at: t.created_at,
+    cover_image: coverMap.get(t.trip_id) ?? null,   // raw path — TripCard prepends PUBLIC_R2_URL
+    start_date: detail?.start_date ?? null,
+    end_date: detail?.end_date ?? null,
+    max_pax: detail?.max_pax ?? null,
+    region: detail?.region ?? null,
+    owner_name: owner?.username ?? null,
+    owner_avatar: owner?.avatar_url ?? null,
+    // fields not fetched — TripCard handles missing gracefully
+    description: null,
+    tags: [],
+    current_participants: memberCountMap.get(t.trip_id) ?? 0,
+    visibility: "public",
+  };
+});
+---
+
+<section class="py-20 px-6 bg-gray-50">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-end justify-between mb-10">
+      <div>
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900">Trips Happening Now</h2>
+        <p class="text-gray-500 mt-2 text-sm">Open trips you can join today</p>
+      </div>
+      <a href="/trips" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+        Browse all
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+    <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+      {cards.map((trip) => (
+        <TripCard trip={trip} type="discover" />
+      ))}
+    </div>
+
+    <div class="mt-8 text-center sm:hidden">
+      <a href="/trips" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+        Browse all trips
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>

@@ -195,6 +195,24 @@ if (accessToken && refreshToken) {
 <script >
   import { showToast } from "@/scripts/Toast";
   import { clientSchemas, FormValidator } from "@/lib/clientValidation";
+  import { getPendingTripShare, clearPendingTripShare } from "@/lib/tripShare";
+  
+  const getRedirectUrl = (): string => {
+    // Priority 1: ?next= param set by middleware when redirecting an unauthenticated user
+    const urlParams = new URLSearchParams(window.location.search);
+    const next = urlParams.get('next');
+    if (next && next.startsWith('/')) {
+      return next;
+    }
+    // Priority 2: pending trip share cookie (invitation links)
+    const pending = getPendingTripShare();
+    if (pending) {
+      clearPendingTripShare();
+      return `/trips/${pending.tripId}`;
+    }
+    return '/feeds';
+  };
+
   class SignInForm {
     private formValidator: FormValidator;
     private elements = {
@@ -322,7 +340,8 @@ if (accessToken && refreshToken) {
             message: 'Login successful! Redirecting...', 
             type: 'success' 
           });
-          window.location.href = '/feeds';
+          const redirectUrl = getRedirectUrl();
+          window.location.href = redirectUrl;
           return;
         }
 
@@ -332,9 +351,10 @@ if (accessToken && refreshToken) {
             type: 'success' 
           });
           
-          // Server will handle redirect, but add fallback
+          // Server will handle redirect, but add fallback with pending trip check
+          const redirectUrl = getRedirectUrl();
           setTimeout(() => {
-            window.location.href = '/feeds';
+            window.location.href = redirectUrl;
           }, 1500);
         } else if (response.status === 429) {
           // Handle rate limit (429 Too Many Requests)
@@ -443,21 +463,30 @@ if (accessToken && refreshToken) {
 
     private handleSocialSignIn(provider: string) {
       this.setLoading(true);
-      
+
       // Create a form and submit it to trigger the redirect properly
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/api/auth/signin';
       form.style.display = 'none';
-      
+
       const providerInput = document.createElement('input');
       providerInput.type = 'hidden';
       providerInput.name = 'provider';
       providerInput.value = provider;
-      
       form.appendChild(providerInput);
+
+      // Carry ?next= through OAuth so the callback can redirect back to the original page
+      const next = new URLSearchParams(window.location.search).get('next');
+      if (next && next.startsWith('/')) {
+        const nextInput = document.createElement('input');
+        nextInput.type = 'hidden';
+        nextInput.name = 'next';
+        nextInput.value = next;
+        form.appendChild(nextInput);
+      }
+
       document.body.appendChild(form);
-      
       form.submit();
     }
 

@@ -43,18 +43,23 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const email = formData.get("email")?.toString();
     const password = formData.get("password")?.toString();
     const provider = formData.get("provider")?.toString();
+    const nextParam = formData.get("next")?.toString();
+    const safeNext = nextParam && nextParam.startsWith('/') ? nextParam : null;
 
     if (provider) {
       console.log("[OAuth] SITE_URL:", SITE_URL);
       const validProviders = ["google", "facebook"];
-      
+
       if (!validProviders.includes(provider)) {
         throw new ValidationError('Invalid OAuth provider');
       }
+      const callbackUrl = safeNext
+        ? `${SITE_URL}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
+        : `${SITE_URL}/api/auth/callback`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider as Provider,
         options: {
-          redirectTo: `${SITE_URL}/api/auth/callback`
+          redirectTo: callbackUrl
         },
       });
       if (error) {

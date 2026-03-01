@@ -264,7 +264,8 @@ const ACCOMMODATION_TYPES = [
   </div>
 
   <script>
-    import { actions } from 'astro:actions';
+    import { actions, ActionError } from 'astro:actions';
+    import { getPendingTripShare, clearPendingTripShare } from '@/lib/tripShare';
 
     const isOnboardingComplete = (document.getElementById('onboarding-meta') as HTMLElement)?.dataset.complete === 'true';
 
@@ -345,7 +346,20 @@ const ACCOMMODATION_TYPES = [
             throw new Error(completeError.message);
           }
 
-          showSuccess(completeData.message || 'Onboarding complete! 🎉');
+        showSuccess(completeData.message || 'Onboarding complete! 🎉');
+        }
+
+        // Check for pending trip share - redirect to trip page
+        const pendingTrip = getPendingTripShare();
+        
+        if (pendingTrip && !isOnboardingComplete) {
+          // User just completed onboarding, redirect to trip page
+          // User will join manually from the trip page
+          clearPendingTripShare();
+          setTimeout(() => {
+            window.location.href = `/trips/${pendingTrip.tripId}`;
+          }, 1500);
+          return;
         }
 
         // Redirect based on onboarding status
@@ -369,6 +383,17 @@ const ACCOMMODATION_TYPES = [
           await actions.onboarding.skipOnboardingStep({ step: 'preferences' });
           await actions.onboarding.completeOnboarding();
         }
+        
+        // Check for pending trip share - redirect to trip page
+        const pendingTrip = getPendingTripShare();
+        
+        if (pendingTrip && !isOnboardingComplete) {
+          // User just completed onboarding, redirect to trip page
+          clearPendingTripShare();
+          window.location.href = `/trips/${pendingTrip.tripId}`;
+          return;
+        }
+        
         window.location.href = isOnboardingComplete ? '/profile' : '/feeds';
       } catch (error) {
         console.error('Skip failed:', error);

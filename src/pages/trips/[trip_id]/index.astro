@@ -7,15 +7,21 @@ import { supabaseAdmin } from '@/lib/supabase';
 import Itinerary from '@/components/Trip/Itinerary/Itinerary.astro';
 import Hero from '@/components/Trip/Hero.astro';
 import TripOrganizer from '@/components/Trip/TripOrganizer.astro';
-
 const slug = Astro.params.trip_id || '';
 const user = Astro.locals.user_id;
 
-// Get trip data
-const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details', {
+// Pass share code so private trips grant access to users with a valid invite link
+const shareCode = Astro.url.searchParams.get('invite');
+
+// Build RPC args — only include p_share_code when present (old DB pre-047 has 2 params only)
+const rpcArgs: Record<string, unknown> = {
   p_trip_id: slug,
-  p_current_user_id: user
-});
+  p_current_user_id: user ?? null,
+};
+if (shareCode) rpcArgs.p_share_code = shareCode;
+
+// Get trip data
+const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details', rpcArgs as any);
 
 if (error || !tripData) {
   return Astro.redirect('/404');
@@ -233,6 +239,7 @@ const tripProps = {
   import { showToast } from '@/scripts/Toast';
   import { actions, ActionError } from 'astro:actions';
   import { createConfirmModal } from '@/scripts/Modal';
+  import { setPendingTripShare, getPendingTripShare, clearPendingTripShare } from '@/lib/tripShare';
 
   const joinBtns = document.querySelectorAll('.join-btn') as NodeListOf<HTMLButtonElement>;
   const cancelRequestBtns = document.querySelectorAll('.cancel-req-btn') as NodeListOf<HTMLButtonElement>;
@@ -243,6 +250,20 @@ const tripProps = {
 
   const tripId = window.location.pathname.split('/').pop();
 
+  // Store trip share data if invite param exists
+  const urlParams = new URLSearchParams(window.location.search);
+  const inviteCode = urlParams.get('invite');
+  if (inviteCode && tripId) {
+    // We'll store just the tripId here, the invite code validation happens server-side
+    // Actually, we need to look up the invitation_id from the share_code
+    // For now, store the code and we'll resolve it on join
+    setPendingTripShare(tripId, inviteCode);
+  }
+
+  // Get pending trip share for join action
+  const pendingTrip = getPendingTripShare();
+  const pendingShareCode = pendingTrip?.shareCode;
+
   // Join button handler - works for both desktop and mobile
   joinBtns.forEach(joinBtn => {
     joinBtn.addEventListener('click', async () => {
@@ -250,11 +271,26 @@ const tripProps = {
         message: 'Are you sure you want to join this trip?',
         confirmText: 'Join',
         onConfirm: async () => {
-          const { error } = await actions.trip.joinTrip({ trip_id: tripId! });
+          const joinData: { trip_id: string; share_code?: string } = { trip_id: tripId! };
+          
+          // Pass share_code if available from pending trip
+          if (pendingShareCode) {
+            joinData.share_code = pendingShareCode;
+          }
+          
+          const { error } = await actions.trip.joinTrip(joinData);
+          
           if (error instanceof ActionError) {
+            // Check if not authenticated error
+            if (error.message?.includes('must be logged in') || error.message?.includes('unauthorized') || error.code === 'UNAUTHORIZED') {
+              // Redirect to sign in, preserving the share code
+              window.location.href = '/signin';
+              return;
+            }
             showToast({ message: error.message, type: 'error' });
           } else {
             showToast({ message: 'Joined trip successfully!', type: 'success' });
+            clearPendingTripShare();
             setTimeout(() => window.location.reload(), 1500);
           }
         },

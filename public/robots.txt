@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard/
+Disallow: /feeds/
+Disallow: /onboarding/
+Disallow: /settings/
+Disallow: /api/
+Disallow: /signin
+Disallow: /register
 
 Sitemap: https://tarag.ph/sitemap-index.xml

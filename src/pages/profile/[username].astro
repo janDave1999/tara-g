@@ -5,6 +5,7 @@ import { PUBLIC_R2_URL } from 'astro:env/client';
 
 import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
 import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
+import PublicTripGrid     from "@/components/Profile/PublicTripGrid.astro";
 
 const { username } = Astro.params;
 if (!username) return Astro.redirect("/");
@@ -267,6 +268,7 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
     </div>
 
     {canViewFullProfile ? (
+      <>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <div class="lg:col-span-2 space-y-4">
@@ -309,6 +311,11 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
         </div>
 
       </div>
+
+      <!-- Trip grid — full width below the two-column grid -->
+      <PublicTripGrid username={username} />
+      </>
+
     ) : (
       <!-- Private Profile -->
       <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
@@ -343,13 +350,6 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
   </div>
 </div>
 
-<div id="profileToast"
-     role="status" aria-live="polite"
-     class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white
-            text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xl opacity-0
-            pointer-events-none transition-all duration-200 z-[200] translate-y-2">
-</div>
-
 <style>
   .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
   .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -359,14 +359,7 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
 
 <script>
   import { actions, ActionError } from 'astro:actions';
-
-  const toast = document.getElementById('profileToast')!;
-
-  function showToast(msg: string) {
-    toast.textContent = msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2200);
-  }
+  import { showToast } from '@/scripts/Toast';
 
   // Add Friend
   document.getElementById('addFriendBtn')?.addEventListener('click', async (e) => {
@@ -381,12 +374,12 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
     const { error } = await actions.friends.sendFriendRequest({ targetUserId });
 
     if (error instanceof ActionError) {
-      showToast(`⚠️ ${error.message}`);
+      showToast({ message: error.message, type: 'error' });
       btn.disabled = false;
       btn.innerHTML = originalHtml;
     } else {
       btn.textContent = 'Request Sent';
-      showToast('✅ Friend request sent!');
+      showToast({ message: 'Friend request sent!', type: 'success' });
     }
   });
 
@@ -404,12 +397,12 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
     const { error } = await actions.friends.acceptFriendRequest({ senderUserId });
 
     if (error instanceof ActionError) {
-      showToast(`⚠️ ${error.message}`);
+      showToast({ message: error.message, type: 'error' });
       btn.disabled = false;
       btn.textContent = 'Accept';
       if (declineBtn) declineBtn.disabled = false;
     } else {
-      showToast('✅ You are now friends!');
+      showToast({ message: 'You are now friends!', type: 'success' });
       setTimeout(() => window.location.reload(), 1200);
     }
   });
@@ -428,12 +421,12 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
     const { error } = await actions.friends.declineFriendRequest({ senderUserId });
 
     if (error instanceof ActionError) {
-      showToast(`⚠️ ${error.message}`);
+      showToast({ message: error.message, type: 'error' });
       btn.disabled = false;
       btn.textContent = 'Decline';
       if (acceptBtn) acceptBtn.disabled = false;
     } else {
-      showToast('Request declined.');
+      showToast({ message: 'Friend request declined.', type: 'info' });
       setTimeout(() => window.location.reload(), 1200);
     }
   });
@@ -451,17 +444,9 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
         await navigator.share({ title: document.title, url: window.location.href });
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        showToast('✅ Profile link copied!');
+        showToast({ message: 'Profile link copied!', type: 'success' });
       }
     } catch {}
   });
 </script>
-
-<style>
-  #profileToast.show {
-    opacity: 1 !important;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0) !important;
-  }
-</style>
 </PagePlate>

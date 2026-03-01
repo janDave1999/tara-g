@@ -1152,6 +1152,13 @@ getNearbyTrips: defineAction({
         .single();
 
       if (tripData?.owner_id && invitationData?.inviter_id) {
+        // trips.owner_id = auth.users.id; resolve internal user_id for notifications FK
+        const { data: ownerUser } = await supabaseAdmin
+          .from('users')
+          .select('user_id')
+          .eq('auth_id', tripData.owner_id)
+          .single();
+
         // Get inviter's name/avatar
         const { data: inviterUser } = await supabaseAdmin
           .from('users')
@@ -1162,17 +1169,19 @@ getNearbyTrips: defineAction({
         const inviterName = inviterUser?.full_name || inviterUser?.username || 'Someone';
         const inviterAvatar = inviterUser?.avatar_url || null;
 
-        await sendNotification(
-          tripData.owner_id,
-          'trip_invite_accepted',
-          'Invitation Accepted',
-          `accepted your invitation to join "${tripData.title}"`,
-          { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: inviterAvatar, username: inviterName },
-          `/trips/${data.trip_id}`,
-          'normal'
-        );
+        if (ownerUser?.user_id) {
+          await sendNotification(
+            ownerUser.user_id,
+            'trip_invite_accepted',
+            'Invitation Accepted',
+            `accepted your invitation to join "${tripData.title}"`,
+            { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: inviterAvatar, username: inviterName },
+            `/trips/${data.trip_id}`,
+            'normal'
+          );
+        }
       }
-      
+
       return {
         success: true,
         tripId: data.trip_id,

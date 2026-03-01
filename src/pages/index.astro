@@ -1,159 +1,123 @@
 ---
 import PagePlate from "../layouts/PagePlate.astro";
-import Blog from "@/components/Blog/Blog.astro"
+import Blog from "@/components/Blog/Blog.astro";
 import Skeleton from "@/components/Skeleton.astro";
-import { PUBLIC_R2_URL } from "astro:env/client";
-
-
-const trips = [
-  {
-    title: "Beach Adventure",
-    slug: "beach-adventure",
-    img: `${PUBLIC_R2_URL}image_processing20181219-4-1w5b3n8.jpg`,
-    price: 12500,
-    organizer: "John Doe",
-    date: "2023-07-15",
-    likes: 98,
-    comments: 12,
-    reused: 8,
-    description: "Sun, sand, and waves—your perfect getaway."
-  },
-  {
-    title: "Mountain Trek",
-    slug: "mountain-trek",
-    img: `${PUBLIC_R2_URL}Mt-Mayon-750x469.webp`,
-    price: 18300,
-    organizer: "Jane Smith",
-    date: "2023-08-22",
-    likes: 200,
-    comments: 36,
-    reused: 25,
-    description: "Challenge yourself and enjoy breathtaking views."
-  },
-  {
-    title: "Road Trips",
-    slug: "road-trips",
-    img: `${PUBLIC_R2_URL}Philippines-Hertz-Patapat-ViaductR.jpg`,
-    price: 9800,
-    organizer: "Bob Johnson",
-    date: "2023-09-15",
-    likes: 98,
-    comments: 12,
-    reused: 8,
-    description: "Hit the road and discover hidden gems along the way."
-  },
-];
-
 ---
 
-<PagePlate title="Tara G! - Adventure Awaits" noContainer>
-<div class="hero bg-base-200 min-h-screen">
-  <div class="hero-content text-center">
-    <div class="max-w-md">
-      <h1 class="text-5xl font-bold">Tara G! Adventure Starts Here</h1>
-      <p class="py-6">
-        Join or create unforgettable trips with fellow travelers. Discover hidden gems, share your adventures, and explore the Philippines together.
+<PagePlate
+  title="Tara G! — Explore the Philippines Together"
+  noContainer
+  description={{
+    title: "Tara G! — Explore the Philippines Together",
+    type: "WebSite",
+    description: "Join or create trips, connect with fellow travelers, and discover all 82 Philippine provinces together with Tara G!",
+    author: "Tara G!",
+    authorIs: "Organization",
+  }}
+>
+
+  <!-- ── Hero ────────────────────────────────────────────────── -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 text-white">
+    <!-- Decorative blobs — CSS only, zero extra requests -->
+    <div aria-hidden="true" class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5 blur-3xl"></div>
+    <div aria-hidden="true" class="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-blue-400/20 blur-2xl"></div>
+
+    <div class="relative max-w-4xl mx-auto px-6 py-24 sm:py-32 text-center">
+      <span class="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 text-white/90 text-xs font-semibold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
+        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+        </svg>
+        Community-first travel platform
+      </span>
+
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
+        Explore the Philippines<br class="hidden sm:block" /> with People Who Love It
+      </h1>
+
+      <p class="text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Create or join trips, meet fellow travelers, and work your way through all 82 Philippine provinces — together.
       </p>
-      <button class="btn btn-primary">Get Started</button>
-    </div>
-  </div>
-</div>
-<section class="py-24 px-8">
-  <h2 class="text-4xl font-bold mb-12 text-center">Why Choose Tara G?</h2>
-  <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-    <div class="text-center p-6">
-      <div class="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/trips"
+          class="inline-flex items-center gap-2 bg-white text-blue-700 font-bold px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-50 transition-all text-base">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          Start Exploring
+        </a>
+        <a href="/signup"
+          class="inline-flex items-center gap-2 border-2 border-white/50 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-white/10 transition-all text-base">
+          Sign Up Free
+        </a>
       </div>
-      <h3 class="text-xl font-semibold mb-2">Discover Trips</h3>
-      <p class="text-gray-600">Find and join trips created by fellow travelers or create your own adventure.</p>
     </div>
-    <div class="text-center p-6">
-      <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      </div>
-      <h3 class="text-xl font-semibold mb-2">Connect</h3>
-      <p class="text-gray-600">Meet like-minded travelers and share your travel experiences through blogs.</p>
-    </div>
-    <div class="text-center p-6">
-      <div class="w-16 h-16 mx-auto mb-4 bg-purple-100 rounded-full flex items-center justify-center">
-        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-      </div>
-      <h3 class="text-xl font-semibold mb-2">Explore</h3>
-      <p class="text-gray-600">Use our maps to discover amazing locations across the Philippines.</p>
-    </div>
-  </div>
-</section>
-<section class="py-24 px-8 text-center bg-base-200">
-  <h2 class="text-4xl font-bold mb-6">Ready for Your Next Adventure?</h2>
-  <p class="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">Join thousands of travelers discovering amazing places together.</p>
-  <button class="btn btn-primary btn-lg">Start Exploring</button>
-</section>
-  <h2 class="text-4xl font-bold mb-12">Recent Trips</h2>
-  <div class="grid md:grid-cols-3 gap-8">
-  {trips.map(trip => (
-    <div class="bg-white rounded-xl trip-card shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col" data-slug={trip.slug}>
-      <div class="relative group overflow-hidden">
-        <img src={trip.img} alt={trip.title} class="w-full h-56 object-cover transition-transform duration-300 group-hover:scale-105"/>
-        <span class="absolute top-4 right-4 bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md">
-          ₱{trip.price.toLocaleString()}
-        </span>
-      </div>
-      <div class="p-6 flex-1 flex flex-col justify-between">
-        <div>
-          <h3 class="text-2xl font-bold mb-2">{trip.title}</h3>
-          <p class="text-gray-600 mb-4">{trip.description}</p>
+  </section>
+
+
+  <!-- ── Features ─────────────────────────────────────────────── -->
+  <section class="py-20 px-6 bg-gray-50">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-4">Why Tara G?</h2>
+      <p class="text-center text-gray-500 mb-14 max-w-xl mx-auto">Everything you need to plan, join, and share travel adventures — built for Filipino travelers.</p>
+
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-7 text-center hover:shadow-md transition-shadow">
+          <div class="w-14 h-14 mx-auto mb-5 bg-blue-50 rounded-2xl flex items-center justify-center">
+            <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900 mb-2">Discover Trips</h3>
+          <p class="text-gray-500 text-sm leading-relaxed">Find and join trips created by fellow travelers, or create your own adventure and invite others along.</p>
         </div>
-        <div class="flex justify-between items-center text-gray-500 text-sm font-medium mb-4">
-          <p>Organizer: {trip.organizer}</p>
-          <p>Date: {trip.date}</p>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-7 text-center hover:shadow-md transition-shadow">
+          <div class="w-14 h-14 mx-auto mb-5 bg-green-50 rounded-2xl flex items-center justify-center">
+            <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900 mb-2">Connect</h3>
+          <p class="text-gray-500 text-sm leading-relaxed">Meet like-minded travelers, add friends, and share your experiences through the community blog.</p>
         </div>
-        <div class="flex justify-between items-center text-gray-500 text-sm">
-          <div class="flex items-center gap-2 hover:text-red-600 transition-colors cursor-pointer">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 18l-6.828-6.828a4 4 0 010-5.656z"/></svg>
-            <span>{trip.likes} Likes</span>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-7 text-center hover:shadow-md transition-shadow">
+          <div class="w-14 h-14 mx-auto mb-5 bg-purple-50 rounded-2xl flex items-center justify-center">
+            <svg class="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
           </div>
-          <div class="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10c0 3.866-3.582 7-8 7s-8-3.134-8-7 3.582-7 8-7 8 3.134 8 7zM7 9h6v2H7V9z"/></svg>
-            <span>{trip.comments} Comments</span>
-          </div>
-          <div class="flex items-center gap-2 hover:text-green-600 transition-colors cursor-pointer">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 10a6 6 0 1112 0 6 6 0 01-12 0zm6-3a1 1 0 100 2 1 1 0 000-2zm0 4a1 1 0 00-.707.293l-1 1a1 1 0 101.414 1.414l.293-.293.293.293a1 1 0 001.414-1.414l-1-1A1 1 0 0010 11z"/></svg>
-            <span>{trip.reused} Reused</span>
-          </div>
+          <h3 class="text-lg font-bold text-gray-900 mb-2">Explore</h3>
+          <p class="text-gray-500 text-sm leading-relaxed">Use interactive maps to plan routes and track your Project 82 progress across all 82 Philippine provinces.</p>
         </div>
       </div>
     </div>
-  ))}
-</div>
-</section>
-  <Blog server:defer>
-      <Skeleton slot="fallback" />
-  </Blog>
+  </section>
+
+  <!-- ── CTA Banner ───────────────────────────────────────────── -->
+  <section class="py-20 px-6 bg-white text-center">
+    <div class="max-w-2xl mx-auto">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Ready for Your Next Adventure?</h2>
+      <p class="text-gray-500 text-lg mb-8">Join a growing community of Filipino travelers discovering amazing places together.</p>
+      <a href="/trips"
+        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all text-base">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+        </svg>
+        Browse All Trips
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Blog (deferred — zero blocking impact) ───────────────── -->
+  <section class="py-20 px-6 bg-gray-50">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl font-bold text-gray-900 mb-10 text-center">From the Community</h2>
+      <Blog server:defer>
+        <Skeleton slot="fallback" />
+      </Blog>
+    </div>
+  </section>
+
 </PagePlate>
-
-<style>
-  /* Simple fade-in animations */
-  @keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fadeInDown { animation: fadeInDown 1s ease forwards; }
-  .animate-fadeInUp { animation: fadeInUp 1s ease forwards; }
-</style>
-
-<script>
-  const trips = document.querySelectorAll('.trip-card') as NodeListOf<HTMLElement>;
-
-  trips.forEach(trip => {
-    trip.addEventListener('click', () => {
-      const slug = trip.dataset.slug;
-      // Redirect to the trip page
-      window.location.href = `/trips/${slug}`;
-    });
-  });
-</script>

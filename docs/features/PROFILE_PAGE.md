@@ -1,8 +1,8 @@
 # Tara G! — Profile Page PRD
 
-**Version:** v2.0 — Final
-**Date:** February 2026
-**Status:** Approved for Development
+**Version:** v3.0 — Updated
+**Date:** March 2026
+**Status:** Implemented
 **Owner:** Tara G! Product Team
 **Scope:** User Profile Page Redesign
 
@@ -65,8 +65,9 @@ The existing profile page is a basic data display sheet. It lacks visual hierarc
 | US-06 | Traveler | See a 3-column grid of my past trips | I can browse my travel portfolio |
 | US-07 | Traveler | See a profile completion checklist | I know exactly what to fill in next |
 | US-08 | Traveler | Share my profile link | I can invite others to connect with me |
-| US-09 | Visitor | Follow or friend another traveler | I can connect with like-minded people *(Phase 2)* |
-| US-10 | Visitor | See mutual friends count | I can gauge trust and familiarity *(Phase 2)* |
+| US-09 | Visitor | Send / accept / decline a friend request | I can connect with like-minded travelers |
+| US-10 | Visitor | See a public profile's trip grid | I can browse their travel history before connecting |
+| US-11 | Visitor | See a private profile locked with a CTA | I know I need to add them as a friend to see more |
 
 ---
 
@@ -93,12 +94,30 @@ The profile header card is the primary identity block. It replaces the former co
 
 #### Action Buttons
 
-| Button | Owner | Visitor (Phase 2) | Behaviour |
-|---|---|---|---|
-| Edit Profile | Visible | Hidden | Opens `EditProfileModal` dialog |
-| Share | Visible | Visible | Web Share API, fallback to clipboard + toast |
-| Follow / Following | Hidden | Visible | Toggle follow state *(Phase 2)* |
-| Message | Hidden | Visible | Opens DM composer *(Phase 2)* |
+**Owner view:**
+
+| Button | Behaviour |
+|---|---|
+| Edit Profile | Links to `/onboarding/profile` |
+| Share (icon) | Web Share API; fallback to clipboard + toast |
+
+**Visitor view (logged-in):**
+
+| State | Button(s) | Behaviour |
+|---|---|---|
+| Not friends, no pending request | Add Friend | Calls `actions.friends.sendFriendRequest` |
+| Viewer sent request | Request Sent (disabled) | No action |
+| Viewer received request | Accept / Decline | Calls `acceptFriendRequest` / `declineFriendRequest`; page reloads on success |
+| Already friends | Friends (disabled, green) | No action |
+| Message | Always visible | Links to `/messages?user={user_id}` |
+| Share (icon) | Always visible | Web Share API; fallback to clipboard + toast |
+
+**Visitor view (logged-out):**
+
+| Button | Behaviour |
+|---|---|
+| Sign in to connect | Redirects to `/signin?redirect=/profile/{username}` |
+| Share (icon) | Web Share API; fallback to clipboard + toast |
 
 #### Stat Strip
 
@@ -147,23 +166,70 @@ Category-coloured pill tags. Each category maps to a distinct brand-compliant co
 
 ### 3.4 Trip Portfolio Grid
 
-Instagram-style 3-column square grid, loaded asynchronously from `/api/profile/trips`. Skeleton loaders shown during fetch.
+Instagram-style 3-column square grid. Two variants exist:
+
+#### Owner / Own Profile (`ProfileTripGrid` — `ProfileGrid.astro`)
+
+Loaded client-side from `GET /api/profile/trips`.
 
 | Property | Spec |
 |---|---|
-| Layout | CSS Grid, 3 columns, `gap-0.5` (2px), `bg-gray-200` shows as grid lines |
+| Layout | CSS Grid, 3 columns, 2px gap, `bg-gray-200` as grid lines |
 | Cell | `aspect-ratio: 1/1`, `overflow: hidden`, `position: relative` |
-| Image | `object-fit: cover`, lazy loaded, scales `1.05×` on hover (transition 0.3s) |
-| Fallback (no cover) | Brand gradient div (`135deg`, `#3B82F6` → `#2563EB`) |
-| Hover overlay | `gradient-to-top black/55` — reveals trip name + destination pin icon |
-| Tabs | "All", "Owned", "Joined" — refetches `/api/profile/trips?filter=X` |
+| Image | `object-fit: cover`, lazy loaded, scales `1.05×` on hover |
+| Fallback (no cover) | Brand gradient (`135deg`, `#3B82F6` → `#2563EB`) |
+| Hover overlay | `gradient-to-top black/60` — reveals trip name + destination |
+| Tabs | "All", "Owned", "Joined" — refetches with `?filter=X` |
+| Overflow (> 9 trips) | First 8 normal; 9th cell = "+N more" overlay → `/profile/trips` |
 | Empty state | Illustrated card with "Create a trip" CTA |
-| Skeleton loaders | 6 animated `animate-pulse` cells shown while fetching |
+| Skeleton loaders | 9 shimmer cells shown during fetch |
 | Cell click | Navigates to `/trips/{trip.id}` |
+
+#### Public Profile (`PublicTripGrid` — `PublicTripGrid.astro`)
+
+Loaded client-side from `GET /api/profile/{username}/trips`. Shown only when `canViewFullProfile` is true (see §3.7).
+
+| Property | Spec |
+|---|---|
+| Layout | Identical CSS Grid, 3 columns, 2px gap |
+| Tabs | None — shows owned trips only |
+| Overflow (> 9 trips) | "+N more" overlay → `/profile/{username}/trips` |
+| Empty state | "This traveler hasn't created any trips." — no Create CTA |
+| Visibility filtering | Friends/owner: all non-draft trips · Non-friends (public profile): `trip_visibility.visibility = 'public'` only |
 
 ---
 
-### 3.5 Travel Preferences Panel
+### 3.5 Public Profile Page (`/profile/[username]`)
+
+A server-rendered public profile accessible to anyone, owner or not.
+
+#### Privacy Gate
+
+| Condition | `canViewFullProfile` | What is shown |
+|---|---|---|
+| Viewer is the owner | ✅ | Full profile + own trip grid |
+| Viewer is friends with owner | ✅ | Full profile + all non-draft trips |
+| `is_private = false` (public account) | ✅ | Full profile + public trips only |
+| `is_private = true` AND not friends | ❌ | Private profile lock card with Add Friend / Sign In CTA |
+
+#### Friend Request Status Detection (SSR)
+
+Two separate queries determine the request direction; `.maybeSingle()` prevents errors when no row exists:
+
+1. `friends` table: `user_id = viewerUserId AND friend_id = profile.user_id` → `friendshipStatus = 'friends'`
+2. `friend_requests`: `sender_id = viewerUserId AND receiver_id = profile.user_id AND status = 'pending'` → `friendRequestStatus = 'sent'`
+3. `friend_requests`: `sender_id = profile.user_id AND receiver_id = viewerUserId AND status = 'pending'` → `friendRequestStatus = 'received'`
+
+#### Key Implementation Notes
+
+- `trips.owner_id` = `auth.users.id` (not internal `user_id`)
+- `notifications.user_id` FK references internal `users.user_id` — always resolve via `users WHERE auth_id = ...` before calling `create_notification`
+- Visibility lives in the `trip_visibility` table (not a `trips.visibility` column)
+- DB trigger `trigger_create_friendship` auto-inserts bidirectional rows into `friends` on `friend_requests` UPDATE to `'accepted'` — do NOT manually insert into `friends`
+
+---
+
+### 3.7 Travel Preferences Panel
 
 Property-row layout using `divide-y`. Each row: icon well + label + value. Follows brand spec: `w-9 h-9 rounded-xl` icon wells.
 
@@ -177,7 +243,7 @@ Property-row layout using `divide-y`. Each row: icon well + label + value. Follo
 
 ---
 
-### 3.6 Profile Completion Widget
+### 3.8 Profile Completion Widget
 
 Visible only to the profile owner, only when `completion < 100%`. Shows a thin brand-gradient progress bar and a checklist of up to 4 pending items, each with a direct action shortcut.
 
@@ -213,14 +279,24 @@ ALTER TABLE user_stats ADD COLUMN bucket_count INTEGER DEFAULT 0;
 
 `bucket_count` tracks the number of Philippine provinces (out of 82) visited. Populated from trip destinations in Phase 2.
 
-### 4.2 New API Endpoints
+### 4.2 API Endpoints
 
 | Method | Endpoint | Purpose | Auth |
 |---|---|---|---|
-| `PATCH` | `/api/profile/bio` | Inline bio save — body: `{ bio: string }` | Required (session) |
-| `GET` | `/api/profile/trips?filter=all\|owned\|joined` | Trip grid data — returns `id`, `title`, `cover_image_url`, `destination` | Required (session) |
+| `PATCH` | `/api/profile/bio` | Inline bio save — body: `{ bio: string }` | Required |
+| `GET` | `/api/profile/trips?filter=all\|owned\|joined` | Own trip grid — returns `id`, `title`, `cover_image_url`, `destination` | Required |
+| `GET` | `/api/profile/[username]/trips` | Public profile trip grid — visibility-filtered | Optional |
 
-### 4.3 Existing RPCs Used
+### 4.3 Astro Actions (Friend Requests)
+
+| Action | Input | Description |
+|---|---|---|
+| `actions.friends.sendFriendRequest` | `{ targetUserId }` | Inserts pending `friend_requests` row; sends `friend_request` notification |
+| `actions.friends.cancelFriendRequest` | `{ targetUserId }` | Deletes pending request sent by caller |
+| `actions.friends.acceptFriendRequest` | `{ senderUserId }` | Updates status → `'accepted'`; DB trigger creates bidirectional `friends` rows; sends `friend_accepted` notification |
+| `actions.friends.declineFriendRequest` | `{ senderUserId }` | Updates status → `'declined'` |
+
+### 4.4 Existing RPCs Used
 
 | RPC | Returns | New fields needed |
 |---|---|---|
@@ -283,9 +359,7 @@ ALTER TABLE user_stats ADD COLUMN bucket_count INTEGER DEFAULT 0;
 
 ## 7. Phased Roadmap
 
-### ✅ Phase 1 — Current Sprint (This Delivery)
-
-All items are implemented in `profile.astro`.
+### ✅ Phase 1 — Completed
 
 | Feature | Status |
 |---|---|
@@ -302,23 +376,28 @@ All items are implemented in `profile.astro`.
 | Share profile button (Web Share API + clipboard fallback) | ✅ Done |
 | Staggered entrance animations (`prefers-reduced-motion` aware) | ✅ Done |
 
-### 🔵 Phase 2 — Next Sprint
+### ✅ Phase 2 — Completed
 
 | Feature | Status |
 |---|---|
-| Social graph: Follow / Unfollow | 🔵 Planned |
-| Visitor vs owner view differentiation | 🔵 Planned |
-| Mutual friends chip on visitor view | 🔵 Planned |
-| `bucket_count` auto-populated from trip destinations | 🔵 Planned |
-| `GET /api/profile/trips` endpoint (real data) | 🔵 Planned |
-| Accommodation type preference field | 🔵 Planned |
+| Public profile page `/profile/[username]` with SSR | ✅ Done |
+| Owner vs visitor vs logged-out view differentiation | ✅ Done |
+| Privacy gate — `is_private` boolean on `users` table | ✅ Done |
+| Friend request system (send / cancel / accept / decline) | ✅ Done |
+| Inline Accept / Decline buttons on public profile | ✅ Done |
+| Friend request notifications (`friend_request`, `friend_accepted`) | ✅ Done |
+| Inline Accept / Decline in `NotificationBell` dropdown | ✅ Done |
+| Public trip grid on profile page (visibility-aware) | ✅ Done |
+| `GET /api/profile/[username]/trips` endpoint | ✅ Done |
+| `acceptTripInvitation` notification FK fix (auth_id → user_id) | ✅ Done |
 
 ### ⚪ Phase 3 — Future
 
 | Feature | Status |
 |---|---|
-| Public profile URL — `tara-g.com/u/username` | ⚪ Future |
+| `bucket_count` auto-populated from trip destinations | ⚪ Future |
 | Travel map — Philippine provinces heat map | ⚪ Future |
+| Mutual friends chip on public profile | ⚪ Future |
 | Achievements / badges system | ⚪ Future |
 | Pinned / highlighted trips | ⚪ Future |
 | Profile view analytics | ⚪ Future |
@@ -329,10 +408,10 @@ All items are implemented in `profile.astro`.
 
 | # | Question | Owner | Status |
 |---|---|---|---|
-| 1 | Should profiles be public by default or opt-in public? | Product | Open |
-| 2 | Follow model: mutual (friend request) or one-way? | Product | Open |
-| 3 | Should the trip grid show private trips to the owner? | Product | Open |
-| 4 | `bucket_count`: derived from trip destinations or manually tracked? | Engineering | Open |
+| 1 | Should profiles be public by default or opt-in public? | Product | Resolved — `is_private` defaults to false; users opt-in to private |
+| 2 | Follow model: mutual (friend request) or one-way? | Product | Resolved — mutual (friend request) model implemented |
+| 3 | Should the trip grid show private trips to the owner? | Product | Resolved — owner sees all non-draft trips; friends see all; non-friends see public only |
+| 4 | `bucket_count`: derived from trip destinations or manually tracked? | Engineering | Open — future phase |
 | 5 | Should the completion widget persist "dismissed" state per user? | Engineering | Open |
 
 ---
@@ -341,13 +420,19 @@ All items are implemented in `profile.astro`.
 
 | File | Type | Purpose |
 |---|---|---|
-| `profile.astro` | Astro page | Main profile page — all Phase 1 features |
-| `profile-mockup-v2.html` | HTML mockup | Interactive visual reference (no cover, Project 82) |
-| `EditProfileModal.astro` | Astro component | Edit name, username, bio, location *(existing)* |
-| `AvatarEditor.astro` | Astro component | Avatar crop & R2 upload *(existing)* |
-| `/api/profile/bio` | API route *(needed)* | `PATCH` endpoint — inline bio save |
-| `/api/profile/trips` | API route *(needed)* | `GET` endpoint — trip grid data |
+| `src/pages/profile/index.astro` | Astro page | Owner profile (authenticated) — all Phase 1 features |
+| `src/pages/profile/[username].astro` | Astro page | Public profile (SSR) — privacy gate, friend requests, public trip grid |
+| `src/components/Profile/EditProfileModal.astro` | Component | Edit name, username, bio, location |
+| `src/components/Profile/AvatarEditor.astro` | Component | Avatar crop & R2 upload |
+| `src/components/Profile/ProfileGrid.astro` | Component | Owner trip grid — tabs (All/Owned/Joined), own data |
+| `src/components/Profile/PublicTripGrid.astro` | Component | Public profile trip grid — no tabs, visibility-filtered |
+| `src/components/Profile/ProfileInterest.astro` | Component | Interest pill tags |
+| `src/components/Profile/ProfilePreference.astro` | Component | Travel preferences panel |
+| `src/actions/friends.ts` | Astro Action | Friend request CRUD (send/cancel/accept/decline) |
+| `src/pages/api/profile/bio.ts` | API route | `PATCH` — inline bio save |
+| `src/pages/api/profile/trips.ts` | API route | `GET` — own trip grid (`?filter=all\|owned\|joined`) |
+| `src/pages/api/profile/[username]/trips.ts` | API route | `GET` — public profile trip grid (visibility-aware) |
 
 ---
 
-*Confidential — Internal Use Only · Tara G! Product Team · February 2026*
+*Confidential — Internal Use Only · Tara G! Product Team · March 2026*

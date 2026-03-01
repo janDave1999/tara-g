@@ -89,5 +89,5 @@ export default defineConfig({
       }
     }
   })],
-  site:"https:tara-g.site/",
+  site:"https://tara-g.site/",
 });

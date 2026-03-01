@@ -49,6 +49,7 @@ if(description && !description.title){
 <Layout title={title} html={html}>
   <Fragment slot={`head-last`}>
     <SeoHead description={description} prefetch={prefetch} showFb={!!description?.fbAppId} />
+    <slot name="head-extra" />
   </Fragment>
     {clean?"":<>
       {noHeader ? "":<>
@@ -62,6 +63,7 @@ if(description && !description.title){
         <div class="h-14 sm:h-16" aria-hidden="true"></div>
       </>}
     </>}
+    <main>
     <slot name="header" />
 
 {noContainer ?<>
@@ -75,6 +77,7 @@ if(description && !description.title){
     </div>
     {user_id && <div class="h-16 md:hidden" aria-hidden="true"></div>}
     </>}
+    </main>
     <CookiesConsent />
     <LoadModal />
     {

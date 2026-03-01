@@ -16,8 +16,7 @@ const {
 } = Astro.props;
 
 const currentLang = getLangFromUrl(Astro.url);
-// const newUrl = new URL(Astro.url);
-// const reconstructPathName  = newUrl.toString().replace(newUrl.origin,"")
+const r2Origin = PUBLIC_R2_URL ? new URL(PUBLIC_R2_URL).origin : null;
 ---
 
 <!doctype html>
@@ -25,22 +24,19 @@ const currentLang = getLangFromUrl(Astro.url);
 	<head>
 		<slot name="head-first" />
 
-		{/* HTML Format */}
-		<meta name="application-name" content="Walang Magawa" />
+		<meta name="application-name" content="Tara G!" />
 		<title>{title}</title>
 		<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 
-		<link rel="icon" type="image/ico" href=`${PUBLIC_R2_URL}logo-with-bg.jpg` />
+		{r2Origin && <link rel="preconnect" href={r2Origin} />}
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="sitemap" href="/sitemap-index.xml" />
-		<!-- og images -->
 		<meta property="og:image" content=`${PUBLIC_R2_URL}logo-with-bg.jpg` />
 		<meta name="robots" content="index, follow" />
-		<meta name="theme-color" content="#ffffff" />
-		{/* HTML Format */}
-		
-		<link href='https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css' rel='stylesheet' />
+		<meta name="theme-color" content="#2563EB" />
+
 		<slot name="head-last" />
 	</head>
 

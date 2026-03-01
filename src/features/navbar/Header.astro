@@ -73,7 +73,7 @@ const initials = displayFullName.charAt(0).toUpperCase();
 
             <!-- Desktop Profile Dropdown -->
             <div class="hidden md:block relative">
-              <button id="profile-btn-desktop" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-150 group">
+              <button id="profile-btn-desktop" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu-desktop" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-150 group">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Profile" class="w-7 h-7 rounded-full border border-gray-200" />
                 ) : (
@@ -164,8 +164,8 @@ const initials = displayFullName.charAt(0).toUpperCase();
             </div>
 
             <!-- Mobile Hamburger -->
-            <button id="mobile-toggle" class="md:hidden p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-150">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <button id="mobile-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-menu" class="md:hidden p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-150">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
               </svg>
             </button>
@@ -186,8 +186,8 @@ const initials = displayFullName.charAt(0).toUpperCase();
     
     <!-- Sidebar Header — brand gradient -->
     <div class="brand-gradient px-5 pt-5 pb-6 relative shrink-0">
-      <button id="close-menu" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 border border-white/20 transition-colors">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <button id="close-menu" aria-label="Close navigation menu" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 border border-white/20 transition-colors">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
@@ -361,6 +361,7 @@ const initials = displayFullName.charAt(0).toUpperCase();
     overlay.classList.remove('opacity-0', 'pointer-events-none');
     overlay.classList.add('opacity-100');
     document.body.classList.add('menu-open');
+    mobileToggle?.setAttribute('aria-expanded', 'true');
   }
 
   function closeMobileMenu(): void {
@@ -370,6 +371,7 @@ const initials = displayFullName.charAt(0).toUpperCase();
     overlay.classList.add('opacity-0', 'pointer-events-none');
     overlay.classList.remove('opacity-100');
     document.body.classList.remove('menu-open');
+    mobileToggle?.setAttribute('aria-expanded', 'false');
   }
 
   mobileToggle?.addEventListener('click', openMobileMenu);
@@ -387,9 +389,11 @@ const initials = displayFullName.charAt(0).toUpperCase();
     if (isOpen) {
       profileMenuDesktop?.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
       profileMenuDesktop?.classList.add('opacity-0', 'translate-y-[-8px]', 'pointer-events-none');
+      profileBtnDesktop.setAttribute('aria-expanded', 'false');
     } else {
       profileMenuDesktop?.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
       profileMenuDesktop?.classList.remove('opacity-0', 'translate-y-[-8px]', 'pointer-events-none');
+      profileBtnDesktop.setAttribute('aria-expanded', 'true');
     }
   });
 
@@ -398,6 +402,7 @@ const initials = displayFullName.charAt(0).toUpperCase();
     if (profileMenuDesktop && !profileMenuDesktop.contains(target) && target !== profileBtnDesktop) {
       profileMenuDesktop.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
       profileMenuDesktop.classList.add('opacity-0', 'translate-y-[-8px]', 'pointer-events-none');
+      profileBtnDesktop?.setAttribute('aria-expanded', 'false');
     }
   });
 

@@ -18,7 +18,8 @@ interface Props {
 const { description } = Astro.props as Props;
 const desc = description || {};
 ---
-<SEO 
+<SEO
+  description={desc.description}
   openGraph={{
     basic:{
       url: Astro.url.origin,

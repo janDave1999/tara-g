@@ -1,0 +1,176 @@
+---
+// GlobalSearchBar — as-you-type search dropdown (Users / Trips / Posts)
+// Calls actions.search.global({ q }) after 2+ chars with 300ms debounce.
+---
+
+<div class="relative w-full" id="search-wrapper">
+  <div class="relative">
+    <svg
+      class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+    <input
+      id="global-search-input"
+      type="search"
+      placeholder="Search users, trips, posts…"
+      autocomplete="off"
+      class="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+    />
+  </div>
+
+  <!-- Dropdown -->
+  <div
+    id="search-dropdown"
+    class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden"
+  >
+    <!-- Populated by JS -->
+  </div>
+</div>
+
+<script>
+  import { actions } from "astro:actions";
+
+  const input    = document.getElementById("global-search-input") as HTMLInputElement;
+  const dropdown = document.getElementById("search-dropdown") as HTMLDivElement;
+  const wrapper  = document.getElementById("search-wrapper") as HTMLDivElement;
+
+  let debounceTimer: ReturnType<typeof setTimeout>;
+
+  function openDropdown(html: string) {
+    dropdown.innerHTML = html;
+    dropdown.classList.remove("hidden");
+  }
+
+  function closeDropdown() {
+    dropdown.classList.add("hidden");
+    dropdown.innerHTML = "";
+  }
+
+  function avatarEl(url: string | null | undefined, name: string, size = "w-7 h-7") {
+    if (url) {
+      return `<img src="${url}" alt="${name}" class="${size} rounded-full object-cover flex-shrink-0" />`;
+    }
+    const initial = name?.charAt(0)?.toUpperCase() ?? "?";
+    return `<div class="${size} rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">${initial}</div>`;
+  }
+
+  function buildDropdown(
+    users: any[],
+    trips: any[],
+    posts: any[],
+    q: string
+  ): string {
+    if (!users.length && !trips.length && !posts.length) {
+      return `<p class="px-4 py-3 text-sm text-gray-400">No results for "<strong>${q}</strong>"</p>`;
+    }
+
+    let html = "";
+
+    if (users.length) {
+      html += `<div class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Users</div>`;
+      for (const u of users) {
+        html += `
+          <a href="/profile/${u.username}" class="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition">
+            ${avatarEl(u.avatar_url, u.full_name ?? u.username)}
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">${u.full_name ?? u.username}</p>
+              <p class="text-xs text-gray-400 truncate">@${u.username}</p>
+            </div>
+          </a>`;
+      }
+    }
+
+    if (trips.length) {
+      html += `<div class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide ${users.length ? "border-t border-gray-100 mt-1" : ""}">Trips</div>`;
+      for (const t of trips) {
+        const date = t.start_date
+          ? new Date(t.start_date).toLocaleDateString("en-PH", { month: "short", day: "numeric" })
+          : "";
+        html += `
+          <a href="/trips/${t.trip_id}" class="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition">
+            <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">${t.title}</p>
+              <p class="text-xs text-gray-400 truncate">${t.region ?? ""}${date ? " · " + date : ""}</p>
+            </div>
+          </a>`;
+      }
+    }
+
+    if (posts.length) {
+      html += `<div class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide ${(users.length || trips.length) ? "border-t border-gray-100 mt-1" : ""}">Posts</div>`;
+      for (const p of posts) {
+        const snippet = (p.content ?? "").slice(0, 80);
+        html += `
+          <a href="/search?q=${encodeURIComponent(q)}&tab=posts" class="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition">
+            <div class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm text-gray-700 truncate">${snippet}…</p>
+              <p class="text-xs text-gray-400">by @${p.author_username}</p>
+            </div>
+          </a>`;
+      }
+    }
+
+    html += `
+      <div class="border-t border-gray-100 mt-1">
+        <a href="/search?q=${encodeURIComponent(q)}" class="flex items-center justify-center gap-1 px-4 py-2.5 text-sm text-blue-600 font-medium hover:bg-blue-50 transition">
+          See all results for "<strong>${q}</strong>"
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>`;
+
+    return html;
+  }
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(debounceTimer);
+
+    if (q.length < 2) {
+      closeDropdown();
+      return;
+    }
+
+    debounceTimer = setTimeout(async () => {
+      const res = await actions.search.global({ q });
+      if (res.error || !res.data) {
+        closeDropdown();
+        return;
+      }
+      const { users, trips, posts } = res.data;
+      openDropdown(buildDropdown(users as any[], trips as any[], posts as any[], q));
+    }, 300);
+  });
+
+  // Close on Escape
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDropdown();
+  });
+
+  // Close on click outside
+  document.addEventListener("click", (e) => {
+    if (!wrapper.contains(e.target as Node)) closeDropdown();
+  });
+
+  // Reopen dropdown on refocus if there's a query
+  input.addEventListener("focus", () => {
+    const q = input.value.trim();
+    if (q.length >= 2 && dropdown.innerHTML) {
+      dropdown.classList.remove("hidden");
+    }
+  });
+</script>

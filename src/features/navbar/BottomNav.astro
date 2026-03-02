@@ -1,11 +1,11 @@
 ---
-import { House, Map, Move, User, Plus, Settings } from "@lucide/astro";
+import { Map, Move, Search, User, Plus, Settings } from "@lucide/astro";
 import BucketIcon from "./BucketIcon.astro";
 const { currentPath = "/" } = Astro.props;
 
 /* Nav items */
 const navItems = [
-  { href: "/feeds", label: "Feed", Icon: House },
+  { href: "/search", label: "Search", Icon: Search },
   { href: "/trips", label: "Trips", Icon: Move },
   { href: "/project82", label: "Project 82", Icon: BucketIcon },
   { href: "/maps", label: "Maps", Icon: Map },

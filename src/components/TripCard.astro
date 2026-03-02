@@ -7,9 +7,10 @@ interface Props {
   participationStatus?: 'joined' | 'pending' | 'invited';
   /** Number of pending join requests (for owned trips) */
   joinRequestCount?: number;
+  class?: string;
 }
 
-const { trip, type, participationStatus, joinRequestCount } = Astro.props;
+const { trip, type, participationStatus, joinRequestCount, class: extraClass = '' } = Astro.props;
 
 const participationMeta: Record<string, { label: string; classes: string }> = {
   joined:  { label: '✓ Joined',    classes: 'bg-emerald-100 text-emerald-800' },
@@ -47,7 +48,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
 ---
 
 <!-- Outer div is the card; the <a> covers it as a click-through overlay -->
-<div class="group relative rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white">
+<div class={`group relative rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 bg-white flex flex-col ${extraClass}`}>
 
   <!-- Full-card link (sits below all content via z-0) -->
   <a
@@ -114,7 +115,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
   </div>
 
   <!-- Content (relative z-[1] so it sits above the <a> overlay) -->
-  <div class="relative z-1 p-5 space-y-3 pointer-events-none">
+  <div class="relative z-1 p-5 space-y-3 pointer-events-none flex flex-col flex-1">
     <!-- Title and Region -->
     <div>
       <h3 class="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
@@ -169,7 +170,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
     )}
 
     <!-- Footer Info -->
-    <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+    <div class="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
       {type === 'owned' && (
         <div class="flex items-center gap-2 text-sm text-gray-600">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

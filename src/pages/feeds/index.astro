@@ -1,11 +1,110 @@
 ---
-import Pageplate from "@/layouts/PagePlate.astro";
-import MapBox from "@/components/MapBox.astro";
-import Feeds from "@/components/Feeds.astro";
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabaseAdmin } from "@/lib/supabase";
+import FeedCard from "@/features/feed/FeedCard.astro";
+import TripCard from "@/components/TripCard.astro";
+import GlobalSearchBar from "@/features/search/GlobalSearchBar.astro";
 
+const { user_id } = Astro.locals;
+if (!user_id) return Astro.redirect("/signin");
 
+const page     = Number(Astro.url.searchParams.get("page") ?? 1);
+const postType = Astro.url.searchParams.get("type") ?? null;
+const limit    = 10;
+const offset   = (page - 1) * limit;
+
+const [feedResult, discoverResult] = await Promise.all([
+  supabaseAdmin.rpc("get_feed_posts", {
+    p_user_id:   user_id,
+    p_post_type: postType,
+    p_limit:     limit,
+    p_offset:    offset,
+  }),
+  supabaseAdmin.rpc("get_recent_trips", {
+    p_user_id: user_id,
+    p_search:  null,
+    p_tags:    null,
+    p_region:  null,
+    p_limit:   6,
+    p_offset:  0,
+  }),
+]);
+
+if (feedResult.error)    console.error("[feeds] get_feed_posts",  feedResult.error);
+if (discoverResult.error) console.error("[feeds] get_recent_trips", discoverResult.error);
+
+const posts: any[]         = feedResult.data    ?? [];
+const discoverTrips: any[] = discoverResult.data ?? [];
 ---
 
-<Pageplate title="Feeds">
-    <Feeds />
-</Pageplate>
+<PagePlate title="Feed">
+  <div class="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+    <!-- Search bar -->
+    <GlobalSearchBar />
+
+    <!-- Filter tabs -->
+    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {[
+        { label: "All",       value: "" },
+        { label: "Trips",     value: "trip_planning" },
+        { label: "Photos",    value: "photo" },
+        { label: "Tips",      value: "tip" },
+        { label: "Questions", value: "question" },
+      ].map(({ label, value }) => {
+        const active = (postType ?? "") === value;
+        const href   = value ? `/feeds?type=${value}` : "/feeds";
+        return (
+          <a
+            href={href}
+            class={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition ${
+              active
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {label}
+          </a>
+        );
+      })}
+    </div>
+
+    <!-- Feed -->
+    {posts.length === 0 && (
+      <div class="text-center py-16">
+        <div class="text-4xl mb-3">✈️</div>
+        <p class="text-gray-500 font-medium">No posts yet</p>
+        <p class="text-gray-400 text-sm mt-1">Be the first to share your travel story!</p>
+      </div>
+    )}
+
+    {posts.map((post, i) => (
+      <>
+        <FeedCard post={post} />
+        {/* Interleave a discover trip card every 5 posts */}
+        {(i + 1) % 5 === 0 && discoverTrips[Math.floor((i + 1) / 5) - 1] && (
+          <div>
+            <p class="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              Suggested Trip
+            </p>
+            <TripCard trip={discoverTrips[Math.floor((i + 1) / 5) - 1] as any} type="discover" />
+          </div>
+        )}
+      </>
+    ))}
+
+    <!-- Discover trips shown when feed is empty -->
+    {posts.length === 0 && discoverTrips.length > 0 && (
+      <div class="space-y-4">
+        <p class="text-sm font-semibold text-gray-500">Trips you might like</p>
+        {discoverTrips.map((trip) => (
+          <TripCard trip={trip} type="discover" />
+        ))}
+      </div>
+    )}
+
+  </div>
+</PagePlate>

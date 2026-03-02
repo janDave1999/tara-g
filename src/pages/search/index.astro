@@ -1,0 +1,596 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabaseAdmin } from "@/lib/supabase";
+import TripCard from "@/components/TripCard.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
+
+const { user_id } = Astro.locals;
+if (!user_id) return Astro.redirect("/signin");
+
+const q   = Astro.url.searchParams.get("q")?.trim() ?? "";
+const tab = Astro.url.searchParams.get("tab") ?? "all";
+
+// ── Search results (SSR for initial page load with ?q=) ─────────────────────
+let users: any[] = [];
+let trips: any[] = [];
+let posts: any[] = [];
+
+if (q.length >= 2) {
+  const [usersResult, tripsResult, postsResult] = await Promise.all([
+    supabaseAdmin.rpc("search_users_for_invitation", {
+      p_search_query:    q,
+      p_current_user_id: user_id,
+      p_trip_id:         null,
+      p_limit:           10,
+    }),
+    supabaseAdmin.rpc("get_recent_trips", {
+      p_user_id: user_id,
+      p_search:  q,
+      p_tags:    null,
+      p_region:  null,
+      p_limit:   10,
+      p_offset:  0,
+    }),
+    supabaseAdmin.rpc("search_posts", {
+      p_query: q,
+      p_limit: 10,
+    }),
+  ]);
+
+  if (usersResult.error) console.error("[search] users", usersResult.error);
+  if (tripsResult.error) console.error("[search] trips", tripsResult.error);
+  if (postsResult.error) console.error("[search] posts", postsResult.error);
+
+  users = (usersResult.data as any[]) ?? [];
+  trips = (tripsResult.data as any[]) ?? [];
+  posts = (postsResult.data as any[]) ?? [];
+}
+
+// ── Default discovery content (when no query) ───────────────────────────────
+let suggestedPeople: any[] = [];
+let suggestedTrips:  any[] = [];
+
+if (!q) {
+  const [peopleResult, tripsResult] = await Promise.all([
+    supabaseAdmin.rpc("get_people_you_may_know", {
+      p_user_id: user_id,
+      p_limit:   10,
+    }),
+    supabaseAdmin.rpc("get_suggested_trips", {
+      p_user_id: user_id,
+      p_limit:   4,
+    }),
+  ]);
+
+  if (peopleResult.error) console.error("[search] people", peopleResult.error);
+  if (tripsResult.error)  console.error("[search] suggested trips", tripsResult.error);
+
+  suggestedPeople = (peopleResult.data as any[]) ?? [];
+  suggestedTrips  = (tripsResult.data  as any[]) ?? [];
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+const TABS = [
+  { id: "all",   label: "All" },
+  { id: "users", label: "Users" },
+  { id: "trips", label: "Trips" },
+  { id: "posts", label: "Posts" },
+];
+
+function avatarSrc(url: string | null | undefined) {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${PUBLIC_R2_URL}${url}`;
+}
+
+function relationLabel(reason: string, count: number): string {
+  if (reason === "trip_mate") {
+    return count === 1 ? "On 1 trip together" : `On ${count} trips together`;
+  }
+  return count === 1 ? "1 mutual connection" : `${count} mutual connections`;
+}
+
+function sectionHidden(sectionTab: string) {
+  return tab !== "all" && tab !== sectionTab;
+}
+---
+
+<PagePlate title={q ? `Search: ${q}` : "Search"}>
+  <div class="max-w-2xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Search input -->
+    <form id="search-form" method="get" action="/search" class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input
+        id="search-input"
+        type="search"
+        name="q"
+        value={q}
+        placeholder="Search users, trips, posts…"
+        autofocus
+        autocomplete="off"
+        class="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+      />
+    </form>
+
+    <!-- Too short hint -->
+    <p id="too-short-msg" class={`text-sm text-gray-400 text-center py-8 ${q.length > 0 && q.length < 2 ? "" : "hidden"}`}>
+      Type at least 2 characters to search
+    </p>
+
+    <!-- ── NO QUERY: Discovery default ─────────────────────────────────── -->
+    <div id="discovery-section" class={q ? "hidden" : ""}>
+
+      <!-- Recent Searches (client-rendered) -->
+      <section id="recent-searches-section" class="hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-800">Recent Searches</h2>
+          <button id="clear-all-searches" class="text-xs text-blue-500 hover:underline">Clear all</button>
+        </div>
+        <ul id="recent-searches-list" class="space-y-1"></ul>
+      </section>
+
+      <!-- People You May Know -->
+      {suggestedPeople.length > 0 && (
+        <section>
+          <h2 class="text-sm font-semibold text-gray-800 mb-3">People You May Know</h2>
+          <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+            {suggestedPeople.map((u) => (
+              <a
+                href={`/profile/${u.username}`}
+                class="flex-shrink-0 w-36 flex flex-col bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition overflow-hidden"
+              >
+                <!-- Cover image area — fixed height so all cards align -->
+                <div class="w-full h-36 relative overflow-hidden flex-shrink-0">
+                  {avatarSrc(u.avatar_url) ? (
+                    <img
+                      src={avatarSrc(u.avatar_url)!}
+                      alt={u.full_name ?? u.username}
+                      class="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-4xl">
+                      {(u.full_name ?? u.username ?? "?").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <!-- Info -->
+                <div class="p-2.5 flex flex-col gap-1.5 flex-1">
+                  <div class="flex-1">
+                    <p class="font-semibold text-gray-900 text-xs truncate leading-tight">{u.full_name ?? u.username}</p>
+                    <p class="text-gray-400 text-xs truncate">@{u.username}</p>
+                    <p class={`text-xs truncate font-medium mt-0.5 min-h-[14px] ${u.relation_reason === "trip_mate" ? "text-teal-600" : "text-indigo-500"}`}>
+                      {u.relation_reason ? relationLabel(u.relation_reason, u.shared_count ?? 1) : ""}
+                    </p>
+                  </div>
+                  <span class="w-full text-center text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg py-1 transition">
+                    View profile
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Suggested Trips -->
+      {suggestedTrips.length > 0 && (
+        <section>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-gray-800">Suggested Trips</h2>
+            <a href="/trips?tab=discover" class="text-xs text-blue-500 hover:underline">See all →</a>
+          </div>
+          <div class="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+            {suggestedTrips.map((trip) => (
+              <div class="flex-shrink-0 w-64 flex flex-col">
+                <TripCard trip={trip as any} type="discover" class="h-full" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Empty default -->
+      {suggestedPeople.length === 0 && suggestedTrips.length === 0 && (
+        <div class="text-center py-16">
+          <div class="text-4xl mb-3">🔍</div>
+          <p class="text-gray-500 font-medium">Search Tara G!</p>
+          <p class="text-gray-400 text-sm mt-1">Find users, trips, and travel posts</p>
+        </div>
+      )}
+
+    </div>
+
+    <!-- ── HAS QUERY: Search results ────────────────────────────────────── -->
+    <div id="results-section" class={q.length >= 2 ? "" : "hidden"}>
+
+      <p class="text-sm text-gray-500">
+        Results for <span id="query-display" class="font-semibold text-gray-800">"{q}"</span>
+      </p>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 overflow-x-auto scrollbar-hide border-b border-gray-200">
+        {TABS.map(({ id, label }) => (
+          <button
+            data-tab={id}
+            class={`tab-btn flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+              tab === id
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div class="space-y-6">
+
+        <!-- USERS -->
+        <section id="users-section" class={sectionHidden("users") ? "hidden" : ""}>
+          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Users</h2>
+          <div id="users-container">
+            {users.length === 0 ? (
+              <p class="text-sm text-gray-400">No users found.</p>
+            ) : (
+              <ul class="space-y-1">
+                {users.map((u) => (
+                  <li>
+                    <a
+                      href={`/profile/${u.username}`}
+                      class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition"
+                    >
+                      {avatarSrc(u.avatar_url) ? (
+                        <img src={avatarSrc(u.avatar_url)!} alt={u.full_name ?? u.username}
+                          class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                          {(u.full_name ?? u.username ?? "?").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div class="min-w-0">
+                        <p class="font-medium text-gray-900 text-sm truncate">{u.full_name ?? u.username}</p>
+                        <p class="text-gray-400 text-xs truncate">@{u.username}</p>
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        <!-- TRIPS -->
+        <section id="trips-section" class={sectionHidden("trips") ? "hidden" : ""}>
+          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Trips</h2>
+          <div id="trips-container">
+            {trips.length === 0 ? (
+              <p class="text-sm text-gray-400">No trips found.</p>
+            ) : (
+              <div class="space-y-2">
+                {trips.map((t) => (
+                  <a
+                    href={`/trips/${t.trip_id}`}
+                    class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:bg-gray-50 hover:border-blue-200 transition"
+                  >
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {t.cover_image ? (
+                        <img src={`${PUBLIC_R2_URL}${t.cover_image}`} alt={t.title} class="w-full h-full object-cover" />
+                      ) : (
+                        <svg class="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-gray-900 text-sm truncate">{t.title}</p>
+                      {t.region && <p class="text-gray-400 text-xs truncate">{t.region}</p>}
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0 bg-gray-100 text-gray-600 capitalize">{t.status}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <!-- POSTS -->
+        <section id="posts-section" class={sectionHidden("posts") ? "hidden" : ""}>
+          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Posts</h2>
+          <div id="posts-container">
+            {posts.length === 0 ? (
+              <p class="text-sm text-gray-400">No posts found.</p>
+            ) : (
+              <ul class="space-y-3">
+                {posts.map((p) => (
+                  <li class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-1.5">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 capitalize">
+                        {(p.post_type ?? "").replace(/_/g, " ")}
+                      </span>
+                      <span class="text-gray-300 text-xs">·</span>
+                      <span class="text-xs text-gray-400">@{p.author_username}</span>
+                    </div>
+                    {p.title && <p class="font-semibold text-gray-900 text-sm">{p.title}</p>}
+                    <p class="text-sm text-gray-600 leading-relaxed">{p.content}</p>
+                    {p.hashtags?.length > 0 && (
+                      <div class="flex flex-wrap gap-1">
+                        {p.hashtags.map((tag: string) => (
+                          <span class="text-blue-500 text-xs">#{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </div>
+</PagePlate>
+
+<script>
+  import { actions } from "astro:actions";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  // ── Elements ────────────────────────────────────────────────────────────────
+  const form            = document.getElementById("search-form") as HTMLFormElement;
+  const input           = document.getElementById("search-input") as HTMLInputElement;
+  const discoveryEl     = document.getElementById("discovery-section")!;
+  const resultsEl       = document.getElementById("results-section")!;
+  const tooShortEl      = document.getElementById("too-short-msg")!;
+  const queryDisplay    = document.getElementById("query-display")!;
+  const usersSection    = document.getElementById("users-section")!;
+  const tripsSection    = document.getElementById("trips-section")!;
+  const postsSection    = document.getElementById("posts-section")!;
+  const usersContainer  = document.getElementById("users-container")!;
+  const tripsContainer  = document.getElementById("trips-container")!;
+  const postsContainer  = document.getElementById("posts-container")!;
+
+  const R2 = PUBLIC_R2_URL;
+  let activeTab = new URLSearchParams(location.search).get("tab") ?? "all";
+  let debounceTimer: ReturnType<typeof setTimeout>;
+
+  // ── XSS-safe escape ─────────────────────────────────────────────────────────
+  function esc(s: string | null | undefined): string {
+    return (s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ── Tab management ──────────────────────────────────────────────────────────
+  function setTab(id: string) {
+    activeTab = id;
+    document.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((btn) => {
+      const active = btn.dataset.tab === id;
+      btn.className = `tab-btn flex-shrink-0 px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${
+        active ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"
+      }`;
+    });
+    usersSection.classList.toggle("hidden", id !== "all" && id !== "users");
+    tripsSection.classList.toggle("hidden", id !== "all" && id !== "trips");
+    postsSection.classList.toggle("hidden", id !== "all" && id !== "posts");
+
+    const q = input.value.trim();
+    if (q.length >= 2) {
+      const params = new URLSearchParams({ q });
+      if (id !== "all") params.set("tab", id);
+      history.replaceState({}, "", `/search?${params}`);
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setTab(btn.dataset.tab!));
+  });
+
+  // ── HTML builders ───────────────────────────────────────────────────────────
+  function avatarHtml(url: string | null | undefined, name: string) {
+    if (url) {
+      const src = url.startsWith("http") ? url : `${R2}${url}`;
+      return `<img src="${esc(src)}" alt="${esc(name)}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />`;
+    }
+    return `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold flex-shrink-0">${esc((name ?? "?")[0].toUpperCase())}</div>`;
+  }
+
+  function renderUsers(users: any[]) {
+    if (!users.length) {
+      usersContainer.innerHTML = `<p class="text-sm text-gray-400">No users found.</p>`;
+      return;
+    }
+    usersContainer.innerHTML = `<ul class="space-y-1">${users.map((u) => `
+      <li>
+        <a href="/profile/${esc(u.username)}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition">
+          ${avatarHtml(u.avatar_url, u.full_name ?? u.username)}
+          <div class="min-w-0">
+            <p class="font-medium text-gray-900 text-sm truncate">${esc(u.full_name ?? u.username)}</p>
+            <p class="text-gray-400 text-xs truncate">@${esc(u.username)}</p>
+          </div>
+        </a>
+      </li>`).join("")}</ul>`;
+  }
+
+  const STATUS_COLORS: Record<string, string> = {
+    planning:  "bg-yellow-100 text-yellow-800",
+    upcoming:  "bg-blue-100 text-blue-800",
+    ongoing:   "bg-green-100 text-green-800",
+    completed: "bg-gray-100 text-gray-800",
+    cancelled: "bg-red-100 text-red-800",
+  };
+
+  function renderTrips(trips: any[]) {
+    if (!trips.length) {
+      tripsContainer.innerHTML = `<p class="text-sm text-gray-400">No trips found.</p>`;
+      return;
+    }
+    tripsContainer.innerHTML = `<div class="space-y-2">${trips.map((t) => {
+      const cover = t.cover_image
+        ? `<img src="${esc(R2 + t.cover_image)}" alt="${esc(t.title)}" class="w-full h-full object-cover" />`
+        : `<svg class="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      const sc = STATUS_COLORS[t.status?.toLowerCase()] ?? "bg-gray-100 text-gray-600";
+      return `
+        <a href="/trips/${esc(t.trip_id)}" class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:bg-gray-50 hover:border-blue-200 transition">
+          <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden">${cover}</div>
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-gray-900 text-sm truncate">${esc(t.title)}</p>
+            ${t.region ? `<p class="text-gray-400 text-xs truncate">${esc(t.region)}</p>` : ""}
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${sc}">${esc(t.status)}</span>
+        </a>`;
+    }).join("")}</div>`;
+  }
+
+  function renderPosts(posts: any[]) {
+    if (!posts.length) {
+      postsContainer.innerHTML = `<p class="text-sm text-gray-400">No posts found.</p>`;
+      return;
+    }
+    postsContainer.innerHTML = `<ul class="space-y-3">${posts.map((p) => {
+      const tags = (p.hashtags ?? []).map((t: string) => `<span class="text-blue-500 text-xs">#${esc(t)}</span>`).join("");
+      return `
+        <li class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 capitalize">${esc((p.post_type ?? "").replace(/_/g, " "))}</span>
+            <span class="text-gray-300 text-xs">·</span>
+            <span class="text-xs text-gray-400">@${esc(p.author_username)}</span>
+          </div>
+          ${p.title ? `<p class="font-semibold text-gray-900 text-sm">${esc(p.title)}</p>` : ""}
+          <p class="text-sm text-gray-600 leading-relaxed">${esc(p.content)}</p>
+          ${tags ? `<div class="flex flex-wrap gap-1">${tags}</div>` : ""}
+        </li>`;
+    }).join("")}</ul>`;
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────────
+  async function performSearch(q: string) {
+    const res = await actions.search.global({ q, limit: 10 });
+    if (res.error || !res.data) return;
+
+    const { users, trips, posts } = res.data as any;
+    renderUsers(users);
+    renderTrips(trips);
+    renderPosts(posts);
+
+    queryDisplay.textContent = `"${q}"`;
+    setTab(activeTab);
+
+    discoveryEl.classList.add("hidden");
+    tooShortEl.classList.add("hidden");
+    resultsEl.classList.remove("hidden");
+
+    const params = new URLSearchParams({ q });
+    if (activeTab !== "all") params.set("tab", activeTab);
+    history.replaceState({}, "", `/search?${params}`);
+
+    addRecent(q);
+  }
+
+  // ── Input handling ──────────────────────────────────────────────────────────
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(debounceTimer);
+
+    if (q.length === 0) {
+      discoveryEl.classList.remove("hidden");
+      resultsEl.classList.add("hidden");
+      tooShortEl.classList.add("hidden");
+      history.replaceState({}, "", "/search");
+      return;
+    }
+
+    if (q.length < 2) {
+      discoveryEl.classList.add("hidden");
+      resultsEl.classList.add("hidden");
+      tooShortEl.classList.remove("hidden");
+      return;
+    }
+
+    tooShortEl.classList.add("hidden");
+    debounceTimer = setTimeout(() => performSearch(q), 300);
+  });
+
+  // Prevent form submit — live search handles it
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if (q.length >= 2) performSearch(q);
+  });
+
+  // ── Recent searches ──────────────────────────────────────────────────────────
+  const STORAGE_KEY = "tg-recent-searches";
+  const MAX_RECENT  = 5;
+
+  function getRecent(): string[] {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]"); }
+    catch { return []; }
+  }
+
+  function saveRecent(list: string[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+  }
+
+  function addRecent(q: string) {
+    const list = getRecent().filter((r) => r !== q);
+    list.unshift(q);
+    saveRecent(list);
+  }
+
+  function removeRecent(q: string) {
+    saveRecent(getRecent().filter((r) => r !== q));
+    renderRecent();
+  }
+
+  function renderRecent() {
+    const section = document.getElementById("recent-searches-section");
+    const list    = document.getElementById("recent-searches-list");
+    if (!section || !list) return;
+
+    const recent = getRecent();
+    if (recent.length === 0) { section.classList.add("hidden"); return; }
+
+    section.classList.remove("hidden");
+    list.innerHTML = recent.map((r) => `
+      <li class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+        <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <button data-search="${esc(r)}" class="flex-1 text-left text-sm text-gray-700 hover:text-blue-600 truncate">${esc(r)}</button>
+        <button data-remove="${esc(r)}" class="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition p-0.5" aria-label="Remove">
+          <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </li>`).join("");
+
+    list.querySelectorAll<HTMLButtonElement>("[data-remove]").forEach((btn) => {
+      btn.addEventListener("click", (e) => { e.stopPropagation(); removeRecent(btn.dataset.remove!); });
+    });
+
+    // Clicking a recent search fills the input and triggers live search
+    list.querySelectorAll<HTMLButtonElement>("[data-search]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        input.value = btn.dataset.search!;
+        input.dispatchEvent(new Event("input"));
+      });
+    });
+  }
+
+  document.getElementById("clear-all-searches")?.addEventListener("click", () => {
+    localStorage.removeItem(STORAGE_KEY);
+    renderRecent();
+  });
+
+  // Save query from URL on load (e.g. navigated here with ?q=)
+  const currentQ = new URLSearchParams(location.search).get("q")?.trim();
+  if (currentQ && currentQ.length >= 2) addRecent(currentQ);
+
+  renderRecent();
+</script>

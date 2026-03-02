@@ -1,6 +1,6 @@
 # Tara G! — Navigation
 
-**Version:** v2.0
+**Version:** v2.1
 **Date:** March 2026
 **Status:** Implemented
 **Scope:** Header (`Header.astro`), Bottom Nav (`BottomNav.astro`), Mobile Sidebar
@@ -32,6 +32,15 @@ Shown in the `<ul class="hidden md:flex">` strip to the left of the profile butt
 | Maps | Yes | `/maps` |
 
 Feed is intentionally excluded from the desktop top nav (accessible via sidebar and bottom nav).
+
+### Header Action Icons (right side, before profile button)
+
+| Icon | URL | Condition |
+|---|---|---|
+| Search (magnifier) | `/search` | Authenticated only |
+| Notification bell | (opens notification panel) | Authenticated only |
+
+Search icon was added in v2.1 beside the notification bell for quick access to the search/discovery page.
 
 ---
 
@@ -93,11 +102,13 @@ Shown on mobile only (`< md`). 5-tab layout with glass morphism style.
 
 | Tab | URL | Icon |
 |---|---|---|
-| Feed | `/feeds` | `House` (Lucide) |
+| Search | `/search` | `Search` (Lucide) |
 | Trips | `/trips` | `Move` (Lucide) |
 | Project 82 | `/project82` | `BucketIcon` (custom SVG) |
 | Maps | `/maps` | `Map` (Lucide) |
 | Profile | `/profile` | `User` (Lucide) |
+
+> **v2.1 change:** The Feed (`/feeds`, `House` icon) tab was replaced with Search (`/search`, `Search` icon). Feed remains accessible via the desktop profile dropdown and mobile sidebar.
 
 Active tab detection: `currentPath.startsWith(href)` — adds `active` class (dark text, `font-semibold`, `scale(1.04)`).
 
@@ -129,6 +140,17 @@ Staggered `slideInRight` animation on `.sidebar-link` elements when the sidebar 
 | `src/features/navbar/Header.astro` | Top header, desktop dropdown, mobile sidebar, logout script |
 | `src/features/navbar/BottomNav.astro` | Mobile bottom tab bar + floating assist button |
 | `src/features/navbar/BucketIcon.astro` | Custom bucket/barrel SVG icon component |
+
+---
+
+---
+
+## 9. Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| v2.0 | 2026-03 | Initial documentation |
+| v2.1 | 2026-03-02 | Added search icon to Header; replaced Feed tab with Search in BottomNav |
 
 ---
 

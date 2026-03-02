@@ -3,7 +3,6 @@ import PagePlate from "@/layouts/PagePlate.astro";
 import { supabaseAdmin } from "@/lib/supabase";
 import FeedCard from "@/features/feed/FeedCard.astro";
 import TripCard from "@/components/TripCard.astro";
-import GlobalSearchBar from "@/features/search/GlobalSearchBar.astro";
 
 const { user_id } = Astro.locals;
 if (!user_id) return Astro.redirect("/signin");
@@ -39,9 +38,6 @@ const discoverTrips: any[] = discoverResult.data ?? [];
 
 <PagePlate title="Feed">
   <div class="max-w-2xl mx-auto px-4 py-6 space-y-4">
-
-    <!-- Search bar -->
-    <GlobalSearchBar />
 
     <!-- Filter tabs -->
     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

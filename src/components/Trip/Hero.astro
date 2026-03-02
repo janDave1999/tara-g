@@ -74,22 +74,24 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
           )}
 
           <!-- Enhanced Navigation Buttons -->
-          <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
-            <a 
-              href={`#${prevId}`} 
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
-              aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
-            >
-              ❮
-            </a>
-            <a
-              href={`#${nextId}`}
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
-              aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
-            >
-              ❯
-            </a>
-          </div>
+          {totalSlides > 1 && (
+            <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
+              <a
+                href={`#${prevId}`}
+                class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
+                aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
+              >
+                ❮
+              </a>
+              <a
+                href={`#${nextId}`}
+                class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 border-2 border-white/50 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-white font-bold shadow-lg"
+                aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
+              >
+                ❯
+              </a>
+            </div>
+          )}
         </div>
       );
     })}
@@ -126,22 +128,24 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
           </div>
 
           <!-- Navigation Buttons -->
-          <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
-            <a
-              href={`#${prevId}`}
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
-              aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
-            >
-              ❮
-            </a>
-            <a
-              href={`#${nextId}`}
-              class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
-              aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
-            >
-              ❯
-            </a>
-          </div>
+          {totalSlides > 1 && (
+            <div class="absolute flex justify-between transform -translate-y-1/2 left-4 right-4 md:left-6 md:right-6 top-1/2">
+              <a
+                href={`#${prevId}`}
+                class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
+                aria-label={`Previous slide - ${slideNum} of ${totalSlides}`}
+              >
+                ❮
+              </a>
+              <a
+                href={`#${nextId}`}
+                class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-slate-700/50 backdrop-blur-md hover:bg-slate-600/60 border-2 border-blue-500/40 transition-all focus:ring-4 focus:ring-blue-500 focus:outline-none text-blue-300 font-bold shadow-lg"
+                aria-label={`Next slide - ${slideNum} of ${totalSlides}`}
+              >
+                ❯
+              </a>
+            </div>
+          )}
         </div>
       );
     })()}

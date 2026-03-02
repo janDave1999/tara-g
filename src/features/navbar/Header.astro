@@ -1,6 +1,7 @@
 ---
 import { PUBLIC_R2_URL } from 'astro:env/client';
 import NotificationBell from "@/components/Notification/NotificationBell.astro";
+import BucketIcon from "./BucketIcon.astro";
 
 interface Props {
   avatarUrl?: string;
@@ -61,6 +62,25 @@ const initials = displayFullName.charAt(0).toUpperCase();
             Blogs
           </a>
         </li>
+        {userId && (
+          <>
+            <li>
+              <a href="/feeds" class="nav-link text-sm font-medium text-gray-600 hover:text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-150">
+                Feed
+              </a>
+            </li>
+            <li>
+              <a href="/trips" class="nav-link text-sm font-medium text-gray-600 hover:text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-150">
+                Trips
+              </a>
+            </li>
+            <li>
+              <a href="/maps" class="nav-link text-sm font-medium text-gray-600 hover:text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-150">
+                Maps
+              </a>
+            </li>
+          </>
+        )}
       </ul>
 
       <!-- Right Actions -->
@@ -135,7 +155,38 @@ const initials = displayFullName.charAt(0).toUpperCase();
                       <p class="text-xs text-gray-400 mt-0.5">Explore your journeys</p>
                     </div>
                   </a>
-                  <a href="/settings" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors duration-150 group">
+                  <a href="/project82" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+                      <BucketIcon class="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700">Project 82</p>
+                      <p class="text-xs text-gray-400 mt-0.5">Your travel wishlist</p>
+                    </div>
+                  </a>
+                  <a href="/feeds" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700">Feed</p>
+                      <p class="text-xs text-gray-400 mt-0.5">Latest from the community</p>
+                    </div>
+                  </a>
+                  <a href="/maps" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700">Maps</p>
+                      <p class="text-xs text-gray-400 mt-0.5">Explore destinations</p>
+                    </div>
+                  </a>
+                  <a href="/profile/edit" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors duration-150 group">
                     <div class="w-9 h-9 rounded-xl bg-gray-100 group-hover:bg-gray-200 flex items-center justify-center transition-colors shrink-0">
                       <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -266,7 +317,41 @@ const initials = displayFullName.charAt(0).toUpperCase();
         </svg>
       </a>
 
-      <a href="/settings" class="sidebar-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors duration-150 group">
+      <a href="/project82" class="sidebar-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+        <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+          <BucketIcon class="w-4 h-4 text-blue-600" />
+        </div>
+        <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 flex-1 transition-colors">Project 82</span>
+        <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+
+      <a href="/feeds" class="sidebar-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+        <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </div>
+        <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 flex-1 transition-colors">Feed</span>
+        <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+
+      <a href="/maps" class="sidebar-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-blue-50 transition-colors duration-150 group">
+        <div class="w-9 h-9 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors shrink-0">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+        </div>
+        <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700 flex-1 transition-colors">Maps</span>
+        <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+
+      <a href="/profile/edit" class="sidebar-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors duration-150 group">
         <div class="w-9 h-9 rounded-xl bg-gray-100 group-hover:bg-gray-200 flex items-center justify-center transition-colors shrink-0">
           <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -324,10 +409,13 @@ const initials = displayFullName.charAt(0).toUpperCase();
     transform: translateX(10px);
   }
   #mobile-menu.open .sidebar-link:nth-child(1) { animation-delay: 0.04s; }
-  #mobile-menu.open .sidebar-link:nth-child(2) { animation-delay: 0.08s; }
-  #mobile-menu.open .sidebar-link:nth-child(3) { animation-delay: 0.13s; }
-  #mobile-menu.open .sidebar-link:nth-child(4) { animation-delay: 0.17s; }
-  #mobile-menu.open .sidebar-link:nth-child(5) { animation-delay: 0.21s; }
+  #mobile-menu.open .sidebar-link:nth-child(2) { animation-delay: 0.07s; }
+  #mobile-menu.open .sidebar-link:nth-child(3) { animation-delay: 0.10s; }
+  #mobile-menu.open .sidebar-link:nth-child(4) { animation-delay: 0.13s; }
+  #mobile-menu.open .sidebar-link:nth-child(5) { animation-delay: 0.16s; }
+  #mobile-menu.open .sidebar-link:nth-child(6) { animation-delay: 0.19s; }
+  #mobile-menu.open .sidebar-link:nth-child(7) { animation-delay: 0.22s; }
+  #mobile-menu.open .sidebar-link:nth-child(8) { animation-delay: 0.25s; }
 
   @keyframes slideInRight {
     to { opacity: 1; transform: translateX(0); }

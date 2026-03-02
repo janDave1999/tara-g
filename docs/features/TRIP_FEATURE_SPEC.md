@@ -340,6 +340,18 @@ All trip notifications use a standardized JSONB structure:
 | `stops.updateStop` | UPDATE locations + UPDATE trip_location | `locations`, `trip_location` |
 | `stops.deleteStop` | DELETE trip_location; DELETE locations if orphaned | `trip_location`, `locations` |
 
+#### Member Management
+
+| Function | Migration | Purpose |
+|----------|-----------|---------|
+| `get_trip_members_complete` | `014`, `049` | Fetch all trip members with roles, statuses, and user details; migration 049 adds `invitation_type` filter to exclude `share_link` records from pending members list |
+| `get_trip_pending_invitations` | `014`, `049` | Fetch pending invitations for a trip; migration 049 adds `invitation_type` filter (`invitation_type IS NULL OR invitation_type = 'invitation'`) to exclude share link ghost entries |
+
+> **Share Link Fix (migration 049):** The `trip_invitations` table stores both person-to-person invitations (`invitation_type = 'invitation'`) and share link join records (`invitation_type = 'share_link'`, added in migration 046). Both `get_trip_members_complete` and `get_trip_pending_invitations` were originally missing this filter, causing share link records to appear as phantom pending invitations in the trip header footer and member management UI. Migration 049 patches both RPCs with:
+> ```sql
+> AND (ti.invitation_type IS NULL OR ti.invitation_type = 'invitation')
+> ```
+
 ### 3.2 Key Validation Rules
 
 | Field | Rule |
@@ -436,6 +448,7 @@ All trip notifications use a standardized JSONB structure:
 - [x] ~~Member count (`currentPax`) now filters to `member_status = 'joined'` only — excludes pending and left members~~
 - [x] ~~Member list (`Member.astro`) gated to owner/member roles only — visitors, pending, invited cannot see it (US-D9)~~
 - [x] ~~Itinerary gated to owner/member by default; owner can toggle `itinerary_public` via `🔒/🌐` button in `ItineraryHeader` — `trip_visibility.itinerary_public` column (migration 029), `updateItineraryPublic` action (US-D11b)~~
+- [x] ~~Fix share link ghost entries in pending invitations: `get_trip_members_complete` and `get_trip_pending_invitations` RPCs now filter out `invitation_type = 'share_link'` records (migration 049)~~
 - [ ] Full drag-drop itinerary builder
 - [ ] Activity type as `<select>` (PH-specific presets) instead of free-text input
 - [ ] Actual vs scheduled time tracking

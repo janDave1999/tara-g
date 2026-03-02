@@ -1,6 +1,6 @@
 # Tara G! — Profile Page PRD
 
-**Version:** v3.0 — Updated
+**Version:** v3.1 — Updated
 **Date:** March 2026
 **Status:** Implemented
 **Owner:** Tara G! Product Team
@@ -77,17 +77,14 @@ The existing profile page is a basic data display sheet. It lacks visual hierarc
 
 The profile header card is the primary identity block. It replaces the former cover-photo-plus-card layout with a clean, flat card that sits directly below the sticky navigation header.
 
-#### Avatar with Completion Ring
+#### Avatar
+
+> **v3.1 update:** The SVG completion ring was removed. The avatar is now a clean circle with no progress indicator.
 
 | Property | Value |
 |---|---|
 | Size | `96px` mobile / `112px` desktop (`w-24` / `w-28`) |
 | Border | 4px solid white ring + `shadow-md` |
-| Ring type | SVG circle progress, rotated `-90deg` |
-| Ring radius | `52px`, circumference `326.7px` |
-| Ring colour — < 50% | `#F97316` orange — incomplete |
-| Ring colour — 50–79% | `#3B82F6` blue — in progress |
-| Ring colour — 80–100% | `#10B981` green — nearly done |
 | Hover state (owner) | Dark overlay + camera icon + "Edit" label |
 | Click action (owner) | Opens `AvatarEditor` modal |
 | Verified badge | Blue checkmark — bottom-right of avatar |
@@ -245,24 +242,24 @@ Property-row layout using `divide-y`. Each row: icon well + label + value. Follo
 
 ### 3.8 Profile Completion Widget
 
-Visible only to the profile owner, only when `completion < 100%`. Shows a thin brand-gradient progress bar and a checklist of up to 4 pending items, each with a direct action shortcut.
+> **v3.1 update:** The profile completion widget and completion ring have been **removed**. Profile editing is now centralised in the `/profile/edit` hub (see §3.9).
 
-| Checklist Item | Done Condition | Action Type | Action Target |
-|---|---|---|---|
-| Add a profile photo | `userData.avatar_url` is truthy | Modal | `avatar-editor-modal` |
-| Write a bio | `bio.length >= 20` chars | Inline trigger | `bio-edit-trigger` (scrolls to bio) |
-| Set your location | `location_city` OR `location_country` set | Modal | `edit-profile-modal` |
-| Add 3+ interests | `interests.length >= 3` | Link | `/onboarding/interests` |
-| Set travel preferences | `budget_range` is truthy | Link | `/onboarding/preferences` |
-| Create your first trip | `trips_owned > 0` | Link | `/trips/create` |
+~~Visible only to the profile owner, only when `completion < 100%`. Shows a thin brand-gradient progress bar and a checklist of up to 4 pending items, each with a direct action shortcut.~~
 
-#### Completion Ring Colour Thresholds
+---
 
-| Completion % | Ring Colour | Hex | Meaning |
-|---|---|---|---|
-| 0 – 49% | Orange | `#F97316` | Incomplete — needs attention |
-| 50 – 79% | Blue | `#3B82F6` | In progress — good momentum |
-| 80 – 100% | Green | `#10B981` | Nearly / fully complete |
+### 3.9 Profile Edit Hub (`/profile/edit`)
+
+A dedicated edit hub page replacing all inline edit buttons and the completion widget. Provides a clean list of edit sections, each linking to a dedicated sub-page.
+
+| Section | Route | Purpose |
+|---|---|---|
+| Basic Info | `/profile/edit/basic` | Name, username, bio, location |
+| Interests | `/profile/edit/interests` | Travel interest tags |
+| Preferences | `/profile/edit/preferences` | Budget, pace, accommodation, travel style |
+| Account & Security | `/profile/security` | Email, password, connected accounts, sessions, delete account |
+
+The profile header, about section, interests, and preferences are all now **read-only** on the profile page — edit buttons have been removed from those components. All editing flows through `/profile/edit`.
 
 ---
 
@@ -391,7 +388,22 @@ ALTER TABLE user_stats ADD COLUMN bucket_count INTEGER DEFAULT 0;
 | `GET /api/profile/[username]/trips` endpoint | ✅ Done |
 | `acceptTripInvitation` notification FK fix (auth_id → user_id) | ✅ Done |
 
-### ⚪ Phase 3 — Future
+### ✅ Phase 3 — Completed (v3.1)
+
+| Feature | Status |
+|---|---|
+| Profile edit hub at `/profile/edit` — centralised editing | ✅ Done |
+| Remove inline edit buttons from About, Interests, Preferences | ✅ Done |
+| Remove profile completion widget | ✅ Done |
+| Remove avatar completion ring SVG | ✅ Done |
+| Account & Security page (`/profile/security`) | ✅ Done |
+| Change email action (with Supabase confirmation flow) | ✅ Done |
+| Change / set password action | ✅ Done |
+| Connected accounts display (email, Google, Facebook) | ✅ Done |
+| Sign out all devices action | ✅ Done |
+| Delete account action + confirmation dialog | ✅ Done |
+
+### ⚪ Phase 4 — Future
 
 | Feature | Status |
 |---|---|
@@ -420,14 +432,21 @@ ALTER TABLE user_stats ADD COLUMN bucket_count INTEGER DEFAULT 0;
 
 | File | Type | Purpose |
 |---|---|---|
-| `src/pages/profile/index.astro` | Astro page | Owner profile (authenticated) — all Phase 1 features |
+| `src/pages/profile/index.astro` | Astro page | Owner profile (authenticated, read-only) |
 | `src/pages/profile/[username].astro` | Astro page | Public profile (SSR) — privacy gate, friend requests, public trip grid |
-| `src/components/Profile/EditProfileModal.astro` | Component | Edit name, username, bio, location |
-| `src/components/Profile/AvatarEditor.astro` | Component | Avatar crop & R2 upload |
-| `src/components/Profile/ProfileGrid.astro` | Component | Owner trip grid — tabs (All/Owned/Joined), own data |
-| `src/components/Profile/PublicTripGrid.astro` | Component | Public profile trip grid — no tabs, visibility-filtered |
-| `src/components/Profile/ProfileInterest.astro` | Component | Interest pill tags |
-| `src/components/Profile/ProfilePreference.astro` | Component | Travel preferences panel |
+| `src/pages/profile/edit/index.astro` | Astro page | Profile edit hub — links to all edit sub-pages |
+| `src/pages/profile/edit/basic.astro` | Astro page | Edit name, username, bio, location |
+| `src/pages/profile/edit/interests.astro` | Astro page | Edit interest tags |
+| `src/pages/profile/edit/preferences.astro` | Astro page | Edit travel preferences |
+| `src/pages/profile/security.astro` | Astro page | Account & security settings |
+| `src/components/Profile/ProfileHeader.astro` | Component | Avatar, name, stats strip (no completion ring) |
+| `src/components/Profile/ProfileAbout.astro` | Component | Bio + location display (read-only) |
+| `src/components/Profile/ProfileInterest.astro` | Component | Interest pill tags (read-only) |
+| `src/components/Profile/ProfilePreference.astro` | Component | Travel preferences panel (read-only) |
+| `src/components/Profile/AvatarEditor.astro` | Component | Avatar crop & R2 upload modal |
+| `src/components/Profile/ProfileGrid.astro` | Component | Owner trip grid — tabs (All/Owned/Joined) |
+| `src/components/Profile/PublicTripGrid.astro` | Component | Public profile trip grid — visibility-filtered |
+| `src/actions/auth.ts` | Astro Action | changeEmail, changePassword, signOutAll, deleteAccount |
 | `src/actions/friends.ts` | Astro Action | Friend request CRUD (send/cancel/accept/decline) |
 | `src/pages/api/profile/bio.ts` | API route | `PATCH` — inline bio save |
 | `src/pages/api/profile/trips.ts` | API route | `GET` — own trip grid (`?filter=all\|owned\|joined`) |

@@ -14,4 +14,10 @@ Allow: /
 User-agent: Facebot
 Allow: /
 
-Sitemap: https://tarag.ph/sitemap-index.xml
+User-agent: Instagram
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+Sitemap: https://tara-g.site/sitemap-index.xml

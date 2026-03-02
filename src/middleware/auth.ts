@@ -116,18 +116,19 @@ export const auth = defineMiddleware(async (ctx, next) => {
     
     // Allow trips with invite param OR social crawlers
     const hasInviteParam = url.searchParams.has('invite');
-    const isTripWithInvite = pathname.startsWith('/trips/') && hasInviteParam;
+    const isTripWithInvite = pathname.startsWith('/trips') && hasInviteParam;
     
     // Check for social crawlers
     const ua = ctx.request.headers.get('user-agent') || '';
     const CRAWLER_AGENTS = [
-      'facebookexternalhit', 'Facebookexternalhit',
+      'facebookexternalhit', 'Facebookexternalhit', 'Facebot', 'FacebookBot', 'facebook.com/2.1', 'FBCURL',
+      'Instagram', 'instagram.com',
       'WhatsApp', 'viber', 'Viber',
       'Twitterbot', 'LinkedInBot', 'TelegramBot',
       'Slackbot', 'Discordbot', 'vkShare',
     ];
     const isSocialCrawler = CRAWLER_AGENTS.some(bot => ua.includes(bot));
-    const isCrawlerOnTrip = isSocialCrawler && pathname.startsWith('/trips/');
+    const isCrawlerOnTrip = isSocialCrawler && pathname.startsWith('/trips');
     
     if (!isPublicRoute && !isTripWithInvite && !isCrawlerOnTrip) {
       // Check if it's a protected route that needs auth

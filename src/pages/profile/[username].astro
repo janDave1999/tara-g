@@ -297,7 +297,7 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
             </div>
           </div>
 
-          <ProfileInterests interests={userInterests} />
+          <ProfileInterests interests={userInterests} isOwner={isOwner} />
         </div>
 
         <div class="space-y-4">
@@ -307,6 +307,7 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
             languages={userPrefs.languages_spoken  ?? null}
             accommodation={userPrefs.accommodation_type ?? null}
             travelStyle={userPrefs.travel_style    ?? null}
+            isOwner={isOwner}
           />
         </div>
 

@@ -1199,14 +1199,7 @@ getNearbyTrips: defineAction({
         .eq('trip_id', data.trip_id)
         .single();
 
-      // Get inviter's info for the notification
-      const { data: invitationData } = await supabaseAdmin
-        .from('trip_invitations')
-        .select('inviter_id')
-        .eq('invitation_id', input.invitationId)
-        .single();
-
-      if (tripData?.owner_id && invitationData?.inviter_id) {
+      if (tripData?.owner_id) {
         // trips.owner_id = auth.users.id; resolve internal user_id for notifications FK
         const { data: ownerUser } = await supabaseAdmin
           .from('users')
@@ -1214,15 +1207,15 @@ getNearbyTrips: defineAction({
           .eq('auth_id', tripData.owner_id)
           .single();
 
-        // Get inviter's name/avatar
-        const { data: inviterUser } = await supabaseAdmin
+        // Get the accepting user's (invitee's) name/avatar
+        const { data: acceptorUser } = await supabaseAdmin
           .from('users')
           .select('full_name, username, avatar_url')
-          .eq('id', invitationData.inviter_id)
+          .eq('auth_id', user.id)
           .single();
 
-        const inviterName = inviterUser?.full_name || inviterUser?.username || 'Someone';
-        const inviterAvatar = inviterUser?.avatar_url || null;
+        const acceptorName = acceptorUser?.full_name || acceptorUser?.username || 'Someone';
+        const acceptorAvatar = acceptorUser?.avatar_url || null;
 
         if (ownerUser?.user_id) {
           await sendNotification(
@@ -1230,7 +1223,7 @@ getNearbyTrips: defineAction({
             'trip_invite_accepted',
             'Invitation Accepted',
             `accepted your invitation to join "${tripData.title}"`,
-            { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: inviterAvatar, username: inviterName },
+            { trip_id: data.trip_id, trip_title: tripData.title, avatar_url: acceptorAvatar, username: acceptorName },
             `/trips/${data.trip_id}`,
             'normal'
           );

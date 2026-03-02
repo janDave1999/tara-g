@@ -7,9 +7,10 @@ interface Props {
   languages:     string[] | null;
   accommodation: string[] | null;
   travelStyle:   string[] | null;
+  isOwner?:      boolean;
 }
 
-const { budget, pace, languages, accommodation, travelStyle } = Astro.props;
+const { budget, pace, languages, accommodation, travelStyle, isOwner = false } = Astro.props;
 
 const rows = [
   {
@@ -42,7 +43,7 @@ const rows = [
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
   <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
     <h2 class="section-title">Preferences</h2>
-    <a href="/onboarding/preferences" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Edit</a>
+    {isOwner && <a href="/onboarding/preferences" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Edit</a>}
   </div>
 
   <div class="divide-y divide-gray-100">

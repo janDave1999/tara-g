@@ -2,9 +2,9 @@
 // components/Profile/ProfileInterests.astro
 
 interface Interest { category: string; [key: string]: any; }
-interface Props    { interests: Interest[]; }
+interface Props    { interests: Interest[]; isOwner?: boolean; }
 
-const { interests } = Astro.props;
+const { interests, isOwner = false } = Astro.props;
 
 const COLORS: Record<string, string> = {
   Adventure:   'bg-orange-50 text-orange-600 border-orange-200',
@@ -23,7 +23,7 @@ const overflow = interests.length - 8;
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
   <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
     <h2 class="section-title">Interests</h2>
-    <a href="/onboarding/interests" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Edit</a>
+    {isOwner && <a href="/onboarding/interests" class="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Edit</a>}
   </div>
   <div class="p-5">
     {interests.length > 0 ? (

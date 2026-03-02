@@ -244,7 +244,7 @@ const tripStartDate = trip_details?.start_date || null;
     <!-- Card 1: Hero image + Trip title/meta -->
     <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
       <Hero server:defer userRole={trip.user_role} trip_images={trip_images} />
-      <TripHeader {...tripProps} />
+      <TripHeader {...tripProps} isAuthenticated={!!user} />
     </div>
 
     <!-- Card 2: Trip details (destination, dates, members, preferences, budget, description) -->
@@ -264,7 +264,7 @@ const tripStartDate = trip_details?.start_date || null;
 
     {(user_role === 'owner' || user_role === 'member') && <Member tripId={trip_id} />}
     
-    {isVisitor && isPublicTrip && (
+    {isVisitor && isPublicTrip && !user && (
       <div class="rounded-2xl border border-gray-200 shadow-sm bg-white p-6 text-center">
         <p class="text-gray-600 mb-4">Join this trip to see the full itinerary and connect with travelers!</p>
         <a

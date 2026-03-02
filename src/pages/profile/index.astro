@@ -83,8 +83,9 @@ const completionItems = [
           locationCity={userInfo.location_city || ''}
           locationCountry={userInfo.location_country || ''}
           memberSince={memberSince}
+          isOwner={true}
         />
-        <ProfileInterests interests={userInterests} />
+        <ProfileInterests interests={userInterests} isOwner={true} />
         <ProfileTripGrid />
       </div>
 
@@ -95,6 +96,7 @@ const completionItems = [
           languages={userPrefs.languages_spoken   ?? null}
           accommodation={userPrefs.accommodation_type ?? null}
           travelStyle={userPrefs.travel_style     ?? null}
+          isOwner={true}
         />
         <ProfileCompletion completion={completion} items={completionItems} />
       </div>

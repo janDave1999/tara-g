@@ -16,6 +16,7 @@ const {
   currentPax,
   maxPax,
   isInvited = false,
+  isAuthenticated = false,
   pendingRequests = [],
   pendingInvitations = [],
 } = Astro.props;
@@ -132,10 +133,10 @@ const statusBadgeClass: Record<string, string> = {
     <!-- Right: Share button (mobile) + Action buttons (desktop) -->
     <div class="flex items-center gap-2 shrink-0 pt-0.5">
       <!-- Desktop: Action buttons next to share -->
-      {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
+      {userRole === 'visitor' && isAuthenticated && !isInvited && !isFull && tripStatus === 'active' && (
         <button
           id="join-btn-desktop"
-          class="hidden md:block px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
+          class="join-btn hidden md:block px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
         >
           Request to Join
         </button>
@@ -150,7 +151,7 @@ const statusBadgeClass: Record<string, string> = {
       {userRole === 'pending' && (
         <button
           id="cancel-req-btn-desktop"
-          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
+          class="cancel-req-btn hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none"
         >
           Cancel Request
         </button>
@@ -159,7 +160,7 @@ const statusBadgeClass: Record<string, string> = {
       {userRole === 'member' && (
         <button
           id="leave-trip-btn"
-          class="hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
+          class="leave-trip-btn hidden md:block px-4 py-2 rounded-xl border border-gray-200 text-red-500 text-sm font-medium hover:bg-red-50 hover:border-red-200 transition-colors focus:ring-2 focus:ring-red-300 focus:outline-none"
         >
           Leave Trip
         </button>
@@ -255,7 +256,7 @@ const statusBadgeClass: Record<string, string> = {
   )}
   
   <div class="flex items-center gap-2 justify-center">
-    {userRole === 'visitor' && !isInvited && !isFull && tripStatus === 'active' && (
+    {userRole === 'visitor' && isAuthenticated && !isInvited && !isFull && tripStatus === 'active' && (
       <button
         id="join-btn-mobile"
         class="join-btn flex-1 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"

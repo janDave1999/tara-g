@@ -314,9 +314,9 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
     setPendingTripShare(tripId, inviteCode);
   }
 
-  // Get pending trip share for join action
+  // Get pending trip share for join action — only use if it's for this specific trip
   const pendingTrip = getPendingTripShare();
-  const pendingShareCode = pendingTrip?.shareCode;
+  const pendingShareCode = pendingTrip?.tripId === tripId ? pendingTrip?.shareCode : undefined;
 
   // Join button handler - works for both desktop and mobile
   joinBtns.forEach(joinBtn => {

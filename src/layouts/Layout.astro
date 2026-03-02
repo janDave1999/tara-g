@@ -35,6 +35,8 @@ const r2Origin = PUBLIC_R2_URL ? new URL(PUBLIC_R2_URL).origin : null;
 		<link rel="sitemap" href="/sitemap-index.xml" />
 		<meta name="robots" content="index, follow" />
 		<meta name="theme-color" content="#2563EB" />
+		<meta property="fb:app_id" content="827636786529446" />
+		<link rel="canonical" href={Astro.url.href} />
 
 		<slot name="head-last" />
 	</head>

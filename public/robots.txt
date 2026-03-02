@@ -8,4 +8,10 @@ Disallow: /api/
 Disallow: /signin
 Disallow: /register
 
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
 Sitemap: https://tarag.ph/sitemap-index.xml

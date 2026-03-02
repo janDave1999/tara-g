@@ -10,14 +10,16 @@ interface Props {
 }
 const { description } = Astro.props as Props;
 const desc = description || {};
+const fallbackImage = `${Astro.url.origin}/images/shared link preview in viber.png`;
+const imageUrl = desc.previewImage || fallbackImage;
 ---
 <SEO
   twitter={{
     card: "summary_large_image",
-    site: Astro.url.hostname,
+    site: "@taragph",
     creator: desc.author ? (Array.isArray(desc.author) ? desc.author.join(", ") : desc.author) : undefined,
-    title: desc.title,
-    image: desc.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
-    imageAlt: desc.title,
+    title: desc.title || "Tara G - Philippine Travel Community",
+    image: imageUrl,
+    imageAlt: desc.title || "Tara G - Plan your Philippine adventure",
   }}
 />

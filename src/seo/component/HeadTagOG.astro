@@ -17,26 +17,31 @@ interface Props {
 
 const { description } = Astro.props as Props;
 const desc = description || {};
+const fallbackImage = `${Astro.url.origin}/images/shared link preview in viber.png`;
+const imageUrl = desc.previewImage || fallbackImage;
 ---
+
 <SEO
   description={desc.description}
   openGraph={{
     basic:{
       url: Astro.url.href,
       type: desc.containsArticle ? "article" : "website",
-      title: desc.title || "No Title",
-      image: desc.previewImage || `${Astro.url.origin}/images/generic-preview-page.png`,
+      title: desc.title || "Tara G - Philippine Travel Community",
+      image: imageUrl,
     },
     optional:{
       description: desc?.description,
       siteName: 'Tara G!',
       locale: 'en_PH',
     },
-    image: desc.previewImage ? {
-      url: desc.previewImage,
-      secureUrl: desc.previewImage,
-      alt: desc.title,
-    } : undefined,
+    image: {
+      url: imageUrl,
+      secureUrl: imageUrl,
+      alt: desc.title || "Tara G - Plan your Philippine adventure",
+      width: 1200,
+      height: 630,
+    },
     article: desc.containsArticle ? {
       publishedTime: desc.datePublished,
       modifiedTime: desc.dateModified,

@@ -7,21 +7,6 @@ import { getFromKV, setToKV, getOnboardingCacheKey } from "@/lib/kv";
 
 const protectedRoutes = ["/dashboard/**", "/feeds/**", "/trips/**", "/project82/**"];
 
-// Routes where social crawlers are allowed through unauthenticated (for OG preview)
-const crawlerPublicRoutes = ["/trips/**"];
-
-// Known social/messaging crawler user-agent substrings
-const CRAWLER_AGENTS = [
-  'facebookexternalhit', 'Facebookexternalhit',
-  'WhatsApp', 'viber', 'Viber',
-  'Twitterbot', 'LinkedInBot', 'TelegramBot',
-  'Slackbot', 'Discordbot', 'vkShare',
-];
-
-function isSocialCrawler(ua: string | null): boolean {
-  if (!ua) return false;
-  return CRAWLER_AGENTS.some(bot => ua.includes(bot));
-}
 const protectedAPIRoutes = ["/api/**"];
 const guestOnlyRoutes = ["/signin(|/)", "/register(|/)", "/", "/api/auth/**"];
 const onboardingRoutes = ["/onboarding/**"];
@@ -98,16 +83,6 @@ export const onboarding = defineMiddleware(async (ctx, next) => {
 
   if (isAction && !locals.user_id) {
     return createErrorResponse("Unauthorized Action", 401);
-  }
-
-  if (micromatch.isMatch(pathname, protectedRoutes) && !locals.user_id) {
-    // Let social crawlers through on trip pages so OG tags are readable
-    const ua = request.headers.get('user-agent');
-    const isCrawlerOnPublicRoute = isSocialCrawler(ua) && micromatch.isMatch(pathname, crawlerPublicRoutes);
-    if (!isCrawlerOnPublicRoute) {
-      const next = encodeURIComponent(url.pathname + url.search);
-      return redirect(`/signin?next=${next}`);
-    }
   }
 
   if (

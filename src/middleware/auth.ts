@@ -19,7 +19,7 @@ const decodeJwt = (token: string) => {
 };
 
 export const auth = defineMiddleware(async (ctx, next) => {
-  const { cookies, locals } = ctx;
+  const { cookies, locals, url, redirect } = ctx;
 
   // Initialize rate limiter with KV store for distributed rate limiting
   const env = locals.runtime?.env as Record<string, unknown> | undefined;
@@ -85,6 +85,59 @@ export const auth = defineMiddleware(async (ctx, next) => {
       console.error('[AUTH_MIDDLEWARE] Token verification error:', error);
       cookies.delete("sb-access-token", { path: "/" });
       cookies.delete("sb-refresh-token", { path: "/" });
+    }
+  }
+
+  // Route protection: redirect unauthenticated users away from protected routes
+  if (!locals.user_id) {
+    const pathname = url.pathname;
+    
+    // Allow public routes without auth
+    const publicRoutes = [
+      '/',
+      '/signin',
+      '/register',
+      '/about',
+      '/discover',
+      '/bucket',
+      '/blogs',
+      '/maps',
+      '/404',
+      '/500',
+      '/api/auth',
+      '/api/onboarding',
+      '/api/user',
+      '/api/mapbox-token',
+      '/_actions',
+    ];
+    const isPublicRoute = publicRoutes.some(route => 
+      pathname === route || pathname.startsWith(route)
+    );
+    
+    // Allow trips with invite param OR social crawlers
+    const hasInviteParam = url.searchParams.has('invite');
+    const isTripWithInvite = pathname.startsWith('/trips/') && hasInviteParam;
+    
+    // Check for social crawlers
+    const ua = ctx.request.headers.get('user-agent') || '';
+    const CRAWLER_AGENTS = [
+      'facebookexternalhit', 'Facebookexternalhit',
+      'WhatsApp', 'viber', 'Viber',
+      'Twitterbot', 'LinkedInBot', 'TelegramBot',
+      'Slackbot', 'Discordbot', 'vkShare',
+    ];
+    const isSocialCrawler = CRAWLER_AGENTS.some(bot => ua.includes(bot));
+    const isCrawlerOnTrip = isSocialCrawler && pathname.startsWith('/trips/');
+    
+    if (!isPublicRoute && !isTripWithInvite && !isCrawlerOnTrip) {
+      // Check if it's a protected route that needs auth
+      const protectedRoutes = ['/dashboard', '/feeds', '/trips', '/project82', '/settings', '/notifications', '/profile'];
+      const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+      
+      if (isProtectedRoute) {
+        const next = encodeURIComponent(pathname + url.search);
+        return redirect(`/signin?next=${next}`);
+      }
     }
   }
 

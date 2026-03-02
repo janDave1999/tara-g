@@ -10,7 +10,7 @@ interface Props {
 }
 const { description } = Astro.props as Props;
 const desc = description || {};
-const fallbackImage = `${Astro.url.origin}/images/shared link preview in viber.png`;
+const fallbackImage = `${Astro.url.origin}/images/og-preview.png`;
 const imageUrl = desc.previewImage || fallbackImage;
 ---
 <SEO

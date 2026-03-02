@@ -1,0 +1,158 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabase } from "@/lib/supabase";
+import { PUBLIC_R2_URL } from 'astro:env/client';
+import AvatarEditor from "@/components/Profile/AvatarEditor.astro";
+
+const user_id = Astro.locals.user_id;
+if (!user_id) return Astro.redirect("/signin");
+
+const { data: profileData } = await supabase.rpc('get_user_profile_data', { p_user_id: user_id });
+
+const userData     = profileData?.profile     || {};
+const userInfo     = profileData?.information || {};
+const userPrefs    = profileData?.preferences || {};
+const userInterests: any[] = profileData?.interests || [];
+
+const getAvatarUrl = (url?: string | null) =>
+  !url ? null : url.startsWith('http') ? url : `${PUBLIC_R2_URL}${url}`;
+const displayAvatarUrl = getAvatarUrl(userData.avatar_url);
+const initials = (userData.full_name || userData.username || 'U').charAt(0).toUpperCase();
+
+const locationStr = [userInfo.location_city, userInfo.location_country].filter(Boolean).join(', ');
+const interestCount = userInterests.length;
+const hasPrefs = !!(userPrefs.budget_range || userPrefs.travel_style?.length);
+---
+
+<PagePlate title="Edit Profile">
+<div class="min-h-screen bg-gray-50">
+
+  <!-- Sticky header -->
+  <div class="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="/profile" class="p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to profile">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <h1 class="text-base font-semibold text-gray-900">Edit Profile</h1>
+    </div>
+  </div>
+
+  <div class="max-w-xl mx-auto px-4 py-6 space-y-3">
+
+    <!-- Profile Photo -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4">Profile Photo</p>
+      <button
+        type="button"
+        onclick="document.getElementById('avatar-editor-modal').showModal()"
+        class="flex items-center gap-4 w-full group"
+      >
+        <div class="relative shrink-0">
+          {displayAvatarUrl ? (
+            <img src={displayAvatarUrl} alt="Avatar" class="w-16 h-16 rounded-full object-cover ring-2 ring-gray-100" />
+          ) : (
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-2xl ring-2 ring-gray-100">
+              {initials}
+            </div>
+          )}
+          <div class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex-1 text-left">
+          <p class="text-sm font-semibold text-blue-600 group-hover:text-blue-700">Change profile photo</p>
+          <p class="text-xs text-gray-400 mt-0.5">JPG or PNG, max 5MB</p>
+        </div>
+      </button>
+    </div>
+
+    <!-- Edit categories -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 px-5 pt-5 pb-3">Profile Info</p>
+
+      <!-- Basic Info -->
+      <a href="/profile/edit/basic" class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50 group">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-900">Basic Info</p>
+          <p class="text-xs text-gray-400 mt-0.5 truncate">
+            {userData.full_name || userData.username || 'Name, username, bio'}
+            {locationStr && ` · ${locationStr}`}
+          </p>
+        </div>
+        <svg class="w-4 h-4 text-gray-300 shrink-0 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+
+      <!-- Interests -->
+      <a href="/profile/edit/interests" class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50 group">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-900">Interests</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {interestCount > 0 ? `${interestCount} interest${interestCount !== 1 ? 's' : ''} selected` : 'No interests set yet'}
+          </p>
+        </div>
+        <svg class="w-4 h-4 text-gray-300 shrink-0 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+
+      <!-- Travel Preferences -->
+      <a href="/profile/edit/preferences" class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50 group">
+        <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-900">Travel Preferences</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {hasPrefs ? `Budget, pace, style and more` : 'No preferences set yet'}
+          </p>
+        </div>
+        <svg class="w-4 h-4 text-gray-300 shrink-0 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+    <!-- Account -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 px-5 pt-5 pb-3">Account</p>
+
+      <a href="/profile/security" class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50 group">
+        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-gray-900">Account & Security</p>
+          <p class="text-xs text-gray-400 mt-0.5">Password, email, and security settings</p>
+        </div>
+        <svg class="w-4 h-4 text-gray-300 shrink-0 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<AvatarEditor currentAvatarUrl={userData.avatar_url || ''} />
+</PagePlate>

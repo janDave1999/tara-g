@@ -3,8 +3,6 @@ import PagePlate from "@/layouts/PagePlate.astro";
 import { supabase } from "@/lib/supabase";
 import { PUBLIC_R2_URL } from 'astro:env/client';
 
-import EditProfileModal  from "@/components/Profile/EditProfileModal.astro";
-import AvatarEditor      from "@/components/Profile/AvatarEditor.astro";
 import ProfileHeader     from "@/components/Profile/ProfileHeader.astro";
 import ProfileAbout      from "@/components/Profile/ProfileAbout.astro";
 import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
@@ -54,12 +52,12 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
 
 // ── Checklist ─────────────────────────────────────────────────
 const completionItems = [
-  { label: 'Add a profile photo',    done: !!userData.avatar_url,                                   modalId: 'avatar-editor-modal',    actionLabel: 'Add'    },
-  { label: 'Write a bio',            done: (userData.bio?.length ?? 0) >= 20,                       event:   'profile:openBioEdit',     actionLabel: 'Add'    },
-  { label: 'Set your location',      done: !!(userInfo.location_city || userInfo.location_country), modalId: 'edit-profile-modal',      actionLabel: 'Add'    },
-  { label: 'Add 3+ interests',       done: userInterests.length >= 3,                               href:    '/onboarding/interests',   actionLabel: 'Add'    },
-  { label: 'Set travel preferences', done: !!userPrefs.budget_range,                                href:    '/onboarding/preferences', actionLabel: 'Set'    },
-  { label: 'Create your first trip', done: (userStats?.trips_owned ?? 0) > 0,                       href:    '/trips/create',           actionLabel: 'Create' },
+  { label: 'Add a profile photo',    done: !!userData.avatar_url,                                   href: '/profile/edit',             actionLabel: 'Add'    },
+  { label: 'Write a bio',            done: (userData.bio?.length ?? 0) >= 20,                       href: '/profile/edit/basic',        actionLabel: 'Add'    },
+  { label: 'Set your location',      done: !!(userInfo.location_city || userInfo.location_country), href: '/profile/edit/basic',        actionLabel: 'Add'    },
+  { label: 'Add 3+ interests',       done: userInterests.length >= 3,                               href: '/profile/edit/interests',   actionLabel: 'Add'    },
+  { label: 'Set travel preferences', done: !!userPrefs.budget_range,                                href: '/profile/edit/preferences', actionLabel: 'Set'    },
+  { label: 'Create your first trip', done: (userStats?.trips_owned ?? 0) > 0,                       href: '/trips/create',             actionLabel: 'Create' },
 ];
 ---
 
@@ -83,9 +81,8 @@ const completionItems = [
           locationCity={userInfo.location_city || ''}
           locationCountry={userInfo.location_country || ''}
           memberSince={memberSince}
-          isOwner={true}
         />
-        <ProfileInterests interests={userInterests} isOwner={true} />
+        <ProfileInterests interests={userInterests} />
         <ProfileTripGrid />
       </div>
 
@@ -96,7 +93,6 @@ const completionItems = [
           languages={userPrefs.languages_spoken   ?? null}
           accommodation={userPrefs.accommodation_type ?? null}
           travelStyle={userPrefs.travel_style     ?? null}
-          isOwner={true}
         />
         <ProfileCompletion completion={completion} items={completionItems} />
       </div>
@@ -105,13 +101,6 @@ const completionItems = [
   </div>
 </div>
 
-<EditProfileModal profile={{
-  username: userData.username || '', full_name: userData.full_name || '',
-  bio: userData.bio || '',           avatar_url: userData.avatar_url || '',
-  location_city: userInfo.location_city || '',
-  location_country: userInfo.location_country || '',
-}} />
-<AvatarEditor currentAvatarUrl={userData.avatar_url || ''} />
 
 <div id="profileToast"
      role="status" aria-live="polite"

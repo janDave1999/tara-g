@@ -1,0 +1,140 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabase } from "@/lib/supabase";
+
+const user_id = Astro.locals.user_id;
+if (!user_id) return Astro.redirect("/signin");
+
+const { data: profileData } = await supabase.rpc('get_user_profile_data', { p_user_id: user_id });
+const selectedInterests: string[] = profileData?.interests || [];
+
+const INTEREST_CATEGORIES: Record<string, { label: string; icon: string }> = {
+  adventure:   { label: 'Adventure',     icon: '🏔️' },
+  culture:     { label: 'Culture',       icon: '🏛️' },
+  food:        { label: 'Food & Dining', icon: '🍜' },
+  nature:      { label: 'Nature',        icon: '🌿' },
+  nightlife:   { label: 'Nightlife',     icon: '🎉' },
+  wellness:    { label: 'Wellness',      icon: '🧘' },
+  shopping:    { label: 'Shopping',      icon: '🛍️' },
+  photography: { label: 'Photography',  icon: '📸' },
+};
+---
+
+<PagePlate title="Interests">
+<div class="min-h-screen bg-gray-50">
+
+  <!-- Sticky header -->
+  <div class="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="/profile/edit" class="p-1.5 -ml-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <h1 class="text-base font-semibold text-gray-900">Interests</h1>
+    </div>
+  </div>
+
+  <div class="max-w-xl mx-auto px-4 py-6">
+    <form id="interests-form">
+
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">Travel Interests</p>
+        <p class="text-xs text-gray-500 mb-5">Select at least 3 to help match you with compatible travelers.</p>
+
+        <div class="grid grid-cols-2 gap-3">
+          {Object.entries(INTEREST_CATEGORIES).map(([key, cat]) => (
+            <label class="cursor-pointer">
+              <input type="checkbox" name="interests" value={key} class="hidden peer" checked={selectedInterests.includes(key)} />
+              <div class="p-4 border-2 border-gray-100 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:border-gray-200 transition-all flex flex-col items-center gap-2">
+                <span class="text-3xl">{cat.icon}</span>
+                <span class="text-xs font-semibold text-gray-700">{cat.label}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-4">
+          Selected: <span id="selected-count" class="font-semibold text-blue-600">{selectedInterests.length}</span>
+        </p>
+
+        <p id="min-hint" class="text-xs text-red-500 text-center mt-1 hidden">Please select at least 3 interests</p>
+      </div>
+
+      <!-- Error / Success -->
+      <div id="form-error" class="hidden mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+        <p id="form-error-message" class="text-sm text-red-600"></p>
+      </div>
+
+      <!-- Save -->
+      <button
+        type="submit"
+        id="save-btn"
+        class="w-full mt-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        <span id="save-spinner" class="hidden">
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </span>
+        <span id="save-text">Save Interests</span>
+      </button>
+
+    </form>
+  </div>
+</div>
+</PagePlate>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+
+  const form      = document.getElementById('interests-form') as HTMLFormElement;
+  const saveBtn   = document.getElementById('save-btn') as HTMLButtonElement;
+  const saveText  = document.getElementById('save-text') as HTMLElement;
+  const saveSpinner = document.getElementById('save-spinner') as HTMLElement;
+  const countEl   = document.getElementById('selected-count') as HTMLElement;
+  const minHint   = document.getElementById('min-hint') as HTMLElement;
+  const errorDiv  = document.getElementById('form-error') as HTMLElement;
+  const errorMsg  = document.getElementById('form-error-message') as HTMLElement;
+
+  const checkboxes = form.querySelectorAll<HTMLInputElement>('input[name="interests"]');
+
+  const updateCount = () => {
+    const n = Array.from(checkboxes).filter(cb => cb.checked).length;
+    countEl.textContent = n.toString();
+    if (n >= 3) minHint.classList.add('hidden');
+  };
+
+  checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorDiv.classList.add('hidden');
+
+    const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+    if (selected.length < 3) {
+      minHint.classList.remove('hidden');
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveText.textContent = 'Saving…';
+    saveSpinner.classList.remove('hidden');
+
+    const { error } = await actions.onboarding.setInterests({ interests: selected });
+
+    if (error) {
+      errorMsg.textContent = error.message;
+      errorDiv.classList.remove('hidden');
+      saveBtn.disabled = false;
+      saveText.textContent = 'Save Interests';
+      saveSpinner.classList.add('hidden');
+    } else {
+      showToast({ message: 'Interests saved!', type: 'success' });
+      setTimeout(() => window.location.href = '/profile/edit', 1000);
+    }
+  });
+</script>

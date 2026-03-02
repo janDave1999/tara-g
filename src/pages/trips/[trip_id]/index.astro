@@ -181,7 +181,6 @@ const seoImage = coverImage?.image_url
       ? coverImage.image_url
       : `${PUBLIC_R2_URL}${coverImage.image_url}`)
   : undefined;
-
 const rawDesc = (trip_details?.description || description || '').trim();
 const destinationSuffix = destination !== 'No destination set' ? ` · ${destination}` : '';
 const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a trip to ${destination} with Tara G!`;

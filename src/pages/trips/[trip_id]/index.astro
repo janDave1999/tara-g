@@ -293,8 +293,6 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
   import { showToast } from '@/scripts/Toast';
   import { actions, ActionError } from 'astro:actions';
   import { createConfirmModal } from '@/scripts/Modal';
-  import { setPendingTripShare, getPendingTripShare, clearPendingTripShare } from '@/lib/tripShare';
-
   const joinBtns = document.querySelectorAll('.join-btn') as NodeListOf<HTMLButtonElement>;
   const cancelRequestBtns = document.querySelectorAll('.cancel-req-btn') as NodeListOf<HTMLButtonElement>;
   const leaveTripBtns = document.querySelectorAll('.leave-trip-btn') as NodeListOf<HTMLButtonElement>;
@@ -303,20 +301,7 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
   const declineInviteBtn = document.getElementById('decline-invite-btn') as HTMLButtonElement | null;
 
   const tripId = window.location.pathname.split('/').pop();
-
-  // Store trip share data if invite param exists
-  const urlParams = new URLSearchParams(window.location.search);
-  const inviteCode = urlParams.get('invite');
-  if (inviteCode && tripId) {
-    // We'll store just the tripId here, the invite code validation happens server-side
-    // Actually, we need to look up the invitation_id from the share_code
-    // For now, store the code and we'll resolve it on join
-    setPendingTripShare(tripId, inviteCode);
-  }
-
-  // Get pending trip share for join action — only use if it's for this specific trip
-  const pendingTrip = getPendingTripShare();
-  const pendingShareCode = pendingTrip?.tripId === tripId ? pendingTrip?.shareCode : undefined;
+  const inviteCode = new URLSearchParams(window.location.search).get('invite') ?? undefined;
 
   // Join button handler - works for both desktop and mobile
   joinBtns.forEach(joinBtn => {
@@ -326,25 +311,18 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
         confirmText: 'Join',
         onConfirm: async () => {
           const joinData: { trip_id: string; share_code?: string } = { trip_id: tripId! };
-          
-          // Pass share_code if available from pending trip
-          if (pendingShareCode) {
-            joinData.share_code = pendingShareCode;
-          }
-          
+          if (inviteCode) joinData.share_code = inviteCode;
+
           const { error } = await actions.trip.joinTrip(joinData);
-          
+
           if (error instanceof ActionError) {
-            // Check if not authenticated error
             if (error.message?.includes('must be logged in') || error.message?.includes('unauthorized') || error.code === 'UNAUTHORIZED') {
-              // Redirect to sign in, preserving the share code
               window.location.href = '/signin';
               return;
             }
             showToast({ message: error.message, type: 'error' });
           } else {
             showToast({ message: 'Joined trip successfully!', type: 'success' });
-            clearPendingTripShare();
             setTimeout(() => window.location.reload(), 1500);
           }
         },

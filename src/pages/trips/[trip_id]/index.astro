@@ -185,7 +185,7 @@ const seoImage = coverImage?.image_url
 const rawDesc = (trip_details?.description || description || '').trim();
 const destinationSuffix = destination !== 'No destination set' ? ` · ${destination}` : '';
 const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a trip to ${destination} with Tara G!`;
-const tripStartDate = trip_details?.start_date || null;
+
 ---
 
 <Layout
@@ -268,7 +268,7 @@ const tripStartDate = trip_details?.start_date || null;
       <div class="rounded-2xl border border-gray-200 shadow-sm bg-white p-6 text-center">
         <p class="text-gray-600 mb-4">Join this trip to see the full itinerary and connect with travelers!</p>
         <a
-          href={`/signin?redirect=${Astro.url.pathname}`}
+          href={`/signin?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`}
           class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all"
         >
           Sign in to Join

@@ -102,8 +102,9 @@ export const onboarding = defineMiddleware(async (ctx, next) => {
     const isExempt = onboardingExemptRoutes.some((route) =>
       micromatch.isMatch(pathname, route)
     );
+    const isTripInvite = pathname.startsWith('/trips/') && url.searchParams.has('invite');
 
-    if (!isExempt) {
+    if (!isExempt && !isTripInvite) {
       const onboardingStatus = await getCachedOnboarding(
         locals.user_id,
         locals.env

@@ -8,7 +8,6 @@ import ProfileAbout      from "@/components/Profile/ProfileAbout.astro";
 import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
 import ProfileTripGrid   from "@/components/Profile/ProfileGrid.astro";
 import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
-import ProfileCompletion from "@/components/Profile/ProfileCompletion.astro";
 
 // ── Auth ──────────────────────────────────────────────────────
 const user_id = Astro.locals.user_id;
@@ -41,24 +40,9 @@ const fmtDate = (d?: string | null) => {
 };
 const memberSince = fmtDate(userData.created_at);
 
-// ── Ring ──────────────────────────────────────────────────────
-const completion    = Number(userInfo.profile_completion_percentage) || 0;
-const circumference = 2 * Math.PI * 52;
-const dashOffset    = circumference - (completion / 100) * circumference;
-const ringColor     = completion < 50 ? '#F97316' : completion < 80 ? '#3B82F6' : '#10B981';
-
 // ── Project 82 ────────────────────────────────────────────────
 const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0;
 
-// ── Checklist ─────────────────────────────────────────────────
-const completionItems = [
-  { label: 'Add a profile photo',    done: !!userData.avatar_url,                                   href: '/profile/edit',             actionLabel: 'Add'    },
-  { label: 'Write a bio',            done: (userData.bio?.length ?? 0) >= 20,                       href: '/profile/edit/basic',        actionLabel: 'Add'    },
-  { label: 'Set your location',      done: !!(userInfo.location_city || userInfo.location_country), href: '/profile/edit/basic',        actionLabel: 'Add'    },
-  { label: 'Add 3+ interests',       done: userInterests.length >= 3,                               href: '/profile/edit/interests',   actionLabel: 'Add'    },
-  { label: 'Set travel preferences', done: !!userPrefs.budget_range,                                href: '/profile/edit/preferences', actionLabel: 'Set'    },
-  { label: 'Create your first trip', done: (userStats?.trips_owned ?? 0) > 0,                       href: '/trips/create',             actionLabel: 'Create' },
-];
 ---
 
 <PagePlate title="My Profile">
@@ -69,8 +53,7 @@ const completionItems = [
       userData={userData}         userInfo={userInfo}
       userStats={userStats}       displayAvatarUrl={displayAvatarUrl}
       initials={initials}         memberSince={memberSince}
-      ringColor={ringColor}       circumference={circumference}
-      dashOffset={dashOffset}     bucketCount={bucketCount}
+      bucketCount={bucketCount}
     />
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -94,7 +77,6 @@ const completionItems = [
           accommodation={userPrefs.accommodation_type ?? null}
           travelStyle={userPrefs.travel_style     ?? null}
         />
-        <ProfileCompletion completion={completion} items={completionItems} />
       </div>
 
     </div>

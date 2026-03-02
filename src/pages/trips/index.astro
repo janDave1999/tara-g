@@ -137,79 +137,6 @@ const TRIP_TAGS = [
 
 <Pageplate title="My Trips">
 
-  <!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
-  <section class="relative bg-slate-950 overflow-hidden">
-    <!-- Ambient orbs -->
-    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-      <div class="absolute -top-40 -left-40 w-[700px] h-[700px] bg-blue-600/20 rounded-full blur-3xl"></div>
-      <div class="absolute -bottom-32 -right-32 w-[600px] h-[600px] bg-orange-500/12 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/8 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
-    </div>
-    <!-- Dot grid -->
-    <div
-      class="pointer-events-none absolute inset-0 opacity-[0.035]"
-      style="background-image: radial-gradient(circle, #ffffff 1px, transparent 1px); background-size: 28px 28px;"
-      aria-hidden="true"
-    ></div>
-
-    <div class="relative z-10 max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-20">
-      <!-- Badge -->
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 mb-7 rounded-full border border-white/[0.12] bg-white/[0.05] backdrop-blur-sm">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-white/50 text-xs font-medium tracking-wide">Philippine Travel Community</span>
-      </div>
-
-      <!-- Headline -->
-      <h1 class="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] tracking-tight mb-5">
-        Plan. Discover.<br />
-        <span class="bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-sky-300 to-cyan-400">
-          Go, Tara!
-        </span>
-      </h1>
-
-      <p class="text-slate-400 text-base md:text-lg leading-relaxed mb-9 max-w-lg">
-        Build itineraries, join adventures across all 82 provinces, and travel the Philippines with your crew.
-      </p>
-
-      <!-- CTAs -->
-      <div class="flex flex-wrap items-center gap-3 mb-14">
-        <a
-          href="/trips/create"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-semibold shadow-xl shadow-orange-500/20 transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-slate-950"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-          </svg>
-          Plan a Trip
-        </a>
-        <a
-          href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] text-white/70 hover:text-white font-semibold border border-white/[0.10] transition-all duration-200"
-        >
-          Explore Trips
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-          </svg>
-        </a>
-      </div>
-
-      <!-- Stats row -->
-      <div class="flex flex-wrap items-center gap-6 md:gap-10 pt-8 border-t border-white/[0.07]">
-        {[
-          { value: ownedCount, label: 'My Trips' },
-          { value: participatingCount, label: 'Joined' },
-          { value: `${discoverCount}+`, label: 'Discover' },
-          { value: '82', label: 'Provinces' },
-        ].map(stat => (
-          <div>
-            <div class="text-2xl md:text-3xl font-black text-white">{stat.value}</div>
-            <div class="text-xs text-slate-500 font-medium mt-0.5">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
   <!-- ═══════════════════════════ CONTENT AREA ═══════════════════════════ -->
   <div class="bg-gray-50 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-7">
@@ -223,9 +150,9 @@ const TRIP_TAGS = [
           <!-- Segmented tab control -->
           <div class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 self-start flex-wrap">
             {[
-              { id: 'owned', label: 'My Trips', count: ownedCount, accent: false },
-              { id: 'member', label: 'Joined', count: participatingCount, accent: false },
-              { id: 'discover', label: 'Discover', count: discoverCount, accent: false },
+              { id: 'owned', label: 'My Trips', count: ownedCount },
+              { id: 'member', label: 'Activity', count: participatingCount },
+              { id: 'discover', label: 'Discover', count: discoverCount },
             ].map(tab => (
               <a
                 href={buildUrl({ tab: tab.id, page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}
@@ -429,18 +356,67 @@ const TRIP_TAGS = [
       )}
 
       <!-- Trip Grid -->
-      {currentTrips.length > 0 && (
+      {currentTrips.length > 0 && currentType !== 'member' && (
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8" id="trips-grid">
           {currentTrips.map((trip: any) => (
             <TripCard
               trip={trip}
               type={currentType}
-              participationStatus={currentTab === 'member' ? trip.participation_status : undefined}
               joinRequestCount={currentTab === 'owned' ? Number(trip.join_request_count) || 0 : undefined}
             />
           ))}
         </div>
       )}
+
+      <!-- Activity Tab: grouped by participation status -->
+      {currentType === 'member' && currentTrips.length > 0 && (() => {
+        const invited = currentTrips.filter((t: any) => t.participation_status === 'invited');
+        const pending  = currentTrips.filter((t: any) => t.participation_status === 'pending');
+        const joined   = currentTrips.filter((t: any) => t.participation_status === 'joined');
+        return (
+          <div class="space-y-8 mb-8">
+            {invited.length > 0 && (
+              <div>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Invitations</span>
+                  <span class="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-600 text-white">{invited.length}</span>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {invited.map((trip: any) => (
+                    <TripCard trip={trip} type="member" participationStatus="invited" />
+                  ))}
+                </div>
+              </div>
+            )}
+            {pending.length > 0 && (
+              <div>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs font-bold uppercase tracking-widest text-amber-600">Pending Requests</span>
+                  <span class="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500 text-white">{pending.length}</span>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pending.map((trip: any) => (
+                    <TripCard trip={trip} type="member" participationStatus="pending" />
+                  ))}
+                </div>
+              </div>
+            )}
+            {joined.length > 0 && (
+              <div>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs font-bold uppercase tracking-widest text-emerald-600">Joined</span>
+                  <span class="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white">{joined.length}</span>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {joined.map((trip: any) => (
+                    <TripCard trip={trip} type="member" participationStatus="joined" />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <!-- ── Empty States ── -->
       {currentTrips.length === 0 && (
@@ -480,7 +456,7 @@ const TRIP_TAGS = [
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </div>
-              <h3 class="text-xl font-bold text-gray-900 mb-2">No trips yet</h3>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">No activity yet</h3>
               <p class="text-gray-500 text-sm leading-relaxed mb-7">You haven't joined, requested, or been invited to any trips yet. Discover open trips and join your crew!</p>
               <a
                 href={buildUrl({ tab: 'discover', page: '1', search: '', status: '', region: '', budget: '', style: '', pace: '' })}

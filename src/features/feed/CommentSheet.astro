@@ -1,0 +1,228 @@
+---
+interface Props {
+  userAvatar?: string | null;
+  username?: string;
+}
+const { userAvatar, username = "" } = Astro.props;
+---
+
+<!-- Comment sheet backdrop -->
+<div
+  id="comment-backdrop"
+  class="fixed inset-0 bg-black/40 z-40 hidden opacity-0 transition-opacity duration-200"
+></div>
+
+<!-- Slide-up sheet -->
+<div
+  id="comment-sheet"
+  class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl translate-y-full transition-transform duration-300 flex flex-col max-h-[75vh]"
+>
+  <!-- Handle + header -->
+  <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-1 bg-gray-200 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2"></div>
+      <h3 id="sheet-title" class="font-semibold text-gray-900 text-sm">Comments</h3>
+      <span id="sheet-count" class="text-xs text-gray-400"></span>
+    </div>
+    <button id="sheet-close" type="button" class="text-gray-400 hover:text-gray-600 transition" aria-label="Close">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Comment list -->
+  <div id="comment-list" class="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+    <div id="comment-loading" class="flex justify-center py-6">
+      <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Input row -->
+  <div class="flex items-end gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0">
+    <textarea
+      id="comment-input"
+      rows="1"
+      maxlength="500"
+      placeholder="Write a comment…"
+      class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
+    ></textarea>
+    <button
+      id="comment-send"
+      type="button"
+      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+    >
+      Send
+    </button>
+  </div>
+</div>
+
+<script>
+  import { actions } from "astro:actions";
+  import { showToast } from "@/scripts/Toast";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const sheet     = document.getElementById("comment-sheet")!;
+  const backdrop  = document.getElementById("comment-backdrop")!;
+  const closeBtn  = document.getElementById("sheet-close")!;
+  const list      = document.getElementById("comment-list")!;
+  const loading   = document.getElementById("comment-loading")!;
+  const input     = document.getElementById("comment-input") as HTMLTextAreaElement;
+  const sendBtn   = document.getElementById("comment-send") as HTMLButtonElement;
+  const titleEl   = document.getElementById("sheet-title")!;
+  const countEl   = document.getElementById("sheet-count")!;
+
+  let activePostId: string | null = null;
+
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7)  return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  }
+
+  function esc(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function avatarHtml(avatar: string | null, name: string, size = "w-8 h-8"): string {
+    if (avatar) {
+      const src = avatar.startsWith("http") ? avatar : `${PUBLIC_R2_URL}${avatar}`;
+      return `<img src="${esc(src)}" alt="${esc(name)}" class="${size} rounded-full object-cover flex-shrink-0" />`;
+    }
+    const initial = name.charAt(0).toUpperCase();
+    return `<div class="${size} rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">${initial}</div>`;
+  }
+
+  function renderComments(comments: any[]) {
+    if (comments.length === 0) {
+      list.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">No comments yet. Be the first!</p>`;
+      return;
+    }
+    list.innerHTML = comments.map((c) => `
+      <div class="flex gap-2.5">
+        ${avatarHtml(c.author_avatar, c.author_full_name)}
+        <div class="flex-1 min-w-0">
+          <div class="flex items-baseline gap-1.5">
+            <a href="/profile/${esc(c.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(c.author_full_name)}</a>
+            <span class="text-xs text-gray-400">${timeAgo(c.created_at)}</span>
+          </div>
+          <p class="text-sm text-gray-700 mt-0.5 leading-relaxed">${esc(c.content)}</p>
+        </div>
+      </div>
+    `).join("");
+    countEl.textContent = `${comments.length}`;
+  }
+
+  function appendComment(comment: any) {
+    const empty = list.querySelector("p.text-center");
+    if (empty) list.innerHTML = "";
+
+    const div = document.createElement("div");
+    div.className = "flex gap-2.5";
+    div.innerHTML = `
+      ${avatarHtml(comment.author_avatar, comment.author_full_name)}
+      <div class="flex-1 min-w-0">
+        <div class="flex items-baseline gap-1.5">
+          <a href="/profile/${esc(comment.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(comment.author_full_name)}</a>
+          <span class="text-xs text-gray-400">just now</span>
+        </div>
+        <p class="text-sm text-gray-700 mt-0.5 leading-relaxed">${esc(comment.content)}</p>
+      </div>
+    `;
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+
+    const current = parseInt(countEl.textContent || "0", 10);
+    countEl.textContent = `${current + 1}`;
+  }
+
+  async function openSheet(postId: string, authorName: string) {
+    activePostId = postId;
+    titleEl.textContent = `Comments`;
+    countEl.textContent = "";
+    list.innerHTML = "";
+    list.appendChild(loading.cloneNode(true));
+    (list.firstChild as HTMLElement).id = "comment-loading-live";
+
+    // Show
+    backdrop.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      backdrop.classList.add("opacity-100");
+      sheet.classList.remove("translate-y-full");
+    });
+
+    const res = await actions.feed.getComments({ postId });
+    list.innerHTML = "";
+    if (res.error) {
+      list.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">Could not load comments.</p>`;
+      return;
+    }
+    renderComments(res.data?.comments ?? []);
+  }
+
+  function closeSheet() {
+    sheet.classList.add("translate-y-full");
+    backdrop.classList.remove("opacity-100");
+    setTimeout(() => backdrop.classList.add("hidden"), 200);
+    activePostId = null;
+    input.value = "";
+  }
+
+  closeBtn.addEventListener("click", closeSheet);
+  backdrop.addEventListener("click", closeSheet);
+
+  // Auto-grow textarea
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
+  });
+
+  // Send comment
+  sendBtn.addEventListener("click", async () => {
+    const content = input.value.trim();
+    if (!content || !activePostId) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = "…";
+
+    const res = await actions.feed.createComment({ postId: activePostId, content });
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = "Send";
+
+    if (res.error) {
+      showToast({ message: "Failed to post comment.", type: "error" });
+      return;
+    }
+
+    input.value = "";
+    input.style.height = "auto";
+
+    // Append optimistically with a placeholder comment object
+    appendComment({
+      author_avatar:    null,
+      author_full_name: "You",
+      author_username:  "",
+      content,
+      created_at:       new Date().toISOString(),
+    });
+
+    // Notify FeedCard to update its count
+    document.dispatchEvent(new CustomEvent("comment:posted", { detail: { postId: activePostId } }));
+  });
+
+  // Listen for open-comments events from FeedCard
+  document.addEventListener("open-comments", (e: Event) => {
+    const { postId, authorName } = (e as CustomEvent).detail;
+    openSheet(postId, authorName);
+  });
+</script>

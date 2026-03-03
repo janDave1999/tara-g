@@ -2,7 +2,10 @@
 import PagePlate from "@/layouts/PagePlate.astro";
 import { supabaseAdmin } from "@/lib/supabase";
 import FeedCard from "@/features/feed/FeedCard.astro";
+import FeedComposer from "@/features/feed/FeedComposer.astro";
+import CommentSheet from "@/features/feed/CommentSheet.astro";
 import TripCard from "@/components/TripCard.astro";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 const { user_id } = Astro.locals;
 if (!user_id) return Astro.redirect("/signin");
@@ -12,7 +15,7 @@ const postType = Astro.url.searchParams.get("type") ?? null;
 const limit    = 10;
 const offset   = (page - 1) * limit;
 
-const [feedResult, discoverResult] = await Promise.all([
+const [feedResult, discoverResult, profileResult, peopleResult] = await Promise.all([
   supabaseAdmin.rpc("get_feed_posts", {
     p_user_id:   user_id,
     p_post_type: postType,
@@ -27,23 +30,58 @@ const [feedResult, discoverResult] = await Promise.all([
     p_limit:   6,
     p_offset:  0,
   }),
+  supabaseAdmin
+    .from("users")
+    .select("username, avatar_url")
+    .eq("auth_id", user_id)
+    .single(),
+  supabaseAdmin.rpc("get_people_you_may_know", {
+    p_user_id: user_id,
+    p_limit:   10,
+  }),
 ]);
 
-if (feedResult.error)    console.error("[feeds] get_feed_posts",  feedResult.error);
-if (discoverResult.error) console.error("[feeds] get_recent_trips", discoverResult.error);
+if (feedResult.error)     console.error("[feeds] get_feed_posts",          feedResult.error);
+if (discoverResult.error) console.error("[feeds] get_recent_trips",        discoverResult.error);
+if (peopleResult.error)   console.error("[feeds] get_people_you_may_know", peopleResult.error);
 
-const posts: any[]         = feedResult.data    ?? [];
-const discoverTrips: any[] = discoverResult.data ?? [];
+const posts: any[]           = feedResult.data    ?? [];
+const discoverTrips: any[]   = discoverResult.data ?? [];
+const suggestedPeople: any[] = (peopleResult.data as any[]) ?? [];
+const viewerUsername: string       = profileResult.data?.username   ?? "";
+const viewerAvatar:   string | null = profileResult.data?.avatar_url ?? null;
+
+// Injection points — inline if enough posts exist, otherwise append after feed
+const PEOPLE_INJECT_AFTER = 2;  // after 3rd post (index 2)
+const TRIP_INJECT_EVERY   = 5;  // every 5th post
+
+const peopleInjectedInline = posts.length > PEOPLE_INJECT_AFTER;
+const tripInjectedInline   = posts.length >= TRIP_INJECT_EVERY;
+
+function avatarSrc(url: string | null | undefined) {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${PUBLIC_R2_URL}${url}`;
+}
+
+function relationLabel(reason: string, count: number): string {
+  if (reason === "trip_mate") {
+    return count === 1 ? "On 1 trip together" : `On ${count} trips together`;
+  }
+  return count === 1 ? "1 mutual connection" : `${count} mutual connections`;
+}
 ---
 
 <PagePlate title="Feed">
   <div class="max-w-2xl mx-auto px-4 py-6 space-y-4">
 
+    <!-- Composer -->
+    <FeedComposer userAvatar={viewerAvatar} username={viewerUsername} />
+
     <!-- Filter tabs -->
     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
       {[
         { label: "All",       value: "" },
-        { label: "Trips",     value: "trip_planning" },
+        { label: "Stories",   value: "trip_completed" },
         { label: "Photos",    value: "photo" },
         { label: "Tips",      value: "tip" },
         { label: "Questions", value: "question" },
@@ -65,42 +103,130 @@ const discoverTrips: any[] = discoverResult.data ?? [];
       })}
     </div>
 
-    <!-- Feed -->
+    <!-- Empty state -->
     {posts.length === 0 && (
-      <div class="text-center py-16">
+      <div class="text-center py-8">
         <div class="text-4xl mb-3">✈️</div>
         <p class="text-gray-500 font-medium">No posts yet</p>
         <p class="text-gray-400 text-sm mt-1">Be the first to share your travel story!</p>
       </div>
     )}
 
-    {posts.map((post, i) => (
-      <>
-        <FeedCard post={post} />
-        {/* Interleave a discover trip card every 5 posts */}
-        {(i + 1) % 5 === 0 && discoverTrips[Math.floor((i + 1) / 5) - 1] && (
-          <div>
-            <p class="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-              Suggested Trip
-            </p>
-            <TripCard trip={discoverTrips[Math.floor((i + 1) / 5) - 1] as any} type="discover" />
-          </div>
-        )}
-      </>
-    ))}
+    <!-- Feed posts with inline discovery injections -->
+    {posts.length > 0 && (
+      <div id="feed-list" class="space-y-4">
+        {posts.map((post: any, i: number) => (
+          <>
+            <FeedCard post={post} />
 
-    <!-- Discover trips shown when feed is empty -->
-    {posts.length === 0 && discoverTrips.length > 0 && (
-      <div class="space-y-4">
-        <p class="text-sm font-semibold text-gray-500">Trips you might like</p>
-        {discoverTrips.map((trip) => (
-          <TripCard trip={trip} type="discover" />
+            {/* After 3rd post: People You May Know */}
+            {i === PEOPLE_INJECT_AFTER && suggestedPeople.length > 0 && (
+              <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-sm font-semibold text-gray-800">People You May Know</h2>
+                  <a href="/search" class="text-xs text-blue-500 hover:underline">See all →</a>
+                </div>
+                <div class="flex gap-3 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
+                  {suggestedPeople.map((u: any) => (
+                    <a
+                      href={`/profile/${u.username}`}
+                      class="flex-shrink-0 w-32 flex flex-col bg-gray-50 border border-gray-100 rounded-xl hover:border-blue-200 hover:shadow-sm transition overflow-hidden"
+                    >
+                      <div class="w-full h-28 relative overflow-hidden flex-shrink-0">
+                        {avatarSrc(u.avatar_url) ? (
+                          <img src={avatarSrc(u.avatar_url)!} alt={u.full_name ?? u.username} class="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-3xl">
+                            {(u.full_name ?? u.username ?? "?").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div class="p-2 flex flex-col gap-1">
+                        <p class="font-semibold text-gray-900 text-xs truncate leading-tight">{u.full_name ?? u.username}</p>
+                        <p class="text-gray-400 text-xs truncate">@{u.username}</p>
+                        <p class={`text-xs truncate font-medium min-h-[14px] ${u.relation_reason === "trip_mate" ? "text-teal-600" : "text-indigo-500"}`}>
+                          {u.relation_reason ? relationLabel(u.relation_reason, u.shared_count ?? 1) : ""}
+                        </p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Every 5th post: Suggested Trip */}
+            {(i + 1) % TRIP_INJECT_EVERY === 0 && discoverTrips[Math.floor((i + 1) / TRIP_INJECT_EVERY) - 1] && (
+              <div>
+                <p class="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  Suggested Trip
+                </p>
+                <TripCard trip={discoverTrips[Math.floor((i + 1) / TRIP_INJECT_EVERY) - 1]} type="discover" />
+              </div>
+            )}
+          </>
         ))}
       </div>
     )}
 
+    <!-- Fallback: show discovery sections after feed if not enough posts to inject inline -->
+    {!peopleInjectedInline && suggestedPeople.length > 0 && (
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-800">People You May Know</h2>
+          <a href="/search" class="text-xs text-blue-500 hover:underline">See all →</a>
+        </div>
+        <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+          {suggestedPeople.map((u: any) => (
+            <a
+              href={`/profile/${u.username}`}
+              class="flex-shrink-0 w-36 flex flex-col bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition overflow-hidden"
+            >
+              <div class="w-full h-36 relative overflow-hidden flex-shrink-0">
+                {avatarSrc(u.avatar_url) ? (
+                  <img src={avatarSrc(u.avatar_url)!} alt={u.full_name ?? u.username} class="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-4xl">
+                    {(u.full_name ?? u.username ?? "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div class="p-2.5 flex flex-col gap-1.5 flex-1">
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-xs truncate leading-tight">{u.full_name ?? u.username}</p>
+                  <p class="text-gray-400 text-xs truncate">@{u.username}</p>
+                  <p class={`text-xs truncate font-medium mt-0.5 min-h-[14px] ${u.relation_reason === "trip_mate" ? "text-teal-600" : "text-indigo-500"}`}>
+                    {u.relation_reason ? relationLabel(u.relation_reason, u.shared_count ?? 1) : ""}
+                  </p>
+                </div>
+                <span class="w-full text-center text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg py-1 transition">View profile</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {!tripInjectedInline && discoverTrips.length > 0 && (
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-800">Suggested Trips</h2>
+          <a href="/trips?tab=discover" class="text-xs text-blue-500 hover:underline">See all →</a>
+        </div>
+        <div class="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+          {discoverTrips.map((trip: any) => (
+            <div class="flex-shrink-0 w-64 flex flex-col">
+              <TripCard trip={trip} type="discover" class="h-full" />
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
   </div>
+
+  <!-- Global comment sheet (one instance for whole page) -->
+  <CommentSheet userAvatar={viewerAvatar} username={viewerUsername} />
 </PagePlate>

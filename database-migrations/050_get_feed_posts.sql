@@ -6,6 +6,9 @@
 -- Phase 2: Filter to friends only (using friends table).
 -- =====================================================
 
+-- Drop first so RETURNS TABLE changes are applied cleanly
+DROP FUNCTION IF EXISTS public.get_feed_posts(UUID, TEXT, INTEGER, INTEGER);
+
 CREATE OR REPLACE FUNCTION public.get_feed_posts(
     p_user_id   UUID,          -- auth_id of the viewer (reserved for future friends filter)
     p_post_type TEXT    DEFAULT NULL,
@@ -25,11 +28,13 @@ RETURNS TABLE(
     content          TEXT,
     hashtags         TEXT[],
     location_name    TEXT,
-    like_count       INTEGER,
-    comment_count    INTEGER,
-    share_count      INTEGER,
-    created_at       TIMESTAMPTZ,
-    total_count      BIGINT
+    like_count         INTEGER,
+    comment_count      INTEGER,
+    share_count        INTEGER,
+    created_at         TIMESTAMPTZ,
+    total_count        BIGINT,
+    is_liked_by_viewer BOOLEAN,
+    media_urls         TEXT[]
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -54,7 +59,19 @@ BEGIN
         up.comment_count,
         up.share_count,
         up.created_at,
-        COUNT(*) OVER ()                                AS total_count
+        COUNT(*) OVER ()                                AS total_count,
+        EXISTS (
+            SELECT 1 FROM post_interactions pi2
+            WHERE pi2.post_id = up.post_id
+              AND pi2.user_id = (SELECT user_id FROM users WHERE auth_id = p_user_id LIMIT 1)
+              AND pi2.interaction_type = 'like'
+        )                                               AS is_liked_by_viewer,
+        COALESCE(
+            (SELECT ARRAY_AGG(pm.url ORDER BY pm.display_order)
+             FROM post_media pm
+             WHERE pm.post_id = up.post_id),
+            '{}'
+        )                                               AS media_urls
     FROM user_posts up
     JOIN  users u ON u.user_id = up.user_id
     LEFT JOIN trips t ON t.trip_id = up.trip_id

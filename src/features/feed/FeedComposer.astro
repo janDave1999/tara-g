@@ -1,0 +1,438 @@
+---
+import { PUBLIC_R2_URL } from "astro:env/client";
+
+interface Props {
+  userAvatar?: string | null;
+  username: string;
+}
+
+const { userAvatar, username } = Astro.props;
+
+const avatarSrc = userAvatar
+  ? userAvatar.startsWith("http") ? userAvatar : `${PUBLIC_R2_URL}${userAvatar}`
+  : null;
+---
+
+<!-- Composer trigger box -->
+<div
+  id="composer-trigger"
+  class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-3 cursor-pointer hover:border-blue-300 hover:shadow-md transition"
+>
+  {avatarSrc ? (
+    <img src={avatarSrc} alt={username} class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+  ) : (
+    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+      {username.charAt(0).toUpperCase()}
+    </div>
+  )}
+  <span class="flex-1 text-gray-400 text-sm">Write about a completed trip…</span>
+  <svg class="w-5 h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+  </svg>
+</div>
+
+<!-- Compose modal -->
+<dialog
+  id="compose-modal"
+  class="w-full max-w-lg rounded-2xl shadow-2xl border-0 p-0 backdrop:bg-black/40 mx-auto my-auto"
+>
+  <div class="flex flex-col max-h-[92vh]">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <button id="compose-back" type="button" class="hidden text-gray-400 hover:text-gray-700 transition mr-1" aria-label="Back">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h2 id="compose-title" class="font-semibold text-gray-900">Select a Trip</h2>
+      </div>
+      <button id="compose-close" type="button" class="text-gray-400 hover:text-gray-600 transition" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Step 1: Trip picker -->
+    <div id="step-trip" class="flex-1 overflow-y-auto min-h-0">
+      <div id="trips-loading" class="flex justify-center items-center py-12">
+        <svg class="w-6 h-6 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+      </div>
+      <div id="trips-empty" class="hidden px-5 py-12 text-center">
+        <div class="text-4xl mb-3">✈️</div>
+        <p class="text-gray-600 font-medium text-sm">No completed trips yet</p>
+        <p class="text-gray-400 text-xs mt-1">Posts can only be written about completed trips.</p>
+      </div>
+      <ul id="trips-list" class="hidden divide-y divide-gray-50 px-2 py-2"></ul>
+    </div>
+
+    <!-- Step 2: Post composer -->
+    <div id="step-compose" class="hidden flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
+
+      <!-- Selected trip badge -->
+      <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-xl">
+        <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span id="selected-trip-name" class="text-sm font-medium text-blue-700 truncate"></span>
+      </div>
+
+      <!-- Author row -->
+      <div class="flex items-center gap-2">
+        {avatarSrc ? (
+          <img src={avatarSrc} alt={username} class="w-8 h-8 rounded-full object-cover" />
+        ) : (
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs">
+            {username.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span class="text-sm font-medium text-gray-700">@{username}</span>
+      </div>
+
+      <!-- Title (optional) -->
+      <input
+        id="compose-title-input"
+        type="text"
+        maxlength="200"
+        placeholder="Give your post a title (optional)"
+        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+
+      <!-- Content -->
+      <div>
+        <textarea
+          id="compose-content"
+          rows="4"
+          maxlength="1000"
+          placeholder="Share your experience, story, or tips from this trip…"
+          class="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        ></textarea>
+        <div class="flex justify-end mt-1">
+          <span id="compose-char-count" class="text-xs text-gray-400">0 / 1000</span>
+        </div>
+      </div>
+
+      <!-- Photo upload -->
+      <div>
+        <p class="text-xs font-medium text-gray-600 mb-2">Photos <span class="text-gray-400 font-normal">(up to 4)</span></p>
+
+        <!-- Photo previews grid -->
+        <div id="photo-previews" class="grid grid-cols-4 gap-2 mb-2 empty:hidden"></div>
+
+        <!-- Upload button (hidden when 4 photos selected) -->
+        <label
+          id="photo-upload-label"
+          class="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 cursor-pointer transition"
+        >
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span id="photo-upload-hint">Add photos</span>
+          <input
+            id="photo-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            class="sr-only"
+          />
+        </label>
+      </div>
+
+      <!-- Hashtags -->
+      <div>
+        <div id="hashtag-chips" class="flex flex-wrap gap-1.5 mb-1.5 empty:hidden"></div>
+        <input
+          id="hashtag-input"
+          type="text"
+          placeholder="Add hashtags (press Space or Enter)"
+          class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between pt-1 pb-2">
+        <p id="compose-error" class="text-xs text-red-500 hidden"></p>
+        <button
+          id="compose-submit"
+          type="button"
+          class="ml-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Post
+        </button>
+      </div>
+    </div>
+
+  </div>
+</dialog>
+
+<script>
+  import { actions } from "astro:actions";
+  import { showToast } from "@/scripts/Toast";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const trigger     = document.getElementById("composer-trigger")!;
+  const modal       = document.getElementById("compose-modal") as HTMLDialogElement;
+  const closeBtn    = document.getElementById("compose-close")!;
+  const backBtn     = document.getElementById("compose-back")!;
+  const modalTitle  = document.getElementById("compose-title")!;
+
+  const stepTrip     = document.getElementById("step-trip")!;
+  const stepCompose  = document.getElementById("step-compose")!;
+  const tripsLoading = document.getElementById("trips-loading")!;
+  const tripsEmpty   = document.getElementById("trips-empty")!;
+  const tripsList    = document.getElementById("trips-list")!;
+
+  const titleInput    = document.getElementById("compose-title-input") as HTMLInputElement;
+  const textarea      = document.getElementById("compose-content") as HTMLTextAreaElement;
+  const charCount     = document.getElementById("compose-char-count")!;
+  const hashInput     = document.getElementById("hashtag-input") as HTMLInputElement;
+  const hashChips     = document.getElementById("hashtag-chips")!;
+  const submitBtn     = document.getElementById("compose-submit") as HTMLButtonElement;
+  const errorEl       = document.getElementById("compose-error")!;
+  const tripBadge     = document.getElementById("selected-trip-name")!;
+  const photoInput    = document.getElementById("photo-file-input") as HTMLInputElement;
+  const photoPreviews = document.getElementById("photo-previews")!;
+  const photoLabel    = document.getElementById("photo-upload-label")!;
+  const photoHint     = document.getElementById("photo-upload-hint")!;
+
+  const MAX_PHOTOS = 4;
+  let selectedTripId = "";
+  let hashtags: string[] = [];
+  let tripsLoaded = false;
+
+  // selectedPhotos: { dataUrl (preview), base64, name, type }[]
+  let selectedPhotos: { dataUrl: string; base64: string; name: string; type: string }[] = [];
+
+  function esc(s: string) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ── Open / close ──────────────────────────────────────────────
+  trigger.addEventListener("click", () => {
+    modal.showModal();
+    if (!tripsLoaded) loadTrips();
+  });
+  closeBtn.addEventListener("click", () => { modal.close(); resetAll(); });
+  modal.addEventListener("click", (e) => { if (e.target === modal) { modal.close(); resetAll(); } });
+  backBtn.addEventListener("click", () => showStep("trip"));
+
+  // ── Load completed trips ──────────────────────────────────────
+  async function loadTrips() {
+    tripsLoading.classList.remove("hidden");
+    tripsEmpty.classList.add("hidden");
+    tripsList.classList.add("hidden");
+
+    const res = await actions.feed.getMyCompletedTrips({});
+    tripsLoading.classList.add("hidden");
+    tripsLoaded = true;
+
+    const trips = res.data?.trips ?? [];
+    if (!trips.length) { tripsEmpty.classList.remove("hidden"); return; }
+
+    tripsList.innerHTML = trips.map((t: any) => {
+      const cover = t.cover_image
+        ? (t.cover_image.startsWith("http") ? t.cover_image : `${PUBLIC_R2_URL}${t.cover_image}`)
+        : null;
+      const date = t.end_date
+        ? new Date(t.end_date).toLocaleDateString("en-PH", { month: "short", year: "numeric" })
+        : "";
+      return `
+        <li>
+          <button type="button" data-trip-id="${esc(t.trip_id)}" data-trip-title="${esc(t.title)}"
+            class="trip-pick-btn w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-blue-50 transition text-left">
+            ${cover
+              ? `<img src="${esc(cover)}" alt="${esc(t.title)}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" />`
+              : `<div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex-shrink-0"></div>`
+            }
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">${esc(t.title)}</p>
+              ${date ? `<p class="text-xs text-gray-400 mt-0.5">Completed ${esc(date)}</p>` : ""}
+            </div>
+            <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </li>`;
+    }).join("");
+
+    tripsList.classList.remove("hidden");
+    tripsList.querySelectorAll<HTMLButtonElement>(".trip-pick-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedTripId = btn.dataset.tripId!;
+        tripBadge.textContent = btn.dataset.tripTitle!;
+        showStep("compose");
+      });
+    });
+  }
+
+  // ── Step switcher ─────────────────────────────────────────────
+  function showStep(step: "trip" | "compose") {
+    if (step === "trip") {
+      stepTrip.classList.remove("hidden");
+      stepCompose.classList.add("hidden");
+      backBtn.classList.add("hidden");
+      modalTitle.textContent = "Select a Trip";
+    } else {
+      stepTrip.classList.add("hidden");
+      stepCompose.classList.remove("hidden");
+      backBtn.classList.remove("hidden");
+      modalTitle.textContent = "Create Post";
+    }
+  }
+
+  // ── Char counter ──────────────────────────────────────────────
+  textarea.addEventListener("input", () => {
+    charCount.textContent = `${textarea.value.length} / 1000`;
+  });
+
+  // ── Photo selection ───────────────────────────────────────────
+  photoInput.addEventListener("change", () => {
+    const files = Array.from(photoInput.files ?? []);
+    const remaining = MAX_PHOTOS - selectedPhotos.length;
+    const toAdd = files.slice(0, remaining);
+
+    toAdd.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target!.result as string;
+        const base64  = dataUrl.split(",")[1];
+        selectedPhotos.push({ dataUrl, base64, name: file.name, type: file.type });
+        renderPhotoPreviews();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    photoInput.value = "";
+  });
+
+  function renderPhotoPreviews() {
+    photoPreviews.innerHTML = selectedPhotos.map((p, i) => `
+      <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+        <img src="${p.dataUrl}" alt="photo ${i + 1}" class="w-full h-full object-cover" />
+        <button type="button" data-idx="${i}"
+          class="remove-photo absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/80 transition">
+          ×
+        </button>
+      </div>
+    `).join("");
+
+    photoPreviews.querySelectorAll<HTMLButtonElement>(".remove-photo").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedPhotos.splice(Number(btn.dataset.idx), 1);
+        renderPhotoPreviews();
+      });
+    });
+
+    const count = selectedPhotos.length;
+    if (count >= MAX_PHOTOS) {
+      photoLabel.classList.add("hidden");
+    } else {
+      photoLabel.classList.remove("hidden");
+      photoHint.textContent = count > 0 ? `Add more (${count}/${MAX_PHOTOS})` : "Add photos";
+    }
+  }
+
+  // ── Hashtag input ─────────────────────────────────────────────
+  hashInput.addEventListener("keydown", (e) => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      const raw = hashInput.value.trim().replace(/^#+/, "");
+      if (raw && !hashtags.includes(raw)) { hashtags.push(raw); renderChips(); }
+      hashInput.value = "";
+    } else if (e.key === "Backspace" && !hashInput.value) {
+      hashtags.pop(); renderChips();
+    }
+  });
+
+  function renderChips() {
+    hashChips.innerHTML = hashtags.map((tag) =>
+      `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+        #${esc(tag)}
+        <button type="button" data-tag="${esc(tag)}" class="remove-chip hover:text-red-500 leading-none">&times;</button>
+      </span>`
+    ).join("");
+    hashChips.querySelectorAll<HTMLButtonElement>(".remove-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        hashtags = hashtags.filter((t) => t !== btn.dataset.tag);
+        renderChips();
+      });
+    });
+  }
+
+  // ── Submit ────────────────────────────────────────────────────
+  submitBtn.addEventListener("click", async () => {
+    const content = textarea.value.trim();
+    if (!content) {
+      errorEl.textContent = "Content is required.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    errorEl.classList.add("hidden");
+    submitBtn.disabled = true;
+    submitBtn.textContent = selectedPhotos.length > 0 ? "Uploading…" : "Posting…";
+
+    // Upload photos first if any
+    let mediaUrls: string[] = [];
+    if (selectedPhotos.length > 0) {
+      const uploadRes = await actions.feed.uploadPostMedia({
+        files: selectedPhotos.map((p) => ({ file: p.base64, name: p.name, type: p.type })),
+      });
+      if (uploadRes.error) {
+        errorEl.textContent = "Photo upload failed. Please try again.";
+        errorEl.classList.remove("hidden");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Post";
+        return;
+      }
+      mediaUrls = uploadRes.data!.keys;
+    }
+
+    submitBtn.textContent = "Posting…";
+
+    const res = await actions.feed.createPost({
+      tripId:    selectedTripId,
+      content,
+      title:     titleInput.value.trim() || undefined,
+      hashtags,
+      mediaUrls,
+    });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Post";
+
+    if (res.error) {
+      errorEl.textContent = "Failed to post. Please try again.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+
+    modal.close();
+    resetAll();
+    showToast({ message: "Post shared!", type: "success" });
+    document.dispatchEvent(new CustomEvent("feed:new-post", { detail: res.data }));
+  });
+
+  // ── Reset ─────────────────────────────────────────────────────
+  function resetAll() {
+    showStep("trip");
+    selectedTripId = "";
+    textarea.value = "";
+    titleInput.value = "";
+    charCount.textContent = "0 / 1000";
+    hashInput.value = "";
+    hashtags = [];
+    selectedPhotos = [];
+    hashChips.innerHTML = "";
+    photoPreviews.innerHTML = "";
+    photoLabel.classList.remove("hidden");
+    photoHint.textContent = "Add photos";
+    errorEl.classList.add("hidden");
+    errorEl.textContent = "";
+  }
+</script>

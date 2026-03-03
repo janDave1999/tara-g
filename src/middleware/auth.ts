@@ -121,6 +121,12 @@ export const auth = defineMiddleware(async (ctx, next) => {
     // Check for social crawlers
     const ua = ctx.request.headers.get('user-agent') || '';
     const CRAWLER_AGENTS = [
+      // Search engines
+      'Googlebot', 'Googlebot-Image', 'Googlebot-Video', 'AdsBot-Google',
+      'bingbot', 'Bingbot', 'DuckDuckBot', 'YandexBot', 'Baiduspider',
+      'Slurp', // Yahoo
+      'ia_archiver', // Wayback Machine
+      // Social media
       'facebookexternalhit', 'Facebookexternalhit', 'Facebot', 'FacebookBot', 'facebook.com/2.1', 'FBCURL',
       'Instagram', 'instagram.com',
       'WhatsApp', 'viber', 'Viber',

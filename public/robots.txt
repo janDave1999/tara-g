@@ -20,4 +20,4 @@ Allow: /
 User-agent: WhatsApp
 Allow: /
 
-Sitemap: https://tara-g.site/sitemap-index.xml
+Sitemap: https://tara-g.site/sitemap.xml

@@ -4,8 +4,6 @@ import { loadEnv } from 'vite';
 
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
-import sitemap from "@astrojs/sitemap";
-
 
 const env = loadEnv("", process.cwd(), "");
 
@@ -77,17 +75,6 @@ export default defineConfig({
       prefixDefaultLocale: false,
     },
   },
-  integrations: [sitemap({
-    filter: (page) =>
-      page !== "/500" &&
-      page !== "/404",
-    i18n: {
-      defaultLocale: 'en',
-      locales: {
-        en: 'en-PH',
-        ph: 'ph-PH',
-      }
-    }
-  })],
+  integrations: [],
   site:"https://tara-g.site/",
 });

@@ -239,6 +239,23 @@ if (accessToken && refreshToken) {
       this.formValidator = new FormValidator(clientSchemas.signIn);
       this.initializeElements();
       this.attachEventListeners();
+      this.handleOAuthError();
+    }
+
+    private handleOAuthError() {
+      const err = new URLSearchParams(window.location.search).get('error');
+      if (!err) return;
+      const msgs: Record<string, string> = {
+        access_denied: 'Google sign-in was cancelled.',
+        session_expired: 'Sign-in session expired. Please try again.',
+        invalid_state: 'Security check failed. Please try again.',
+        state_mismatch: 'Security check failed. Please try again.',
+        token_exchange_failed: 'Could not complete Google sign-in. Please try again.',
+        supabase_auth_failed: 'Authentication failed. Please try again.',
+        oauth_error: 'Google sign-in failed. Please try again.',
+        no_code: 'Google sign-in was interrupted. Please try again.',
+      };
+      this.showGeneralError(msgs[err] || 'Sign-in failed. Please try again.');
     }
 
     private initializeElements() {
@@ -453,8 +470,11 @@ if (accessToken && refreshToken) {
       }
     }
 
-    private async handleGoogleSignIn() {
-      await this.handleSocialSignIn('google');
+    private handleGoogleSignIn() {
+      this.setLoading(true);
+      const next = new URLSearchParams(window.location.search).get('next');
+      const dest = next?.startsWith('/') ? `/api/auth/google?next=${encodeURIComponent(next)}` : '/api/auth/google';
+      window.location.href = dest;
     }
 
     private async handleFacebookSignIn() {

@@ -16,7 +16,7 @@ import { z } from "zod";
 const signInSchema = z.object({
   email: commonSchemas.email,
   password: z.string().min(1, 'Password is required'),
-  provider: z.enum(['google', 'facebook']).optional()
+  provider: z.enum(['facebook']).optional()
 });
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     if (provider) {
       console.log("[OAuth] SITE_URL:", SITE_URL);
-      const validProviders = ["google", "facebook"];
+      const validProviders = ["facebook"];
 
       if (!validProviders.includes(provider)) {
         throw new ValidationError('Invalid OAuth provider');

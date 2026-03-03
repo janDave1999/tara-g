@@ -54,6 +54,8 @@ export default defineConfig({
       PUBLIC_R2_BUCKET: envField.string({ context: "server", access: "public" }),
       PUBLIC_R2_URL: envField.string({ context: "client", access: "public", default: "https://r2.local" }),
       RESEND_API_KEY: envField.string({ context: "server", access: "public" }),
+      GOOGLE_CLIENT_ID: envField.string({ context: "server", access: "public" }),
+      GOOGLE_CLIENT_SECRET: envField.string({ context: "server", access: "secret" }),
     },
   },
   vite: {

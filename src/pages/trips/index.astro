@@ -8,9 +8,9 @@ import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { PH_PROVINCES } from "@/data/phProvinces";
 
 const userId = Astro.locals.user_id;
-
+const pathname = new URL(Astro.request.url).pathname;
 if (!userId) {
-  return Astro.redirect("/login");
+  return Astro.redirect("/signin?next=" + encodeURIComponent(pathname));
 }
 
 const url = new URL(Astro.request.url);

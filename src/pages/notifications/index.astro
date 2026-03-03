@@ -13,8 +13,9 @@ if (!userId) {
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
       <button
-        id="mark-all-read-btn"
-        class="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        id="page-mark-all-read-btn"
+        type="button"
+        class="text-sm text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40"
       >
         Mark all read
       </button>
@@ -45,7 +46,7 @@ if (!userId) {
     </div>
 
     <!-- Notification list -->
-    <div id="page-notifications" class="hidden space-y-2"></div>
+    <div id="page-notifications" class="hidden"></div>
 
     <!-- Load more -->
     <div id="load-more-container" class="hidden mt-6 text-center">
@@ -63,19 +64,20 @@ if (!userId) {
   import { actions } from "astro:actions";
   import { PUBLIC_R2_URL } from "astro:env/client";
 
-  const LIMIT = 20;
+  const LIMIT = 10;
 
   let notifications: any[] = [];
   let offset = 0;
   let currentFilter = 'all';
   let hasMore = false;
+  let renderedGroups = new Set<string>();
 
   const pageLoading = document.getElementById('page-loading');
   const pageEmpty = document.getElementById('page-empty');
   const pageNotifications = document.getElementById('page-notifications');
   const loadMoreContainer = document.getElementById('load-more-container');
   const loadMoreBtn = document.getElementById('load-more-btn');
-  const markAllReadBtn = document.getElementById('mark-all-read-btn');
+  const markAllReadBtn = document.getElementById('page-mark-all-read-btn');
   const filterTabs = document.querySelectorAll('.filter-tab');
 
   // Filter tab switching
@@ -97,9 +99,13 @@ if (!userId) {
 
   // Mark all read
   markAllReadBtn?.addEventListener('click', async () => {
-    const result = await actions.notifications.markAllAsRead({});
-    if (result.data?.success) {
+    if ((markAllReadBtn as HTMLButtonElement).disabled) return;
+    (markAllReadBtn as HTMLButtonElement).disabled = true;
+    try {
+      await actions.notifications.markAllAsRead({});
       await loadNotifications(true);
+    } finally {
+      (markAllReadBtn as HTMLButtonElement).disabled = false;
     }
   });
 
@@ -112,6 +118,7 @@ if (!userId) {
     if (reset) {
       notifications = [];
       offset = 0;
+      renderedGroups.clear();
       pageNotifications!.innerHTML = '';
     }
 
@@ -119,23 +126,27 @@ if (!userId) {
 
     try {
       const unreadOnly = currentFilter === 'unread';
+
+      // Feed tab uses server-side type filter to avoid pagination gaps
+      const feedTypes = ['post_like', 'post_comment', 'comment_reply', 'comment_like'];
+      const types = currentFilter === 'feed' ? feedTypes : undefined;
+
       const result = await actions.notifications.getNotifications({
         limit: LIMIT,
         offset,
         unreadOnly,
+        types,
       });
 
       if (!result.data) return;
 
       let fetched: any[] = result.data.notifications || [];
 
-      // Client-side filter for type-specific tabs
+      // Client-side filter for trip-specific tabs (small result sets, no pagination issue)
       if (currentFilter === 'trip_invite') {
         fetched = fetched.filter(n => n.type === 'trip_invite');
       } else if (currentFilter === 'trip_join_request') {
         fetched = fetched.filter(n => n.type === 'trip_join_request');
-      } else if (currentFilter === 'feed') {
-        fetched = fetched.filter(n => ['post_like', 'post_comment', 'comment_reply'].includes(n.type));
       }
 
       hasMore = result.data.notifications.length === LIMIT;
@@ -164,6 +175,82 @@ if (!userId) {
     }
   }
 
+  function getTimeBucket(date: Date): string {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const d     = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.round((today.getTime() - d.getTime()) / 86400000);
+    if (diffDays === 0)  return 'today';
+    if (diffDays < 7)   return 'week';
+    if (diffDays < 30)  return 'month';
+    return 'older';
+  }
+
+  function getBucketLabel(bucket: string): string {
+    const labels: Record<string, string> = {
+      today: 'Today',
+      week:  'Last 7 days',
+      month: 'This month',
+      older: 'Older',
+    };
+    return labels[bucket] ?? bucket;
+  }
+
+  function getDividerHtml(bucket: string, isFirst: boolean): string {
+    const label = getBucketLabel(bucket);
+    const pt = isFirst ? 'pt-0 pb-3' : 'pt-6 pb-3';
+    return `
+      <div class="flex items-center gap-2 ${pt}">
+        <div class="flex-1 h-px bg-gray-200"></div>
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">${label}</span>
+        <div class="flex-1 h-px bg-gray-200"></div>
+      </div>
+    `;
+  }
+
+  function getNotificationCardHtml(notification: any): string {
+    const avatar = notification.data?.avatar_url;
+    const avatarHtml = avatar
+      ? `<img src="${avatar.startsWith('http') ? avatar : PUBLIC_R2_URL + avatar}" alt="" class="w-11 h-11 rounded-full object-cover" />`
+      : `<div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+          ${(notification.data?.username || '?').charAt(0).toUpperCase()}
+        </div>`;
+
+    const timeAgo = getTimeAgo(new Date(notification.created_at));
+    const unreadBg = !notification.is_read ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100';
+    const unreadDot = !notification.is_read
+      ? '<span class="w-2.5 h-2.5 bg-blue-500 rounded-full shrink-0 mt-1"></span>'
+      : '';
+
+    const iconHtml = getNotificationIcon(notification.type);
+    const actionButtons = getActionButtons(notification);
+
+    return `
+      <div
+        class="notification-page-item flex items-start gap-3 p-4 rounded-xl border ${unreadBg} cursor-pointer hover:shadow-sm transition-shadow mb-2"
+        data-id="${notification.notification_id}"
+        data-url="${notification.action_url || ''}"
+        data-type="${notification.type}"
+        data-trip-id="${notification.data?.trip_id || ''}"
+        data-invitation-id="${notification.data?.invitation_id || ''}"
+        data-member-id="${notification.data?.member_id || ''}"
+      >
+        <div class="shrink-0 relative">
+          ${avatarHtml}
+          <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+            ${iconHtml}
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          ${buildNotificationBody(notification)}
+          <p class="text-xs text-gray-400 mt-0.5">${timeAgo}</p>
+          ${actionButtons}
+        </div>
+        ${unreadDot}
+      </div>
+    `;
+  }
+
   function renderNotifications(items: any[], reset: boolean) {
     if (reset && notifications.length === 0) {
       pageEmpty?.classList.remove('hidden');
@@ -174,48 +261,16 @@ if (!userId) {
     pageEmpty?.classList.add('hidden');
     pageNotifications?.classList.remove('hidden');
 
-    const html = items.map(notification => {
-      const avatar = notification.data?.avatar_url;
-      const avatarHtml = avatar
-        ? `<img src="${avatar.startsWith('http') ? avatar : PUBLIC_R2_URL + avatar}" alt="" class="w-11 h-11 rounded-full object-cover" />`
-        : `<div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-            ${(notification.data?.username || '?').charAt(0).toUpperCase()}
-          </div>`;
-
-      const timeAgo = getTimeAgo(new Date(notification.created_at));
-      const unreadBg = !notification.is_read ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100';
-      const unreadDot = !notification.is_read
-        ? '<span class="w-2.5 h-2.5 bg-blue-500 rounded-full shrink-0 mt-1"></span>'
-        : '';
-
-      const iconHtml = getNotificationIcon(notification.type);
-      const actionButtons = getActionButtons(notification);
-
-      return `
-        <div
-          class="notification-page-item flex items-start gap-3 p-4 rounded-xl border ${unreadBg} cursor-pointer hover:shadow-sm transition-shadow"
-          data-id="${notification.notification_id}"
-          data-url="${notification.action_url || ''}"
-          data-type="${notification.type}"
-          data-trip-id="${notification.data?.trip_id || ''}"
-          data-invitation-id="${notification.data?.invitation_id || ''}"
-          data-member-id="${notification.data?.member_id || ''}"
-        >
-          <div class="shrink-0 relative">
-            ${avatarHtml}
-            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
-              ${iconHtml}
-            </div>
-          </div>
-          <div class="flex-1 min-w-0">
-            ${buildNotificationBody(notification)}
-            <p class="text-xs text-gray-400 mt-0.5">${timeAgo}</p>
-            ${actionButtons}
-          </div>
-          ${unreadDot}
-        </div>
-      `;
-    }).join('');
+    let html = '';
+    items.forEach(notification => {
+      const bucket = getTimeBucket(new Date(notification.created_at));
+      if (!renderedGroups.has(bucket)) {
+        const isFirst = renderedGroups.size === 0 && pageNotifications!.children.length === 0;
+        renderedGroups.add(bucket);
+        html += getDividerHtml(bucket, isFirst);
+      }
+      html += getNotificationCardHtml(notification);
+    });
 
     pageNotifications!.insertAdjacentHTML('beforeend', html);
 
@@ -345,6 +400,7 @@ if (!userId) {
       'post_like':     'liked your post',
       'post_comment':  'commented on your post',
       'comment_reply': 'replied to your comment',
+      'comment_like':  'liked your comment',
     };
 
     if (feedActionMap[type]) {
@@ -381,6 +437,7 @@ if (!userId) {
       'post_like':     '<svg class="w-3 h-3 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>',
       'post_comment':  '<svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>',
       'comment_reply': '<svg class="w-3 h-3 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+      'comment_like':  '<svg class="w-3 h-3 text-rose-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>',
     };
     return icons[type] || icons['system_announcement'];
   }

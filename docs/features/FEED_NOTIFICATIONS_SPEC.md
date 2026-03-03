@@ -245,29 +245,78 @@ Non-feed types keep their original inline format: `[username] [message]`.
 Implemented as a `buildNotificationBody(notification)` helper in both files.
 
 ### Feed Filter Tab
-`/notifications` page has a "Feed" tab that client-side filters to
-`post_like`, `post_comment`, `comment_reply` only.
+`/notifications` page has a "Feed" tab that passes `types: ['post_like', 'post_comment', 'comment_reply', 'comment_like']` server-side to `getNotifications` so all feed-type notifications are returned regardless of pagination position.
+
+### Time Dividers
+`/notifications` page groups notifications under horizontal dividers by recency:
+
+| Bucket | Label | Condition |
+|--------|-------|-----------|
+| `today` | **Today** | Same calendar day as now |
+| `week` | **Last 7 days** | 1–6 calendar days ago |
+| `month` | **This month** | 7–29 calendar days ago |
+| `older` | **Older** | 30+ calendar days ago |
+
+**Rules:**
+- A divider is only rendered the first time a notification from that bucket is encountered — empty buckets produce no divider.
+- State is tracked client-side in a `renderedGroups: Set<string>` variable that is cleared on filter-tab switch or full reload.
+- The very first divider in the list uses no top padding (`pt-0`); all subsequent dividers use `pt-6` to create clear visual separation.
+- "Load More" reuses the same `renderedGroups` Set, so it never duplicates a divider already shown.
+
+**Implementation:**
+```typescript
+// Bucket classifier
+function getTimeBucket(date: Date): 'today' | 'week' | 'month' | 'older' {
+  const diffDays = calendar-day diff between date and today;
+  if (diffDays === 0) return 'today';
+  if (diffDays < 7)  return 'week';
+  if (diffDays < 30) return 'month';
+  return 'older';
+}
+
+// Render loop (per batch)
+items.forEach(notification => {
+  const bucket = getTimeBucket(new Date(notification.created_at));
+  if (!renderedGroups.has(bucket)) {
+    const isFirst = renderedGroups.size === 0 && pageNotifications.children.length === 0;
+    renderedGroups.add(bucket);
+    html += getDividerHtml(bucket, isFirst);
+  }
+  html += getNotificationCardHtml(notification);
+});
+```
 
 ---
 
 ## Verification Checklist
 
 **Feed notifications (new):**
-- [ ] A likes B's post → B gets `post_like` within 30s
-- [ ] A likes own post → no notification
-- [ ] A likes, unlikes, re-likes B's post → only 1 notification (dedup)
-- [ ] A comments on B's post → B gets `post_comment`
-- [ ] A replies to B's comment → B gets `comment_reply`
-- [ ] A replies to own comment → no notification
-- [ ] Bell badge increments correctly
-- [ ] Clicking notification → navigates to `/feed`
+- [x] A likes B's post → B gets `post_like` within 30s
+- [x] A likes own post → no notification
+- [x] A likes, unlikes, re-likes B's post → only 1 notification (dedup)
+- [x] A comments on B's post → B gets `post_comment`
+- [x] A replies to B's comment → B gets `comment_reply`
+- [x] A replies to own comment → no notification
+- [x] Bell badge increments correctly
+- [x] Clicking notification → navigates to `/feed`
 
 **Cleanup on reversal (existing + new):**
-- [ ] A sends friend request → B gets notification
-- [ ] A cancels friend request → B's `friend_request` notification disappears (if unread)
-- [ ] A re-sends friend request → B gets a fresh notification (no duplicates)
-- [ ] Trip invite withdrawn → invitee's unread `trip_invite` notification removed
-- [ ] Join request cancelled → organizer's unread `trip_join_request` notification removed
+- [x] A sends friend request → B gets notification
+- [x] A cancels friend request → B's `friend_request` notification disappears (if unread)
+- [x] A re-sends friend request → B gets a fresh notification (no duplicates)
+- [x] Trip invite withdrawn → invitee's unread `trip_invite` notification removed
+- [x] Join request cancelled → organizer's unread `trip_join_request` notification removed
+
+**Time dividers:**
+- [x] Notifications from today grouped under "Today"
+- [x] Notifications from 1–6 days ago grouped under "Last 7 days"
+- [x] Notifications from 7–29 days ago grouped under "This month"
+- [x] Notifications 30+ days old grouped under "Older"
+- [x] Buckets with no notifications show no divider
+- [x] First divider has no extra top padding; subsequent dividers have visible spacing above
+- [x] Switching filter tabs resets dividers cleanly
+- [x] "Load More" in the same bucket: no duplicate divider
+- [x] "Load More" crossing into a new bucket: correct new divider inserted
 
 ---
 
@@ -276,8 +325,5 @@ Implemented as a `buildNotificationBody(notification)` helper in both files.
 - **`post_like` deduplication window**: Currently "while still unread". Alternative: fixed 24h window.
   Unread-based is simpler (no timestamp comparison) and more user-friendly (if B reads the first like
   notification, a new one for a re-like is informative).
-- **comment_like notifications**: Out of scope. Dislike notifications definitely not wanted.
 - **Post permalink**: `action_url = /feed` for now. Update when individual post pages exist.
 - **Constraint name in production**: Verify before running migration (see Step 1 note).
-- **Existing friend_request/invite cleanup**: The TypeScript handlers need to be identified
-  (where in `friends.ts` / `trip.ts` the cancel/withdraw actions are) before wiring up the RPC call.

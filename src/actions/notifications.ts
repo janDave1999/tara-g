@@ -51,6 +51,7 @@ export const notificationActions = {
       limit: z.number().min(1).max(50).default(20),
       offset: z.number().min(0).default(0),
       unreadOnly: z.boolean().default(false),
+      types: z.array(z.string()).optional(),
     }),
     handler: async (input, context) => {
       const userId = context.locals.user_id;
@@ -68,6 +69,7 @@ export const notificationActions = {
         p_limit: input.limit,
         p_offset: input.offset,
         p_unread_only: input.unreadOnly,
+        p_types: input.types ?? null,
       });
 
       if (error) {

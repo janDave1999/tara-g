@@ -1,8 +1,8 @@
 # Security Requirements
 
 **Project:** Travel Trip Application (Walang Magawa)  
-**Version:** 1.0  
-**Date:** February 21, 2026
+**Version:** 1.1  
+**Date:** March 3, 2026
 
 ---
 
@@ -56,14 +56,19 @@ This document captures security requirements derived from the security audit fin
 
 **Threat References:** Finding #5 (Session ID Cookie Missing HttpOnly)
 
+**Status:** ✅ IMPLEMENTED
+
+**Implementation:**
+- Updated `src/pages/api/auth/signin.ts` to include `httpOnly: true` for all cookies
+
 **Acceptance Criteria:**
-- [ ] `sb-session-id` cookie includes `httpOnly: true`
-- [ ] All auth cookies include `secure: true` in production
-- [ ] All auth cookies include `sameSite: 'strict'`
+- [x] `sb-session-id` cookie includes `httpOnly: true`
+- [x] All auth cookies include `secure: true` in production
+- [x] All auth cookies include `sameSite: 'strict'`
 
 **Test Cases:**
-- Test: Session cookie cannot be accessed via document.cookie
-- Test: XSS payload cannot steal session cookie value
+- [x] Session cookie cannot be accessed via document.cookie
+- [x] XSS payload cannot steal session cookie value
 
 ---
 
@@ -109,6 +114,13 @@ This document captures security requirements derived from the security audit fin
 
 **Threat References:** Finding #1 (IDOR in Trips API)
 
+**Status:** ✅ IMPLEMENTED
+
+**Implementation:**
+- The old endpoint `src/pages/api/trips/owned.ts` was refactored
+- New endpoint `src/pages/api/profile/trips.ts` properly uses `locals.user_id` from auth context
+- No userId parameter accepted in request - uses authenticated user's ID only
+
 **Exemption:** This requirement does NOT apply to:
 - Public trip listings and discovery pages
 - Trip detail pages visible to potential joiners
@@ -117,17 +129,17 @@ This document captures security requirements derived from the security audit fin
 These are intentional business requirements for the community platform.
 
 **Acceptance Criteria:**
-- [ ] Private endpoints (e.g., trip management) verify authenticated user owns the resource
-- [ ] Public endpoints return only trips where `is_public: true`
-- [ ] Unauthorized requests to private endpoints return 403 Forbidden
-- [ ] Clear distinction between public trip data and private user data
+- [x] Private endpoints (e.g., trip management) verify authenticated user owns the resource
+- [x] Public endpoints return only trips where `is_public: true`
+- [x] Unauthorized requests to private endpoints return 403 Forbidden
+- [x] Clear distinction between public trip data and private user data
 
 **Test Cases:**
-- Test: User can access their own private trips
-- Test: Public trips are visible to unauthenticated users
-- Test: Public trips are visible to authenticated non-members
-- Test: User cannot access another user's private trip management data (returns 403)
-- Test: Request without authentication on private endpoint is rejected
+- [x] User can access their own private trips
+- [x] Public trips are visible to unauthenticated users
+- [x] Public trips are visible to authenticated non-members
+- [x] User cannot access another user's private trip management data (returns 403)
+- [x] Request without authentication on private endpoint is rejected
 
 ---
 
@@ -141,6 +153,13 @@ These are intentional business requirements for the community platform.
 **Rationale:** Prevents regular members from performing administrative actions on trips.
 
 **Threat References:** Finding #7 (Missing Authorization in Trip Member Actions)
+
+**Status:** ⚠️ PARTIALLY IMPLEMENTED
+
+**Implementation Notes:**
+- Actions check authentication via `supabase.auth.getUser()`
+- Authorization is handled by RPC functions (`approve_join_request`, `reject_join_request`, `remove_trip_member`)
+- Recommend adding explicit client-side authorization checks for defense-in-depth
 
 **Acceptance Criteria:**
 - [ ] approveJoinRequest verifies user is owner or admin
@@ -166,6 +185,13 @@ These are intentional business requirements for the community platform.
 **Rationale:** Prevents race conditions and ensures users can only modify their own data.
 
 **Threat References:** Finding #10 (Race Condition in User Settings)
+
+**Status:** 🔴 NOT IMPLEMENTED
+
+**Implementation Required:**
+- Remove `user_id` from `updateSettings` action input schema
+- Use `context.locals.user_id` directly instead of `input.user_id`
+- Apply same pattern to `travelPreferences.update` action
 
 **Acceptance Criteria:**
 - [ ] updateSettings action uses user_id from auth context, not input
@@ -216,14 +242,20 @@ These are intentional business requirements for the community platform.
 
 **Threat References:** Finding #6 (IP Spoofing via X-Forwarded-For)
 
+**Status:** ✅ IMPLEMENTED
+
+**Implementation:**
+- Updated `src/lib/rateLimit.ts` to use `CF-Connecting-IP` only
+- Removed X-Forwarded-For from IP detection
+
 **Acceptance Criteria:**
-- [ ] Rate limiting uses `CF-Connecting-IP` header
-- [ ] X-Forwarded-For is not used as primary IP source
-- [ ] Cloudflare-provided IP is validated
+- [x] Rate limiting uses `CF-Connecting-IP` header
+- [x] X-Forwarded-For is not used as primary IP source
+- [x] Cloudflare-provided IP is validated
 
 **Test Cases:**
-- Test: Requests are rate limited correctly using Cloudflare IP
-- Test: Spoofed X-Forwarded-For header does not bypass rate limit
+- [x] Requests are rate limited correctly using Cloudflare IP
+- [x] Spoofed X-Forwarded-For header does not bypass rate limit
 
 ---
 
@@ -273,6 +305,13 @@ These are intentional business requirements for the community platform.
 
 **Threat References:** Finding #9 (Insufficient Password Strength)
 
+**Status:** 🔴 NOT IMPLEMENTED
+
+**Implementation Required:**
+- Update `src/lib/validation.ts` password schema
+- Add special character requirement
+- Increase minimum to 12 characters
+
 **Acceptance Criteria:**
 - [ ] Minimum 12 characters
 - [ ] At least one uppercase letter
@@ -299,6 +338,12 @@ These are intentional business requirements for the community platform.
 **Rationale:** Error messages revealing implementation details can aid attackers.
 
 **Threat References:** Finding #8 (Development Error Messages)
+
+**Status:** 🔴 NOT IMPLEMENTED
+
+**Implementation Required:**
+- Update `src/lib/errorHandler.ts` line 75
+- Change `process.env.NODE_ENV` to `import.meta.env.PROD`
 
 **Acceptance Criteria:**
 - [ ] Production uses `import.meta.env.PROD` for environment check
@@ -370,25 +415,43 @@ These are intentional business requirements for the community platform.
 
 ## Priority Implementation Plan
 
-### Phase 1: Critical (Week 1)
+### Phase 1: Critical (Completed)
 1. ✅ SR-AUTH-001: Implement proper JWT verification (COMPLETED)
 2. ✅ SR-NET-002: Implement distributed rate limiting (COMPLETED)
 
-### Phase 2: High (Week 2)
-1. ⚠️ SR-AUTH-002: Fix session cookie HttpOnly (already implemented)
+### Phase 2: High (Completed)
+1. ✅ SR-AUTH-002: Fix session cookie HttpOnly (COMPLETED)
 2. ✅ SR-AUTH-003: Reduce token lifetime (COMPLETED)
-3. ✅ SR-NET-001: Fix IP source for rate limiting (included in SR-NET-002 - COMPLETED)
-4. SR-AUTHZ-001: Implement ownership verification for private endpoints (with public exemption)
+3. ✅ SR-NET-001: Fix IP source for rate limiting (COMPLETED)
+4. ✅ SR-AUTHZ-001: Implement ownership verification for private endpoints (COMPLETED)
 
-### Phase 3: Medium (Week 3-4)
-7. SR-AUTHZ-002: Add member action authorization
-8. SR-INPUT-001: Enhance password requirements
-9. SR-AUTHZ-003: Remove user_id from input
+### Phase 3: Medium (Current)
+1. 🔴 SR-AUTHZ-003: Remove user_id from input - **HIGH PRIORITY**
+2. 🔴 SR-ERROR-001: Fix error handler environment check - **HIGH PRIORITY**
+3. ⚠️ SR-AUTHZ-002: Add explicit member action authorization (partially done)
+4. SR-INPUT-001: Enhance password requirements
 
-### Phase 4: Low (Month 2)
-10. SR-DATA-001: Add magic number validation
-11. SR-ERROR-001: Fix error message handling
-12. SR-HEAD-001: Implement security headers
+### Phase 4: Low
+1. SR-DATA-001: Add magic number validation
+2. SR-HEAD-001: Implement security headers
+
+---
+
+## Implementation Status Summary
+
+| Requirement | Status | Priority |
+|-------------|--------|----------|
+| SR-AUTH-001 | ✅ IMPLEMENTED | Done |
+| SR-AUTH-002 | ✅ IMPLEMENTED | Done |
+| SR-AUTHZ-001 | ✅ IMPLEMENTED | Done |
+| SR-NET-001 | ✅ IMPLEMENTED | Done |
+| SR-NET-002 | ✅ IMPLEMENTED | Done |
+| SR-AUTHZ-002 | ⚠️ PARTIALLY IMPLEMENTED | Medium |
+| SR-AUTHZ-003 | 🔴 NOT IMPLEMENTED | Medium |
+| SR-INPUT-001 | 🔴 NOT IMPLEMENTED | Medium |
+| SR-ERROR-001 | 🔴 NOT IMPLEMENTED | Medium |
+| SR-DATA-001 | 🔴 NOT IMPLEMENTED | Low |
+| SR-HEAD-001 | 🔴 NOT IMPLEMENTED | Low |
 
 ---
 

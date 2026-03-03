@@ -45,16 +45,25 @@ const getNextSlide = (current: number) => current + 1 > totalSlides ? 1 : curren
       const nextId = `slide${getNextSlide(slideNum)}`;
 
       return (
-        <div 
-          id={slideId} 
-          class="carousel-item relative w-full md:flex md:items-center md:justify-center"
+        <div
+          id={slideId}
+          class="carousel-item relative w-full flex items-center justify-center overflow-hidden bg-black"
+          style="height: clamp(280px, 55vw, 680px)"
         >
-          <!-- Image with lazy loading and optimized sizing -->
-          <img 
+          <!-- Blurred backdrop — same image scaled up, blurred, to fill any dead space -->
+          <img
             src={`${PUBLIC_R2_URL}${image?.image_url}`}
-            alt={image.alt || "Adventure hero image"} 
+            alt=""
+            aria-hidden="true"
             loading="lazy"
-            class="w-full object-cover max-h-[60vh] sm:max-h-[70vh] md:max-h-[80vh] lg:max-h-[90vh] xl:max-h-[100vh] bg-gray-200"
+            class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50 pointer-events-none select-none"
+          />
+          <!-- Actual image — never cropped, always shown in full -->
+          <img
+            src={`${PUBLIC_R2_URL}${image?.image_url}`}
+            alt={image.alt || "Adventure hero image"}
+            loading="lazy"
+            class="relative z-10 max-w-full max-h-full object-contain drop-shadow-xl"
           />
           
           <!-- Caption Overlay -->

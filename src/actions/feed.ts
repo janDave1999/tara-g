@@ -163,16 +163,17 @@ export const feed = {
   getComments: defineAction({
     input: z.object({
       postId: z.string().uuid(),
-      limit:  z.number().int().min(1).max(50).default(20),
+      limit:  z.number().int().min(1).max(100).default(50),
       offset: z.number().int().min(0).default(0),
     }),
     handler: async ({ postId, limit, offset }, context) => {
       if (!context.locals.user_id) return { comments: [] };
 
       const { data, error } = await supabaseAdmin.rpc("get_post_comments", {
-        p_post_id: postId,
-        p_limit:   limit,
-        p_offset:  offset,
+        p_post_id:   postId,
+        p_viewer_id: context.locals.user_id ?? null,
+        p_limit:     limit,
+        p_offset:    offset,
       });
 
       if (error) console.error("[feed.getComments]", error);
@@ -183,16 +184,18 @@ export const feed = {
 
   createComment: defineAction({
     input: z.object({
-      postId:  z.string().uuid(),
-      content: z.string().min(1).max(500),
+      postId:          z.string().uuid(),
+      content:         z.string().min(1).max(500),
+      parentCommentId: z.string().uuid().optional(),
     }),
-    handler: defineProtectedAction(async ({ postId, content }, context) => {
+    handler: defineProtectedAction(async ({ postId, content, parentCommentId }, context) => {
       const { userId } = context;
 
       const { data, error } = await supabaseAdmin.rpc("create_post_comment", {
-        p_user_id: userId,
-        p_post_id: postId,
-        p_content: content,
+        p_user_id:            userId,
+        p_post_id:            postId,
+        p_content:            content,
+        p_parent_comment_id:  parentCommentId ?? null,
       });
 
       if (error) {
@@ -201,6 +204,58 @@ export const feed = {
       }
 
       return { commentId: data?.[0]?.comment_id, createdAt: data?.[0]?.created_at };
+    }),
+  }),
+
+  toggleCommentLike: defineAction({
+    input: z.object({
+      commentId: z.string().uuid(),
+      type:      z.enum(['like', 'dislike']),
+    }),
+    handler: defineProtectedAction(async ({ commentId, type }, context) => {
+      const { userId } = context;
+
+      const { data, error } = await supabaseAdmin.rpc("toggle_comment_interaction", {
+        p_user_id:    userId,
+        p_comment_id: commentId,
+        p_type:       type,
+      });
+
+      if (error) {
+        console.error("[feed.toggleCommentLike]", error);
+        throw new Error("Failed to update reaction");
+      }
+
+      return {
+        activeInteraction: data?.[0]?.active_interaction ?? null,
+        newLikeCount:      data?.[0]?.new_like_count ?? 0,
+        newDislikeCount:   data?.[0]?.new_dislike_count ?? 0,
+      };
+    }),
+  }),
+
+  createReport: defineAction({
+    input: z.object({
+      targetType: z.enum(['post', 'comment']),
+      targetId:   z.string().uuid(),
+      reason:     z.enum(['spam', 'inappropriate', 'harassment', 'misinformation', 'other']),
+    }),
+    handler: defineProtectedAction(async ({ targetType, targetId, reason }, context) => {
+      const { userId } = context;
+
+      const { data, error } = await supabaseAdmin.rpc("create_report", {
+        p_user_id:     userId,
+        p_target_type: targetType,
+        p_target_id:   targetId,
+        p_reason:      reason,
+      });
+
+      if (error) {
+        console.error("[feed.createReport]", error);
+        throw new Error("Failed to submit report");
+      }
+
+      return { alreadyReported: data?.[0]?.already_reported ?? false };
     }),
   }),
 };

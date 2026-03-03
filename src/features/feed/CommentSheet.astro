@@ -1,11 +1,3 @@
----
-interface Props {
-  userAvatar?: string | null;
-  username?: string;
-}
-const { userAvatar, username = "" } = Astro.props;
----
-
 <!-- Comment sheet backdrop -->
 <div
   id="comment-backdrop"
@@ -15,7 +7,7 @@ const { userAvatar, username = "" } = Astro.props;
 <!-- Slide-up sheet -->
 <div
   id="comment-sheet"
-  class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl translate-y-full transition-transform duration-300 flex flex-col max-h-[75vh]"
+  class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl translate-y-full transition-transform duration-300 flex flex-col max-h-[80vh]"
 >
   <!-- Handle + header -->
   <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
@@ -31,32 +23,55 @@ const { userAvatar, username = "" } = Astro.props;
     </button>
   </div>
 
-  <!-- Comment list -->
-  <div id="comment-list" class="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-    <div id="comment-loading" class="flex justify-center py-6">
-      <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-      </svg>
-    </div>
+  <!-- Replying-to banner -->
+  <div id="reply-banner" class="hidden items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 flex-shrink-0">
+    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+    </svg>
+    <span id="reply-banner-text">Replying to …</span>
+    <button id="reply-cancel" class="ml-auto text-blue-500 hover:text-blue-700 font-medium">Cancel</button>
   </div>
 
+  <!-- Report reason picker (hidden by default) -->
+  <div id="report-picker" class="hidden flex-col gap-2 px-4 py-3 bg-red-50 border-b border-red-100 flex-shrink-0">
+    <p class="text-xs font-semibold text-red-700">Why are you reporting this?</p>
+    <div class="flex flex-wrap gap-2">
+      {['spam', 'inappropriate', 'harassment', 'misinformation', 'other'].map(r => (
+        <button
+          data-reason={r}
+          class="report-reason-btn px-3 py-1 rounded-full text-xs border border-red-300 text-red-600 hover:bg-red-100 transition capitalize"
+        >
+          {r}
+        </button>
+      ))}
+    </div>
+    <button id="report-cancel" class="text-xs text-gray-500 hover:text-gray-700 self-start mt-1">Cancel</button>
+  </div>
+
+  <!-- Comment list -->
+  <div id="comment-list" class="flex-1 overflow-y-auto px-4 py-3 space-y-4"></div>
+
   <!-- Input row -->
-  <div class="flex items-end gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0">
-    <textarea
-      id="comment-input"
-      rows="1"
-      maxlength="500"
-      placeholder="Write a comment…"
-      class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
-    ></textarea>
-    <button
-      id="comment-send"
-      type="button"
-      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-    >
-      Send
-    </button>
+  <div class="flex flex-col gap-1 px-4 pt-3 pb-3 border-t border-gray-100 flex-shrink-0">
+    <div class="flex items-end gap-2">
+      <textarea
+        id="comment-input"
+        rows="1"
+        maxlength="500"
+        placeholder="Write a comment…"
+        class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
+      ></textarea>
+      <button
+        id="comment-send"
+        type="button"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+      >
+        Send
+      </button>
+    </div>
+    <div class="flex justify-end">
+      <span id="comment-char-count" class="text-xs text-gray-400">0 / 500</span>
+    </div>
   </div>
 </div>
 
@@ -65,18 +80,27 @@ const { userAvatar, username = "" } = Astro.props;
   import { showToast } from "@/scripts/Toast";
   import { PUBLIC_R2_URL } from "astro:env/client";
 
-  const sheet     = document.getElementById("comment-sheet")!;
-  const backdrop  = document.getElementById("comment-backdrop")!;
-  const closeBtn  = document.getElementById("sheet-close")!;
-  const list      = document.getElementById("comment-list")!;
-  const loading   = document.getElementById("comment-loading")!;
-  const input     = document.getElementById("comment-input") as HTMLTextAreaElement;
-  const sendBtn   = document.getElementById("comment-send") as HTMLButtonElement;
-  const titleEl   = document.getElementById("sheet-title")!;
-  const countEl   = document.getElementById("sheet-count")!;
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+  const sheet        = document.getElementById("comment-sheet")!;
+  const backdrop     = document.getElementById("comment-backdrop")!;
+  const closeBtn     = document.getElementById("sheet-close")!;
+  const list         = document.getElementById("comment-list")!;
+  const input        = document.getElementById("comment-input") as HTMLTextAreaElement;
+  const sendBtn      = document.getElementById("comment-send") as HTMLButtonElement;
+  const countEl      = document.getElementById("sheet-count")!;
+  const replyBanner  = document.getElementById("reply-banner")!;
+  const replyBannerText = document.getElementById("reply-banner-text")!;
+  const replyCancelBtn  = document.getElementById("reply-cancel")!;
+  const reportPicker  = document.getElementById("report-picker")!;
+  const reportCancel  = document.getElementById("report-cancel")!;
+  const commentCharCount = document.getElementById("comment-char-count")!;
 
+  // ── State ───────────────────────────────────────────────────────────────────
   let activePostId: string | null = null;
+  let replyingTo: { commentId: string; username: string; level: number } | null = null;
+  let reportingComment: string | null = null; // comment_id being reported
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -93,7 +117,7 @@ const { userAvatar, username = "" } = Astro.props;
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  function avatarHtml(avatar: string | null, name: string, size = "w-8 h-8"): string {
+  function avatarHtml(avatar: string | null, name: string, size = "w-7 h-7"): string {
     if (avatar) {
       const src = avatar.startsWith("http") ? avatar : `${PUBLIC_R2_URL}${avatar}`;
       return `<img src="${esc(src)}" alt="${esc(name)}" class="${size} rounded-full object-cover flex-shrink-0" />`;
@@ -102,127 +126,419 @@ const { userAvatar, username = "" } = Astro.props;
     return `<div class="${size} rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">${initial}</div>`;
   }
 
-  function renderComments(comments: any[]) {
-    if (comments.length === 0) {
-      list.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">No comments yet. Be the first!</p>`;
-      return;
+  // ── Tree building ────────────────────────────────────────────────────────────
+  type Comment = {
+    comment_id: string;
+    parent_comment_id: string | null;
+    author_auth_id: string;
+    author_username: string;
+    author_full_name: string;
+    author_avatar: string | null;
+    content: string;
+    like_count: number;
+    dislike_count: number;
+    viewer_interaction: string | null;
+    created_at: string;
+  };
+
+  function buildTree(flat: Comment[]): { roots: Comment[]; childrenOf: Map<string, Comment[]> } {
+    const childrenOf = new Map<string, Comment[]>();
+    const roots: Comment[] = [];
+
+    for (const c of flat) {
+      if (!c.parent_comment_id) {
+        roots.push(c);
+      } else {
+        if (!childrenOf.has(c.parent_comment_id)) childrenOf.set(c.parent_comment_id, []);
+        childrenOf.get(c.parent_comment_id)!.push(c);
+      }
     }
-    list.innerHTML = comments.map((c) => `
-      <div class="flex gap-2.5">
+    return { roots, childrenOf };
+  }
+
+  // ── Render a single comment node ─────────────────────────────────────────────
+  function commentHtml(c: Comment, level: number): string {
+    const isLiked    = c.viewer_interaction === 'like';
+    const isDisliked = c.viewer_interaction === 'dislike';
+    const canReply   = level < 2; // no Reply button at level 2
+
+    return `
+      <div class="flex gap-2" data-comment-id="${esc(c.comment_id)}" data-level="${level}">
         ${avatarHtml(c.author_avatar, c.author_full_name)}
         <div class="flex-1 min-w-0">
-          <div class="flex items-baseline gap-1.5">
-            <a href="/profile/${esc(c.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(c.author_full_name)}</a>
-            <span class="text-xs text-gray-400">${timeAgo(c.created_at)}</span>
+          <div class="flex items-start justify-between gap-1">
+            <div class="flex items-baseline gap-1.5 flex-wrap">
+              <a href="/profile/${esc(c.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(c.author_full_name)}</a>
+              <span class="text-xs text-gray-400">${timeAgo(c.created_at)}</span>
+            </div>
+            <button class="comment-menu-btn flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition rounded"
+              data-comment-id="${esc(c.comment_id)}" aria-label="More options">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"/>
+              </svg>
+            </button>
           </div>
           <p class="text-sm text-gray-700 mt-0.5 leading-relaxed">${esc(c.content)}</p>
+          <div class="flex items-center gap-3 mt-1.5">
+            <!-- Like -->
+            <button class="comment-like-btn flex items-center gap-1 text-xs transition"
+              data-comment-id="${esc(c.comment_id)}"
+              data-type="like"
+              data-like-count="${c.like_count}"
+              data-dislike-count="${c.dislike_count}"
+              data-active="${c.viewer_interaction ?? ''}">
+              <svg class="w-3.5 h-3.5 ${isLiked ? 'text-blue-500 fill-current' : 'text-gray-400'}"
+                fill="${isLiked ? 'currentColor' : 'none'}" stroke="${isLiked ? 'none' : 'currentColor'}"
+                viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
+              </svg>
+              <span class="comment-like-count ${isLiked ? 'text-blue-500' : 'text-gray-400'}">${c.like_count > 0 ? c.like_count : ''}</span>
+            </button>
+            <!-- Dislike -->
+            <button class="comment-dislike-btn flex items-center gap-1 text-xs transition"
+              data-comment-id="${esc(c.comment_id)}"
+              data-type="dislike">
+              <svg class="w-3.5 h-3.5 ${isDisliked ? 'text-red-500 fill-current' : 'text-gray-400'}"
+                fill="${isDisliked ? 'currentColor' : 'none'}" stroke="${isDisliked ? 'none' : 'currentColor'}"
+                viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+              </svg>
+              <span class="comment-dislike-count ${isDisliked ? 'text-red-500' : 'text-gray-400'}">${c.dislike_count > 0 ? c.dislike_count : ''}</span>
+            </button>
+            <!-- Reply -->
+            ${canReply ? `
+            <button class="comment-reply-btn text-xs text-gray-400 hover:text-blue-500 transition font-medium"
+              data-comment-id="${esc(c.comment_id)}"
+              data-username="${esc(c.author_full_name)}"
+              data-level="${level}">
+              Reply
+            </button>` : ''}
+          </div>
+          <!-- Children slot -->
+          <div class="comment-children mt-3 space-y-3 pl-2 border-l-2 border-gray-100"></div>
         </div>
-      </div>
-    `).join("");
-    countEl.textContent = `${comments.length}`;
+      </div>`;
   }
 
-  function appendComment(comment: any) {
-    const empty = list.querySelector("p.text-center");
-    if (empty) list.innerHTML = "";
+  // ── Render full tree ─────────────────────────────────────────────────────────
+  function renderComments(flat: Comment[]) {
+    const total = flat.length;
+    if (total === 0) {
+      list.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">No comments yet. Be the first!</p>`;
+      countEl.textContent = '';
+      return;
+    }
 
-    const div = document.createElement("div");
-    div.className = "flex gap-2.5";
-    div.innerHTML = `
-      ${avatarHtml(comment.author_avatar, comment.author_full_name)}
-      <div class="flex-1 min-w-0">
-        <div class="flex items-baseline gap-1.5">
-          <a href="/profile/${esc(comment.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(comment.author_full_name)}</a>
-          <span class="text-xs text-gray-400">just now</span>
-        </div>
-        <p class="text-sm text-gray-700 mt-0.5 leading-relaxed">${esc(comment.content)}</p>
-      </div>
-    `;
-    list.appendChild(div);
+    const { roots, childrenOf } = buildTree(flat);
+
+    list.innerHTML = roots.map(r => commentHtml(r, 0)).join('');
+    countEl.textContent = String(total);
+
+    // Attach level-1 replies
+    for (const root of roots) {
+      const l1s = childrenOf.get(root.comment_id) ?? [];
+      if (l1s.length === 0) continue;
+      const slot = list.querySelector<HTMLElement>(`[data-comment-id="${root.comment_id}"] .comment-children`);
+      if (!slot) continue;
+      slot.innerHTML = l1s.map(l1 => commentHtml(l1, 1)).join('');
+
+      // Attach level-2 replies
+      for (const l1 of l1s) {
+        const l2s = childrenOf.get(l1.comment_id) ?? [];
+        if (l2s.length === 0) continue;
+        const slot2 = slot.querySelector<HTMLElement>(`[data-comment-id="${l1.comment_id}"] .comment-children`);
+        if (!slot2) continue;
+        slot2.innerHTML = l2s.map(l2 => commentHtml(l2, 2)).join('');
+      }
+    }
+
+    attachCommentHandlers();
+  }
+
+  // ── Optimistically append a new comment/reply ────────────────────────────────
+  function appendComment(comment: Partial<Comment> & { content: string }, parentCommentId: string | null, level: number) {
+    const c: Comment = {
+      comment_id:         comment.comment_id ?? crypto.randomUUID(),
+      parent_comment_id:  parentCommentId,
+      author_auth_id:     '',
+      author_username:    comment.author_username ?? '',
+      author_full_name:   comment.author_full_name ?? 'You',
+      author_avatar:      comment.author_avatar ?? null,
+      content:            comment.content,
+      like_count:         0,
+      dislike_count:      0,
+      viewer_interaction: null,
+      created_at:         new Date().toISOString(),
+    };
+
+    const html = commentHtml(c, level);
+    const current = parseInt(countEl.textContent || '0', 10);
+    countEl.textContent = String(current + 1);
+
+    if (!parentCommentId) {
+      // Top-level: append to list
+      const empty = list.querySelector('p.text-center');
+      if (empty) list.innerHTML = '';
+      list.insertAdjacentHTML('beforeend', html);
+    } else {
+      // Reply: find parent's children slot
+      const parentEl = list.querySelector<HTMLElement>(`[data-comment-id="${parentCommentId}"]`);
+      const slot = parentEl?.querySelector<HTMLElement>('.comment-children');
+      if (slot) slot.insertAdjacentHTML('beforeend', html);
+    }
+
     list.scrollTop = list.scrollHeight;
-
-    const current = parseInt(countEl.textContent || "0", 10);
-    countEl.textContent = `${current + 1}`;
+    attachCommentHandlers();
   }
 
-  async function openSheet(postId: string, authorName: string) {
-    activePostId = postId;
-    titleEl.textContent = `Comments`;
-    countEl.textContent = "";
-    list.innerHTML = "";
-    list.appendChild(loading.cloneNode(true));
-    (list.firstChild as HTMLElement).id = "comment-loading-live";
+  // ── Event delegation for comment interactions ────────────────────────────────
+  function attachCommentHandlers() {
+    // Like / Dislike buttons
+    list.querySelectorAll<HTMLButtonElement>('.comment-like-btn, .comment-dislike-btn').forEach(btn => {
+      // Remove old listener by cloning
+      const clone = btn.cloneNode(true) as HTMLButtonElement;
+      btn.replaceWith(clone);
+      clone.addEventListener('click', handleCommentReaction);
+    });
 
-    // Show
-    backdrop.classList.remove("hidden");
+    // Reply buttons
+    list.querySelectorAll<HTMLButtonElement>('.comment-reply-btn').forEach(btn => {
+      const clone = btn.cloneNode(true) as HTMLButtonElement;
+      btn.replaceWith(clone);
+      clone.addEventListener('click', () => {
+        const commentId = clone.dataset.commentId!;
+        const uname     = clone.dataset.username!;
+        const level     = parseInt(clone.dataset.level ?? '0', 10);
+        startReply(commentId, uname, level);
+      });
+    });
+
+    // Menu (⋯) buttons
+    list.querySelectorAll<HTMLButtonElement>('.comment-menu-btn').forEach(btn => {
+      const clone = btn.cloneNode(true) as HTMLButtonElement;
+      btn.replaceWith(clone);
+      clone.addEventListener('click', () => {
+        const commentId = clone.dataset.commentId!;
+        startReport(commentId);
+      });
+    });
+  }
+
+  async function handleCommentReaction(e: Event) {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const commentId  = btn.dataset.commentId!;
+    const type       = btn.dataset.type as 'like' | 'dislike';
+
+    // Find sibling buttons for this comment
+    const commentEl   = list.querySelector<HTMLElement>(`[data-comment-id="${commentId}"]`);
+    const likeBtn     = commentEl?.querySelector<HTMLButtonElement>('.comment-like-btn')!;
+    const dislikeBtn  = commentEl?.querySelector<HTMLButtonElement>('.comment-dislike-btn')!;
+    const likeSvg     = likeBtn?.querySelector('svg')!;
+    const dislikeSvg  = dislikeBtn?.querySelector('svg')!;
+    const likeCount   = likeBtn?.querySelector<HTMLSpanElement>('.comment-like-count')!;
+    const dislikeCount = dislikeBtn?.querySelector<HTMLSpanElement>('.comment-dislike-count')!;
+
+    const prevActive  = likeBtn?.dataset.active ?? '';
+    const prevLikes   = parseInt(likeBtn?.dataset.likeCount ?? '0', 10);
+    const prevDislikes = parseInt(likeBtn?.dataset.dislikeCount ?? '0', 10);
+
+    // Optimistic update
+    let newActive = prevActive === type ? '' : type;
+    let newLikes = prevLikes, newDislikes = prevDislikes;
+    if (prevActive === type) {
+      // toggle off
+      if (type === 'like') newLikes = Math.max(0, prevLikes - 1);
+      else newDislikes = Math.max(0, prevDislikes - 1);
+    } else {
+      if (prevActive) {
+        // switch
+        if (prevActive === 'like') newLikes = Math.max(0, prevLikes - 1);
+        else newDislikes = Math.max(0, prevDislikes - 1);
+      }
+      if (type === 'like') newLikes++;
+      else newDislikes++;
+    }
+    applyCommentReaction(likeSvg, dislikeSvg, likeCount, dislikeCount, likeBtn, newActive, newLikes, newDislikes);
+
+    const res = await actions.feed.toggleCommentLike({ commentId, type });
+    if (res.error) {
+      // Revert
+      applyCommentReaction(likeSvg, dislikeSvg, likeCount, dislikeCount, likeBtn, prevActive, prevLikes, prevDislikes);
+      return;
+    }
+    // Sync confirmed values
+    const { activeInteraction, newLikeCount, newDislikeCount } = res.data!;
+    applyCommentReaction(likeSvg, dislikeSvg, likeCount, dislikeCount, likeBtn, activeInteraction ?? '', newLikeCount, newDislikeCount);
+  }
+
+  function applyCommentReaction(
+    likeSvg: SVGElement, dislikeSvg: SVGElement,
+    likeCountEl: HTMLSpanElement, dislikeCountEl: HTMLSpanElement,
+    likeBtn: HTMLButtonElement,
+    active: string, likes: number, dislikes: number
+  ) {
+    const isLiked    = active === 'like';
+    const isDisliked = active === 'dislike';
+
+    likeSvg.setAttribute('fill',   isLiked ? 'currentColor' : 'none');
+    likeSvg.setAttribute('stroke', isLiked ? 'none' : 'currentColor');
+    likeSvg.setAttribute('class',  `w-3.5 h-3.5 ${isLiked ? 'text-blue-500 fill-current' : 'text-gray-400'}`);
+
+    dislikeSvg.setAttribute('fill',   isDisliked ? 'currentColor' : 'none');
+    dislikeSvg.setAttribute('stroke', isDisliked ? 'none' : 'currentColor');
+    dislikeSvg.setAttribute('class',  `w-3.5 h-3.5 ${isDisliked ? 'text-red-500 fill-current' : 'text-gray-400'}`);
+
+    likeCountEl.textContent  = likes > 0 ? String(likes) : '';
+    likeCountEl.className    = `comment-like-count ${isLiked ? 'text-blue-500' : 'text-gray-400'}`;
+    dislikeCountEl.textContent = dislikes > 0 ? String(dislikes) : '';
+    dislikeCountEl.className   = `comment-dislike-count ${isDisliked ? 'text-red-500' : 'text-gray-400'}`;
+
+    likeBtn.dataset.active       = active;
+    likeBtn.dataset.likeCount    = String(likes);
+    likeBtn.dataset.dislikeCount = String(dislikes);
+  }
+
+  // ── Reply ────────────────────────────────────────────────────────────────────
+  function startReply(commentId: string, username: string, level: number) {
+    replyingTo = { commentId, username, level };
+    replyBannerText.textContent = `Replying to ${username}`;
+    replyBanner.classList.remove('hidden');
+    replyBanner.classList.add('flex');
+    input.placeholder = `Reply to ${username}…`;
+    input.focus();
+  }
+
+  function clearReply() {
+    replyingTo = null;
+    replyBanner.classList.add('hidden');
+    replyBanner.classList.remove('flex');
+    input.placeholder = 'Write a comment…';
+  }
+
+  replyCancelBtn.addEventListener('click', clearReply);
+
+  // ── Report ───────────────────────────────────────────────────────────────────
+  function startReport(commentId: string) {
+    reportingComment = commentId;
+    reportPicker.classList.remove('hidden');
+    reportPicker.classList.add('flex');
+  }
+
+  function clearReport() {
+    reportingComment = null;
+    reportPicker.classList.add('hidden');
+    reportPicker.classList.remove('flex');
+  }
+
+  reportCancel.addEventListener('click', clearReport);
+
+  reportPicker.querySelectorAll<HTMLButtonElement>('.report-reason-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const reason = btn.dataset.reason as 'spam' | 'inappropriate' | 'harassment' | 'misinformation' | 'other';
+      const commentId = reportingComment;
+      clearReport();
+      if (!commentId) return;
+
+      const res = await actions.feed.createReport({ targetType: 'comment', targetId: commentId, reason });
+      if (res.error) {
+        showToast({ message: 'Could not submit report. Try again.', type: 'error' });
+        return;
+      }
+      showToast({
+        message: res.data!.alreadyReported ? 'You\'ve already reported this.' : 'Thanks for your report.',
+        type: 'info',
+      });
+    });
+  });
+
+  // ── Sheet open / close ───────────────────────────────────────────────────────
+  const LOADING_HTML = `<div class="flex justify-center py-6"><svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></div>`;
+
+  async function openSheet(postId: string) {
+    activePostId = postId;
+    countEl.textContent = '';
+    list.innerHTML = LOADING_HTML;
+
+    backdrop.classList.remove('hidden');
     requestAnimationFrame(() => {
-      backdrop.classList.add("opacity-100");
-      sheet.classList.remove("translate-y-full");
+      backdrop.classList.add('opacity-100');
+      sheet.classList.remove('translate-y-full');
     });
 
     const res = await actions.feed.getComments({ postId });
-    list.innerHTML = "";
+    list.innerHTML = '';
     if (res.error) {
       list.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">Could not load comments.</p>`;
       return;
     }
-    renderComments(res.data?.comments ?? []);
+    renderComments((res.data?.comments ?? []) as Comment[]);
   }
 
   function closeSheet() {
-    sheet.classList.add("translate-y-full");
-    backdrop.classList.remove("opacity-100");
-    setTimeout(() => backdrop.classList.add("hidden"), 200);
+    sheet.classList.add('translate-y-full');
+    backdrop.classList.remove('opacity-100');
+    setTimeout(() => backdrop.classList.add('hidden'), 200);
     activePostId = null;
-    input.value = "";
+    input.value = '';
+    input.style.height = 'auto';
+    commentCharCount.textContent = '0 / 500';
+    commentCharCount.className = 'text-xs text-gray-400';
+    clearReply();
+    clearReport();
   }
 
-  closeBtn.addEventListener("click", closeSheet);
-  backdrop.addEventListener("click", closeSheet);
+  closeBtn.addEventListener('click', closeSheet);
+  backdrop.addEventListener('click', closeSheet);
 
-  // Auto-grow textarea
-  input.addEventListener("input", () => {
-    input.style.height = "auto";
+  // Auto-grow textarea + char counter
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
     input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
+    const len = input.value.length;
+    commentCharCount.textContent = `${len} / 500`;
+    commentCharCount.className = `text-xs ${len >= 450 ? 'text-red-500' : 'text-gray-400'}`;
   });
 
-  // Send comment
-  sendBtn.addEventListener("click", async () => {
+  // ── Send comment / reply ─────────────────────────────────────────────────────
+  sendBtn.addEventListener('click', async () => {
     const content = input.value.trim();
     if (!content || !activePostId) return;
 
-    sendBtn.disabled = true;
-    sendBtn.textContent = "…";
+    const parentCommentId = replyingTo?.commentId ?? null;
+    const level           = replyingTo ? Math.min(replyingTo.level + 1, 2) : 0;
 
-    const res = await actions.feed.createComment({ postId: activePostId, content });
+    sendBtn.disabled = true;
+    sendBtn.textContent = '…';
+
+    const res = await actions.feed.createComment({
+      postId:          activePostId,
+      content,
+      ...(parentCommentId ? { parentCommentId } : {}),
+    });
 
     sendBtn.disabled = false;
-    sendBtn.textContent = "Send";
+    sendBtn.textContent = 'Send';
 
     if (res.error) {
-      showToast({ message: "Failed to post comment.", type: "error" });
+      showToast({ message: 'Failed to post comment.', type: 'error' });
       return;
     }
 
-    input.value = "";
-    input.style.height = "auto";
+    input.value = '';
+    input.style.height = 'auto';
+    clearReply();
 
-    // Append optimistically with a placeholder comment object
-    appendComment({
-      author_avatar:    null,
-      author_full_name: "You",
-      author_username:  "",
-      content,
-      created_at:       new Date().toISOString(),
-    });
+    appendComment({ content, comment_id: res.data?.commentId }, parentCommentId, level);
 
-    // Notify FeedCard to update its count
-    document.dispatchEvent(new CustomEvent("comment:posted", { detail: { postId: activePostId } }));
+    // Notify FeedCard to increment its comment count (top-level only)
+    if (!parentCommentId) {
+      document.dispatchEvent(new CustomEvent('comment:posted', { detail: { postId: activePostId } }));
+    }
   });
 
   // Listen for open-comments events from FeedCard
-  document.addEventListener("open-comments", (e: Event) => {
-    const { postId, authorName } = (e as CustomEvent).detail;
-    openSheet(postId, authorName);
+  document.addEventListener('open-comments', (e: Event) => {
+    const { postId } = (e as CustomEvent).detail;
+    openSheet(postId);
   });
 </script>

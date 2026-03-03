@@ -96,13 +96,18 @@ const avatarSrc = userAvatar
       </div>
 
       <!-- Title (optional) -->
-      <input
-        id="compose-title-input"
-        type="text"
-        maxlength="200"
-        placeholder="Give your post a title (optional)"
-        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
+      <div>
+        <input
+          id="compose-title-input"
+          type="text"
+          maxlength="200"
+          placeholder="Give your post a title (optional)"
+          class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <div class="flex justify-end mt-1">
+          <span id="compose-title-count" class="text-xs text-gray-400">0 / 200</span>
+        </div>
+      </div>
 
       <!-- Content -->
       <div>
@@ -286,9 +291,18 @@ const avatarSrc = userAvatar
     }
   }
 
-  // ── Char counter ──────────────────────────────────────────────
+  // ── Char counters ─────────────────────────────────────────────
+  const titleCount = document.getElementById("compose-title-count")!;
+  titleInput.addEventListener("input", () => {
+    const len = titleInput.value.length;
+    titleCount.textContent = `${len} / 200`;
+    titleCount.className = `text-xs ${len >= 180 ? 'text-red-500' : 'text-gray-400'}`;
+  });
+
   textarea.addEventListener("input", () => {
-    charCount.textContent = `${textarea.value.length} / 1000`;
+    const len = textarea.value.length;
+    charCount.textContent = `${len} / 1000`;
+    charCount.className = `text-xs ${len >= 900 ? 'text-red-500' : 'text-gray-400'}`;
   });
 
   // ── Photo selection ───────────────────────────────────────────
@@ -425,6 +439,9 @@ const avatarSrc = userAvatar
     textarea.value = "";
     titleInput.value = "";
     charCount.textContent = "0 / 1000";
+    charCount.className = "text-xs text-gray-400";
+    titleCount.textContent = "0 / 200";
+    titleCount.className = "text-xs text-gray-400";
     hashInput.value = "";
     hashtags = [];
     selectedPhotos = [];

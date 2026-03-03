@@ -41,7 +41,7 @@ export const auth = defineMiddleware(async (ctx, next) => {
         // Token is valid - set user context from verified Supabase user
         locals.user_id = user.id;
         locals.email = user.email ?? undefined;
-        
+
         // Extract from user_metadata (set during onboarding or OAuth)
         if (user.user_metadata?.username) locals.username = user.user_metadata.username;
         if (user.user_metadata?.avatar_url) locals.avatar_url = user.user_metadata.avatar_url;

@@ -91,6 +91,15 @@ export const friends = {
 
       if (error) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to cancel request.' });
 
+      // Remove the unread friend_request notification from the recipient's inbox
+      const { error: notifError } = await supabaseAdmin.rpc('delete_notification_by_ref', {
+        p_recipient_user_id: targetUserId,
+        p_type:              'friend_request',
+        p_ref_key:           'sender_user_id',
+        p_ref_value:         callerUserId,
+      });
+      if (notifError) console.error('[FRIENDS:notif] Failed to cleanup friend_request notification:', notifError);
+
       return { success: true };
     }),
   }),

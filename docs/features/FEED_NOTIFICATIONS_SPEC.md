@@ -34,13 +34,12 @@ On **re-send** (A cancels then sends again): delete the old notification first, 
 This prevents duplicate "accept/decline" cards in B's inbox.
 
 ### Informational
-These carry past-tense information only — no action button. Reversing the source action
-(unlike, delete comment) does **not** delete the notification. However, we deduplicate
+These carry past-tense information only — no action button. We deduplicate
 to prevent notification spam from accidental like → unlike → like cycles.
 
 | Type | Created when | Deleted when | Deduplication |
 |------|-------------|-------------|---------------|
-| `post_like` | A likes B's post | Never (unlike keeps it) | Skip if an unread `post_like` for the same (actor A, post) already exists |
+| `post_like` | A likes B's post | A **unlikes** the post (unread only) — via `notify_post_unlike` trigger (`067_unlike_removes_unread_notification.sql`) | Skip if an unread `post_like` for the same (actor A, post) already exists |
 | `post_comment` | A comments on B's post | Never | None (each comment is unique) |
 | `comment_reply` | A replies to B's comment | Never | None (each reply is unique) |
 
@@ -222,18 +221,32 @@ No deduplication needed — each comment is a distinct entity (unique comment_id
 
 ## NotificationBell + Notifications Page
 
-Add 3 new entries to `getNotificationIcon()` in both files:
+### Icons
+Both `NotificationBell.astro` and `notifications/index.astro` include `getNotificationIcon()` with:
 
 | Type | SVG icon | Color class |
 |------|----------|-------------|
-| `post_like` | Heart outline (filled when active) | `text-pink-500` |
+| `post_like` | Heart (filled) | `text-pink-500` |
 | `post_comment` | Chat bubble | `text-blue-500` |
-| `comment_reply` | Reply/corner-down-left arrow | `text-indigo-500` |
+| `comment_reply` | Reply arrow | `text-indigo-500` |
 
-No new action buttons — informational types navigate to `action_url` on click.
+No action buttons — informational types navigate to `action_url` on click.
 
-The `/notifications` page may optionally add a **"Feed"** filter tab showing only
-`post_like`, `post_comment`, `comment_reply` types.
+### Action Describer — `buildNotificationBody()`
+Feed-type notifications render a two-line body:
+
+```
+[username] liked your post          ← action verb
+"First 80 chars of content…"        ← message preview, line-clamp-2
+```
+
+Non-feed types keep their original inline format: `[username] [message]`.
+
+Implemented as a `buildNotificationBody(notification)` helper in both files.
+
+### Feed Filter Tab
+`/notifications` page has a "Feed" tab that client-side filters to
+`post_like`, `post_comment`, `comment_reply` only.
 
 ---
 

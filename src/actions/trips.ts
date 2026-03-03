@@ -744,8 +744,17 @@ export const trip = {
     input: z.object({
       trip_id: z.string(),
     }),
-    
+
     handler: defineProtectedAction(async (input, {userId}) => {
+      // Fetch the pending row BEFORE deletion so we can clean up the notification afterwards
+      const { data: pending } = await supabaseAdmin
+        .from('trip_members')
+        .select('member_id, trips(owner_id)')
+        .eq('trip_id', input.trip_id)
+        .eq('user_id', userId)
+        .eq('member_status', 'pending')
+        .maybeSingle();
+
       const { data, error } = await supabaseAdmin.rpc("cancel_join_request", { p_trip_id: input.trip_id, p_user_id: userId });
       if (error) {
         throw new ActionError({
@@ -753,13 +762,26 @@ export const trip = {
           code: "INTERNAL_SERVER_ERROR"
         })
       }
-      
+
       if(!data[0].success){
         throw new ActionError({
           message: data[0].message,
           code: "BAD_REQUEST"
         })
       }
+
+      // Remove the unread trip_join_request notification from the organizer's inbox
+      const ownerId = (pending?.trips as any)?.owner_id;
+      if (pending?.member_id && ownerId) {
+        const { error: notifError } = await supabaseAdmin.rpc('delete_notification_by_ref', {
+          p_recipient_user_id: ownerId,
+          p_type:              'trip_join_request',
+          p_ref_key:           'member_id',
+          p_ref_value:         pending.member_id,
+        });
+        if (notifError) console.error('[TRIPS:notif] Failed to cleanup trip_join_request notification:', notifError);
+      }
+
       return data
     })
   }),

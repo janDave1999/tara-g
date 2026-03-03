@@ -11,6 +11,7 @@ export interface CachedUser {
 
 const PROFILE_CACHE_TTL = 300;
 
+/** Query public.users — returns DB row or null. Never falls back. */
 async function fetchUserFromDB(userId: string): Promise<CachedUser | null> {
   const { data, error } = await supabaseAdmin
     .from("users")
@@ -18,26 +19,13 @@ async function fetchUserFromDB(userId: string): Promise<CachedUser | null> {
     .eq("auth_id", userId)
     .maybeSingle();
 
-  if (error || !data) {
-    // Fallback: try to get from Supabase Auth user_metadata
-    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
-    
-    if (authData?.user) {
-      const metadata = authData.user.user_metadata;
-      const username = metadata?.username;
-      const avatar_url = metadata?.avatar_url;
-      const full_name = metadata?.full_name;
-      
-      // Only return user if they have actual profile data, not just defaults
-      if (username || avatar_url || full_name) {
-        return {
-          username: username ?? 'User',
-          avatar_url: avatar_url ?? null,
-          full_name: full_name ?? null,
-        };
-      }
-    }
-    return null;  // Don't cache fallback values
+  if (error) {
+    console.error(`[userData] DB query error for auth_id=${userId}:`, error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
   }
 
   return {
@@ -45,6 +33,34 @@ async function fetchUserFromDB(userId: string): Promise<CachedUser | null> {
     avatar_url: data.avatar_url,
     full_name: data.full_name,
   };
+}
+
+/** Fallback: read from Supabase Auth user_metadata. Result is NOT cached. */
+async function fetchUserFromAuthMetadata(userId: string): Promise<CachedUser | null> {
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+  if (authError) {
+    console.error(`[userData] auth.admin.getUserById failed for ${userId}:`, authError);
+    return null;
+  }
+
+  if (authData?.user) {
+    const metadata = authData.user.user_metadata;
+    const username = metadata?.username;
+    const avatar_url = metadata?.avatar_url;
+    const full_name = metadata?.full_name;
+
+    if (username || avatar_url || full_name) {
+      return {
+        username: username ?? 'User',
+        avatar_url: avatar_url ?? null,
+        full_name: full_name ?? null,
+      };
+    }
+  }
+
+  console.warn(`[userData] Could not resolve profile for auth_id=${userId}`);
+  return null;
 }
 
 async function getCachedUser(
@@ -64,13 +80,17 @@ async function getCachedUser(
     return kvCached;
   }
 
-  const user = await fetchUserFromDB(userId);
-  if (user) {
-    userCache.set(cacheKey, user);
-    await setToKV(cacheKey, user, PROFILE_CACHE_TTL, env);
+  const dbUser = await fetchUserFromDB(userId);
+
+  if (dbUser) {
+    // Only cache confirmed DB results
+    userCache.set(cacheKey, dbUser);
+    await setToKV(cacheKey, dbUser, PROFILE_CACHE_TTL, env);
+    return dbUser;
   }
 
-  return user;
+  // DB miss — try auth metadata as a degraded fallback but do NOT cache it
+  return fetchUserFromAuthMetadata(userId);
 }
 
 export const userData = defineMiddleware(async (ctx, next) => {

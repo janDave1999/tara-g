@@ -226,7 +226,7 @@ const createTripSchema = z.object({
   
   description: z.string()
     .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must be less than 500 characters')
+    .max(1000, 'Description must be less than 500 characters')
     .transform(val => val.trim()),
   
   slug: z.string()
@@ -376,17 +376,31 @@ const createTripSchema = z.object({
     return false;
   }
 
-  // Join deadline must be before trip start
-  if (joinBy >= startDate) {
+  // Join deadline cannot be in the past (but can be same day as trip start)
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const joinByDateOnly = new Date(joinBy.getFullYear(), joinBy.getMonth(), joinBy.getDate());
+  
+  if (joinByDateOnly < today) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Join deadline must be before trip start',
+      message: 'Join deadline cannot be in the past',
       path: ['joined_by']
     });
     return false;
   }
 
-  // Pickup must be on or before trip start date (date-only comparison to avoid timezone issues)
+  // Pickup must be after join deadline
+  if (pickupDate <= joinBy) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Pickup time must be after join deadline',
+      path: ['pickup_dates']
+    });
+    return false;
+  }
+
+  // Pickup must be on or before trip start date (date-only comparison)
   const pickupDateOnly = new Date(data.pickup_dates.split('T')[0]);
   if (pickupDateOnly > startDate) {
     ctx.addIssue({
@@ -2552,6 +2566,80 @@ getNearbyTrips: defineAction({
         inviter_id: result.inviter_id,
       };
     }),
+  }),
+
+  generateDescription: defineAction({
+    input: z.object({
+      title: z.string().min(1).max(100),
+      destination: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      activities: z.string().optional(),
+      travelStyle: z.enum(['adventure', 'relaxed', 'cultural']).optional(),
+      groupType: z.string().optional(),
+      tone: z.enum(['adventure', 'relaxed', 'cultural']).default('adventure'),
+    }),
+    handler: async (input, context) => {
+      const { title, destination, startDate, endDate, activities, travelStyle, groupType, tone } = input;
+      
+      const ai = context.locals.runtime?.env?.AI;
+      
+      if (!ai) {
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'AI service not configured. Please deploy to staging or production.',
+        });
+      }
+
+      const dateRange = startDate && endDate 
+        ? `From ${startDate} to ${endDate}`
+        : startDate 
+          ? `Starting ${startDate}`
+          : 'Dates to be confirmed';
+      
+      const prompt = `You are a travel writer. Write a trip description for the following trip. STRICTLY keep it under 1000 characters:
+
+Title: ${title}
+Destination: ${destination || 'to be determined'}
+Dates: ${dateRange}
+Activities: ${activities || 'various adventures'}
+Travel Style: ${travelStyle || 'adventure'}
+Group Type: ${groupType || 'group'}
+
+Tone: ${tone}
+
+Requirements:
+- Write in second person, engaging style
+- Include a catchy headline
+- Highlight 2-3 key experiences
+- Make it sound inviting
+- End with a call to action
+- MUST be under 1000 characters
+
+Format as plain text (no markdown).`;
+
+      try {
+        // @ts-ignore - Cloudflare AI types may not have all models
+        const result = await ai.run("@cf/meta/llama-3.1-8b-instruct", {
+          messages: [
+            { role: "system", content: "You are a creative travel writer specializing in crafting exciting trip descriptions that attract travelers." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 500,
+        }) as { response: string };
+
+        return {
+          success: true,
+          description: result.response,
+        };
+      } catch (error) {
+        console.error('AI generation error:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to generate description. Please try again.',
+        });
+      }
+    },
   }),
 }
 

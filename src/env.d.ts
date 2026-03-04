@@ -9,6 +9,7 @@ declare namespace App {
     runtime: {
       env: {
         TRIP_HERO: R2Bucket;
+        AI: Ai;
       };
     };
   }

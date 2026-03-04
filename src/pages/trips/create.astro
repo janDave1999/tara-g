@@ -123,16 +123,29 @@ import Tags from "@/components/Trip/Tags.astro";
               required
               maxlength="100"
             />
+            <p id="titleError" class="text-xs text-red-500 mt-1 hidden">Title is too short</p>
             <div class="text-xs text-slate-500 mt-1 text-right">
               <span id="titleCount">0</span>/100
             </div>
           </div>
 
           <div>
-            <label class="font-medium mb-2 block text-slate-700" for="description">
-              About the Trip
-              <span class="text-red-500 ml-1">*</span>
-            </label>
+            <div class="flex items-center justify-between mb-2">
+              <label class="font-medium text-slate-700" for="description">
+                About the Trip
+                <span class="text-red-500 ml-1">*</span>
+              </label>
+              <button 
+                type="button" 
+                id="aiAssistBtn"
+                class="text-xs px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:shadow-md transition-all flex items-center gap-1.5"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>AI Assist</span>
+              </button>
+            </div>
             <textarea 
               name="description" 
               id="tripDescription"
@@ -140,10 +153,11 @@ import Tags from "@/components/Trip/Tags.astro";
               rows="4" 
               placeholder="What's the vibe? What are you hoping to explore?"
               required
-              maxlength="500"
+              maxlength="1000"
             ></textarea>
+            <p id="descError" class="text-xs text-red-500 mt-1 hidden">Description is too short</p>
             <div class="text-xs text-slate-500 mt-1 text-right">
-              <span id="descCount">0</span>/500
+              <span id="descCount">0</span>/1000
             </div>
           </div>
 
@@ -550,7 +564,7 @@ import Tags from "@/components/Trip/Tags.astro";
     const titleInput = document.getElementById("tripTitle") as HTMLInputElement;
     const descInput = document.getElementById("tripDescription") as HTMLTextAreaElement;
     const titleCount = document.getElementById("titleCount");
-    const descCount = document.getElementById("descCount");
+    const descCount = document.getElementById("descCount") as HTMLSpanElement; 
 
     // Cost Sharing Elements
     const costSharing = document.getElementById("costSharing") as any;
@@ -673,6 +687,7 @@ import Tags from "@/components/Trip/Tags.astro";
     function validateDates(): boolean {
       const tripDates = getDateTimeValue('tripDates') as any;
       const joinedByDateTime = getDateTimeValue('joinedBy') as any;
+      const pickupDateTime = getDateTimeValue('pickupDates') as any;
       
       let isValid = true;
       const now = new Date();
@@ -707,12 +722,9 @@ import Tags from "@/components/Trip/Tags.astro";
         isValid = false;
       }
       
-      // Join deadline validations - compare date+time
+      // Join deadline validations - can be same day as trip start
       if (joinBy <= now) {
         showDateTimeError('joinedBy', 'Join deadline cannot be in the past');
-        isValid = false;
-      } else if (joinBy >= start) {
-        showDateTimeError('joinedBy', 'Join deadline must be before trip start');
         isValid = false;
       }
       
@@ -725,6 +737,7 @@ import Tags from "@/components/Trip/Tags.astro";
     function validateMeetingTime(): boolean {
       const pickupDateTime = getDateTimeValue('pickupDates') as any;
       const tripDates = getDateTimeValue('tripDates') as any;
+      const joinedByDateTime = getDateTimeValue('joinedBy') as any;
       
       let isValid = true;
       const now = new Date();
@@ -740,15 +753,24 @@ import Tags from "@/components/Trip/Tags.astro";
       
       // Meeting time cannot be in the past (compare date+time)
       if (meetingTime <= now) {
-        showDateTimeError('pickupDates', 'Meeting time cannot be in the past');
+        showDateTimeError('pickupDates', 'Pickup time cannot be in the past');
         isValid = false;
       }
       
-      // Meeting should be on or before trip start
+      // Pickup must be on or before trip start date
       if (tripDates.start) {
         const tripStart = parseLocalDate(tripDates.start);
         if (tripStart && meetingTime > tripStart) {
-          showDateTimeError('pickupDates', 'Meeting time should be on or before trip start');
+          showDateTimeError('pickupDates', 'Pickup time must be on or before trip start date');
+          isValid = false;
+        }
+      }
+      
+      // Pickup must be after join deadline
+      if (joinedByDateTime) {
+        const joinBy = parseLocalDate(joinedByDateTime);
+        if (joinBy && meetingTime <= joinBy) {
+          showDateTimeError('pickupDates', 'Pickup time must be after join deadline');
           isValid = false;
         }
       }
@@ -797,19 +819,76 @@ import Tags from "@/components/Trip/Tags.astro";
           }
         }
 
+        // Drop-off cannot be before trip start date
+        if (tripDates.start) {
+          const tripStart = parseLocalDate(tripDates.start);
+          if (tripStart) {
+            // Compare dates only (not time) for start date restriction
+            const dropoffDate = new Date(dropoffTime.getFullYear(), dropoffTime.getMonth(), dropoffTime.getDate());
+            const startDate = new Date(tripStart.getFullYear(), tripStart.getMonth(), tripStart.getDate());
+            
+            if (dropoffDate < startDate) {
+              showDateTimeError('dropoffDates', 'Drop-off date must be on or after trip start date');
+              isValid = false;
+            }
+          }
+        }
+
         // Drop-off should be within reasonable range of trip end
         if (tripDates.end) {
           const tripEnd = parseLocalDate(tripDates.end);
           if (tripEnd) {
             const maxDropoff = new Date(tripEnd);
-            maxDropoff.setDate(maxDropoff.getDate() + 1); // Allow 1 day buffer
+            maxDropoff.setDate(maxDropoff.getDate() + 1); // Allow 1 day buffer for travel delays
 
             if (dropoffTime > maxDropoff) {
-              showDateTimeError('dropoffDates', 'Drop-off should be within trip duration (plus 1 day)');
+              showDateTimeError('dropoffDates', 'Drop-off date must be on or before trip end date (plus 1 day for delays)');
               isValid = false;
             }
           }
         }
+      }
+
+      return isValid;
+    }
+
+    /**
+     * Validate title and description (Step 2)
+     */
+    function validateDetails(): boolean {
+      const titleInput = document.getElementById('tripTitle') as HTMLInputElement;
+      const descInput = document.getElementById('tripDescription') as HTMLTextAreaElement;
+      const titleError = document.getElementById('titleError');
+      const descError = document.getElementById('descError');
+      let isValid = true;
+
+      if (titleInput && titleError) {
+        if (titleInput.value.trim().length < 3) {
+          titleInput.classList.add('border-red-300');
+          titleError.classList.remove('hidden');
+          isValid = false;
+        } else {
+          titleInput.classList.remove('border-red-300');
+          titleError.classList.add('hidden');
+        }
+      }
+
+      if (descInput && descError) {
+        if (descInput.value.trim().length < 10) {
+          descInput.classList.add('border-red-300');
+          descError.classList.remove('hidden');
+          isValid = false;
+        } else {
+          descInput.classList.remove('border-red-300');
+          descError.classList.add('hidden');
+        }
+      }
+
+      if (!isValid) {
+        showToast({
+          message: 'Please fix the errors in the form',
+          type: 'error'
+        });
       }
 
       return isValid;
@@ -852,6 +931,10 @@ import Tags from "@/components/Trip/Tags.astro";
       // Step-specific validation
       if (currentStep === 1) {
         return validateDates();
+      }
+
+      if (currentStep === 2) {
+        return validateDetails();
       }
       
       if (currentStep === 4) {
@@ -899,25 +982,23 @@ declare global {
         // Trip dates: minimum is today
         constraints.tripDates?.setMinDate(today);
         
-        // Join deadline: must be before trip start
+        // Join deadline: can be same day as trip start
         if (tripDates?.start && constraints.joinedBy) {
           const startDate = parseLocalDate(tripDates.start);
           if (startDate) {
-            const dayBefore = new Date(startDate);
-            dayBefore.setDate(startDate.getDate() - 1);
-            
             constraints.joinedBy.setMinDate(today);
-            constraints.joinedBy.setMaxDate(toDateOnly(dayBefore));
+            constraints.joinedBy.setMaxDate(toDateOnly(startDate));
           }
         }
         
-        // Pickup date: today → trip start
+        // Pickup date: must be on or after join deadline
         if (tripDates?.start && constraints.pickupDates) {
-          constraints.pickupDates.setMinDate(today);
-          constraints.pickupDates.setMaxDate(toDateOnly(tripDates.start));
+          const startDate: any = parseLocalDate(tripDates.start);
+          constraints.pickupDates.setMinDate(startDate ? toDateOnly(startDate) : today);
+          constraints.pickupDates.setMaxDate(toDateOnly(startDate));
         }
         
-        // Drop-off dates
+        // Drop-off dates: pickup date → trip end + 1 day
         updateDropoffDateConstraints();
       } catch (error) {
         console.error('Error updating date constraints:', error);
@@ -927,6 +1008,7 @@ declare global {
 
     /**
      * Update drop-off date constraints
+     * Drop-off must be: after pickup time AND within trip period + 1 day grace
      */
      function updateDropoffDateConstraints(): void {
       const constraints = window.updateDatePickerConstraints;
@@ -939,23 +1021,21 @@ declare global {
       const pickupDateTime = getDateTimeValue('pickupDates') as string | null;
       
       try {
-        // Min: pickup date
-        if (pickupDateTime) {
-          constraints.dropoffDates.setMinDate(
-          toDateOnly(pickupDateTime)
-          );
+        // Min: trip start date (cannot drop off before trip starts)
+        if (tripDates?.start) {
+          constraints.dropoffDates.setMinDate(toDateOnly(tripDates.start));
+        } else if (pickupDateTime) {
+          // Fallback: at least pickup date if trip start not set
+          constraints.dropoffDates.setMinDate(toDateOnly(pickupDateTime));
         }
         
-        // Max: day after trip end
+        // Max: one day after trip end (allows for travel delays)
         if (tripDates?.end) {
           const endDate = parseLocalDate(tripDates.end);
           if (endDate) {
             const dayAfter = new Date(endDate);
             dayAfter.setDate(endDate.getDate() + 1);
-            
-            constraints.dropoffDates.setMaxDate(
-            toDateOnly(dayAfter)
-            );
+            constraints.dropoffDates.setMaxDate(toDateOnly(dayAfter));
           }
         }
       } catch (error) {
@@ -1011,20 +1091,205 @@ declare global {
     // ==================== EVENT HANDLERS ====================
 
     /**
-     * Character counter for title
+     * Real-time validation for title
      */
-    if (titleInput && titleCount) {
+    const titleError = document.getElementById('titleError');
+    if (titleInput && titleCount && titleError) {
       titleInput.addEventListener("input", () => {
         titleCount.textContent = titleInput.value.length.toString();
+        
+        if (titleInput.value.trim().length > 0 && titleInput.value.trim().length < 3) {
+          titleInput.classList.add('border-red-300');
+          titleError.classList.remove('hidden');
+        } else {
+          titleInput.classList.remove('border-red-300');
+          titleError.classList.add('hidden');
+        }
       });
     }
 
     /**
-     * Character counter for description
+     * AI Assist - Generate description with questionnaire modal
      */
-    if (descInput && descCount) {
+    const aiAssistBtn = document.getElementById('aiAssistBtn');
+    if (aiAssistBtn && titleInput && descInput) {
+      aiAssistBtn.addEventListener('click', async () => {
+        const title = titleInput.value.trim();
+        
+        if (!title) {
+          showToast({
+            message: 'Please enter a trip title first',
+            type: 'error'
+          });
+          titleInput.focus();
+          return;
+        }
+
+        // Create modal dynamically
+        const existingModal = document.getElementById('aiQuestionnaireModal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'aiQuestionnaireModal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modalBackdrop"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Trip Description Assistant</h3>
+                <button type="button" id="closeModalBtn" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <form id="aiQuestionnaireForm" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Activities (optional)</label>
+                  <input type="text" name="activities" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g. surfing, hiking, local food tour">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Travel Style</label>
+                  <select name="travelStyle" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="adventure">Adventure</option>
+                    <option value="relaxed">Relaxed</option>
+                    <option value="cultural">Cultural</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Group Type (optional)</label>
+                  <input type="text" name="groupType" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g. friends, family, solo travelers">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+                  <select name="tone" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="adventure">Adventure / Exciting</option>
+                    <option value="relaxed">Relaxed / Chill</option>
+                    <option value="cultural">Cultural / Educational</option>
+                  </select>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                  <button type="button" id="cancelAiBtn" 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" 
+                    class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-md transition-all"
+                    id="generateAiBtn">
+                    Generate ✨
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle modal close
+        const closeModal = () => modal.remove();
+        document.getElementById('modalBackdrop')?.addEventListener('click', closeModal);
+        document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
+        document.getElementById('cancelAiBtn')?.addEventListener('click', closeModal);
+
+        // Handle form submit
+        const form = document.getElementById('aiQuestionnaireForm') as HTMLFormElement;
+        form?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const formData = new FormData(form);
+          const activities = (formData.get('activities') as string)?.trim() || undefined;
+          const travelStyle = (formData.get('travelStyle') as 'adventure' | 'relaxed' | 'cultural') || 'adventure';
+          const groupType = (formData.get('groupType') as string)?.trim() || undefined;
+          const tone = (formData.get('tone') as 'adventure' | 'relaxed' | 'cultural') || 'adventure';
+
+          const generateBtn = document.getElementById('generateAiBtn');
+          if (generateBtn) {
+            generateBtn.innerHTML = `<svg class="w-4 h-4 animate-spin mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            (generateBtn as HTMLButtonElement).disabled = true;
+          }
+
+          try {
+            const destinationInput = document.getElementById('regionInput') as HTMLInputElement;
+            const destination = destinationInput?.value?.trim() || undefined;
+
+            // Get trip dates from form
+            const startDateInput = document.querySelector('input[name="start_date"]') as HTMLInputElement;
+            const endDateInput = document.querySelector('input[name="end_date"]') as HTMLInputElement;
+            const startDate = startDateInput?.value || undefined;
+            const endDate = endDateInput?.value || undefined;
+
+            const { data, error } = await actions.trip.generateDescription({ 
+              title, 
+              destination,
+              startDate,
+              endDate,
+              activities,
+              travelStyle,
+              groupType,
+              tone
+            });
+
+            if (error) {
+              throw new Error(error.message || 'Failed to generate description');
+            }
+
+            if (data?.success && data.description) {
+              closeModal();
+              descInput.value = data.description;
+              descCount.textContent = descInput.value.length.toString();
+              
+              descInput.classList.remove('border-red-300');
+              if (descError) descError.classList.add('hidden');
+
+              showToast({
+                message: 'Description generated!',
+                type: 'success'
+              });
+            }
+          } catch (err) {
+            console.error('AI Assist error:', err);
+            showToast({
+              message: 'Failed to generate description. Please try again.',
+              type: 'error'
+            });
+          } finally {
+            if (generateBtn) {
+              generateBtn.innerHTML = 'Generate ✨';
+              (generateBtn as HTMLButtonElement).disabled = false;
+            }
+          }
+        });
+      });
+    }
+
+    /**
+     * Real-time validation for description
+     */
+    const descError = document.getElementById('descError');
+    if (descInput && descCount && descError) {
       descInput.addEventListener("input", () => {
         descCount.textContent = descInput.value.length.toString();
+        
+        if (descInput.value.trim().length > 0 && descInput.value.trim().length < 10) {
+          descInput.classList.add('border-red-300');
+          descError.classList.remove('hidden');
+        } else {
+          descInput.classList.remove('border-red-300');
+          descError.classList.add('hidden');
+        }
       });
     }
 
@@ -1134,6 +1399,52 @@ declare global {
       sameLocationCheckbox.checked = true;
     }
 
+    /**
+     * Live validation: Update pickup constraints when join deadline changes
+     */
+    function setupJoinDeadlineLiveValidation() {
+      const constraints = (window as any).updateDatePickerConstraints;
+      if (!constraints?.joinedBy || !constraints?.pickupDates) return;
+
+      const joinedByInput = document.getElementById('joinedBy') as HTMLInputElement;
+      if (!joinedByInput) return;
+
+      // Listen for changes on the join deadline flatpickr
+      joinedByInput.addEventListener('change', () => {
+        const joinedByValue = joinedByInput.value;
+        if (!joinedByValue) return;
+
+        const joinBy = parseLocalDate(joinedByValue);
+        if (!joinBy) return;
+
+        // Get trip start date
+        const tripDates = getDateTimeValue('tripDates') as any;
+        const tripStart = tripDates?.start ? parseLocalDate(tripDates.start) : null;
+
+        // Update pickup min to be after join deadline (same time)
+        const minPickupDate = tripStart ? toDateOnly(tripStart) : toDateOnly(new Date());
+        
+        // Update pickup constraints
+        try {
+          constraints.pickupDates.setMinDate(minPickupDate);
+          if (tripStart) {
+            constraints.pickupDates.setMaxDate(toDateOnly(tripStart));
+          }
+        } catch (e) {
+          console.warn('Could not update pickup constraints:', e);
+        }
+
+        // Validate pickup if already set
+        const pickupInput = document.getElementById('pickupDates') as HTMLInputElement;
+        if (pickupInput?.value) {
+          validateMeetingTime();
+        }
+      });
+    }
+
+    // Initialize live validation after DOM is ready
+    setupJoinDeadlineLiveValidation();
+    
     /**
      * Navigation button handlers
      */

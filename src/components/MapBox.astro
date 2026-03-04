@@ -28,10 +28,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
   <MapTripDetail />
 
 <button id="search-area-btn">Search this area</button>
-  <div id="map-loading" class="loading-overlay">
-    <div class="loading-spinner"></div>
-    <span>Loading trips...</span>
-  </div>
   <div class="md:h-screen md:w-full w-full h-[calc(100vh-64px)]" id="map"></div>
 </PagePlate>
 
@@ -100,41 +96,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
     cursor: pointer;
     display: none;
     border: none;
-  }
-
-  #map-loading {
-    position: absolute;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    background: white;
-    padding: 16px 24px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .loading-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #10b981;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  #map-loading.hidden {
-    display: none;
   }
 
   .cluster-marker {
@@ -269,9 +230,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
   }
 
 async function loadTrips(lng: number, lat: number, zoom: number) {
-    const loadingEl = document.getElementById('map-loading');
-    if (loadingEl) loadingEl.classList.remove('hidden');
-    
     try {
       const trips = await fetchNearbyTrips({
         latitude: lat,
@@ -285,8 +243,6 @@ async function loadTrips(lng: number, lat: number, zoom: number) {
     } catch (error) {
       console.error('Error loading trips:', error);
       alert('Failed to load trips. Please try again.');
-    } finally {
-      if (loadingEl) loadingEl.classList.add('hidden');
     }
   }
 

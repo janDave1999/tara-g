@@ -1,10 +1,12 @@
 import mapboxgl from "mapbox-gl";
 import { PUBLIC_R2_URL } from "astro:env/client";
+import { getClusterRadiusByZoom } from "./MapConfig";
 
 interface TripMarkerData {
   trip_id: string;
   title: string;
   location_name?: string;
+  region?: string;
   lat?: number;
   lng?: number;
   start_date?: string;
@@ -12,11 +14,15 @@ interface TripMarkerData {
   current_participants?: number;
   max_participants?: number;
   images?: string[];
+  duration_days?: number;
+  estimated_budget?: number | null;
+  tags?: string[];
 }
 
 interface MarkerConfig {
   singleMarkerRadius: number;    // Size of single trip marker
   clusterRadius: number;          // Grouping distance in map units (lat/lng degrees)
+  zoom?: number;                  // Optional: current map zoom level for dynamic clustering
 }
 
 const DEFAULT_CONFIG: MarkerConfig = {
@@ -25,7 +31,7 @@ const DEFAULT_CONFIG: MarkerConfig = {
 };
 
 // Store event handlers per sourceId to enable cleanup
-const eventHandlers = new Map<string, (e: mapboxgl.MapStyleImageMissingEvent) => void>();
+const eventHandlers = new Map<string, (e: any) => void>();
 
 const FALLBACK_IMAGE = '/images/default-trip.jpg';
 
@@ -66,8 +72,8 @@ function groupTripsByLocation(
       if (otherTrip.trip_id === trip.trip_id) return;
 
       const distance = Math.sqrt(
-        Math.pow(otherTrip.lng - trip.lng, 2) +
-        Math.pow(otherTrip.lat - trip.lat, 2)
+        Math.pow(otherTrip.lng - trip.lng!, 2) +
+        Math.pow(otherTrip.lat - trip.lat!, 2)
       );
 
       if (distance <= clusterRadius) {
@@ -88,7 +94,12 @@ function groupTripsByLocation(
  * Single trips and cluster centers are rendered as points.
  */
 export function tripsToGeoJSON(trips: TripMarkerData[], config = DEFAULT_CONFIG) {
-  const groups = groupTripsByLocation(trips, config.clusterRadius);
+  // Use zoom-aware clustering if zoom is provided
+  let clusterRadius = config.clusterRadius;
+  if (config.zoom !== undefined) {
+    clusterRadius = getClusterRadiusByZoom(config.zoom);
+  }
+  const groups = groupTripsByLocation(trips, clusterRadius);
 
   const features = groups.map(group => {
     const imageUrl = getTripImage(group.trips[0].images);
@@ -315,7 +326,7 @@ export function addImageMarkerLayers(
   }
 
   // Handle missing images on demand - loads images when Mapbox requests them
-  const imageLoadHandler = (e: mapboxgl.MapStyleImageMissingEvent) => {
+  const imageLoadHandler = (e: any) => {
     const imageId = e.id;
     
     // Skip non-marker images

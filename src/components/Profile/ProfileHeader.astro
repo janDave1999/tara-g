@@ -2,6 +2,7 @@
 // components/Profile/ProfileHeader.astro
 
 interface Props {
+  username:        string;
   userData:         Record<string, any>;
   userInfo:         Record<string, any>;
   userStats:        Record<string, any> | null;
@@ -12,7 +13,7 @@ interface Props {
 }
 
 const {
-  userData, userInfo, userStats,
+  username, userData, userInfo, userStats,
   displayAvatarUrl, initials, memberSince, bucketCount,
 } = Astro.props;
 
@@ -27,9 +28,7 @@ const locationStr = [userInfo.location_city, userInfo.location_country].filter(B
     <!-- Avatar -->
     <div class="relative shrink-0">
 
-      <button type="button"
-        onclick="document.getElementById('avatar-editor-modal').showModal()"
-        aria-label="Change profile photo"
+      <div
         class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white
                bg-gray-100 overflow-hidden shadow-md cursor-pointer block
                focus:outline-none focus:ring-2 focus:ring-blue-500 group/av">
@@ -37,14 +36,7 @@ const locationStr = [userInfo.location_city, userInfo.location_country].filter(B
           ? <img src={displayAvatarUrl} alt={userData.full_name || userData.username} class="w-full h-full object-cover"/>
           : <div class="w-full h-full brand-gradient flex items-center justify-center text-white font-bold text-3xl">{initials}</div>
         }
-        <div aria-hidden="true" class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover/av:opacity-100 transition-opacity duration-200">
-          <svg class="w-5 h-5 text-white mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          <span class="text-white text-xs font-medium">Edit</span>
-        </div>
-      </button>
+      </div>
 
       {userData.is_verified && (
         <div class="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white p-1 rounded-full border-2 border-white shadow-sm" title="Verified Traveler">
@@ -67,7 +59,7 @@ const locationStr = [userInfo.location_city, userInfo.location_country].filter(B
         <span class="hidden sm:inline">Edit Profile</span>
         <span class="sm:hidden">Edit</span>
       </a>
-      <button id="shareProfileBtn" aria-label="Share profile"
+      <button id="shareProfileBtn" data-username={username} aria-label="Share profile"
         class="w-9 h-9 flex items-center justify-center text-gray-500
                border border-gray-200 hover:border-gray-300 hover:bg-gray-50
                rounded-xl transition-all duration-150">
@@ -140,23 +132,27 @@ const locationStr = [userInfo.location_city, userInfo.location_country].filter(B
 
 <style>
   .brand-gradient      { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
-  .profile-header-card { animation: fadeUp 0.35s ease both; }
+  .profile-header-card { animation: fadeUp 0.35s ease both; }
+
   .stat-item  { cursor: pointer; text-decoration: none; }
   .stat-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; }
   .stat-num   { font-size: 24px; font-weight: 800; color: #111827; margin-top: 2px; transition: color 0.15s; display: block; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
   @media (prefers-reduced-motion: reduce) {
-    .profile-header-card { animation: none; }
+    .profile-header-card { animation: none; }
+
   }
 </style>
 
 <script>
   document.getElementById('shareProfileBtn')?.addEventListener('click', async () => {
+    const username = (document.getElementById('shareProfileBtn') as HTMLButtonElement)?.dataset.username;
+    const profileUrl = `${window.location.origin}/profile/${username}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'My Tara G! Profile', url: window.location.href });
+        await navigator.share({ title: 'My Tara G! Profile', url: profileUrl });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(profileUrl);
         document.dispatchEvent(new CustomEvent('profile:toast', { detail: '✅ Profile link copied!' }));
       }
     } catch {}

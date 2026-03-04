@@ -1,8 +1,6 @@
 import { actions } from "astro:actions";
 import { getRadiusByZoom } from "./MapConfig";
 
-console.log('[MapApi] Module loaded');
-
 interface TripData {
   trip_id: string;
   title: string;
@@ -42,22 +40,12 @@ export async function fetchNearbyTrips(params: FetchNearbyTripsParams): Promise<
     radiusKm,
     tags,
     locationType = 'destination',
-    limit = 50,
+    limit = 100,  // Increased for better UX with image markers
     offset = 0,
     zoom = 10,
   } = params;
 
   const effectiveRadius = radiusKm ?? getRadiusByZoom(zoom);
-
-  console.log('[MapApi] Calling getNearbyTrips with:', {
-    latitude,
-    longitude,
-    radiusKm: effectiveRadius,
-    tags,
-    locationType,
-    limit,
-    offset,
-  });
 
   const result = await actions.trip.getNearbyTrips({
     latitude,
@@ -69,8 +57,6 @@ export async function fetchNearbyTrips(params: FetchNearbyTripsParams): Promise<
     offset,
   });
 
-  console.log('[MapApi] Result:', JSON.stringify(result, null, 2));
-
   // Handle both direct array return (RPC) and wrapped format
   let trips: any[] = [];
   if (Array.isArray(result.data)) {
@@ -78,8 +64,6 @@ export async function fetchNearbyTrips(params: FetchNearbyTripsParams): Promise<
   } else if (result.data?.trips) {
     trips = result.data.trips;
   }
-
-  console.log('[MapApi] Trips extracted:', trips.length, trips);
 
   if (result.error || trips.length === 0) {
     console.error('[MapApi] Failed to fetch nearby trips:', result.error || 'No trips found');

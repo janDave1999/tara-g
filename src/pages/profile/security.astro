@@ -10,7 +10,9 @@ const email = Astro.locals.email ?? "";
 // Fetch auth identities to know which providers are connected
 const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(user_id);
 const identities = user?.identities ?? [];
-const hasPassword  = identities.some(i => i.provider === "email");
+const userMetadata = user?.user_metadata ?? {};
+const hasPasswordFromIdentity = identities.some(i => i.provider === "email");
+const hasPassword = hasPasswordFromIdentity || userMetadata.password_set === true;
 const hasGoogle    = identities.some(i => i.provider === "google");
 const hasFacebook  = identities.some(i => i.provider === "facebook");
 ---
@@ -88,6 +90,11 @@ const hasFacebook  = identities.some(i => i.provider === "facebook");
         </div>
 
         <form id="passwordForm" class="hidden space-y-3">
+          {!hasPasswordFromIdentity && (
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-xs text-blue-700">You'll be able to sign in with email & password. You may need to sign in again.</p>
+            </div>
+          )}
           {hasPassword && (
             <div>
               <label for="current_password" class="block text-xs font-medium text-gray-600 mb-1">Current password</label>

@@ -44,11 +44,7 @@ const hasPrefs = !!(userPrefs.budget_range || userPrefs.travel_style?.length);
     <!-- Profile Photo -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
       <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4">Profile Photo</p>
-      <button
-        type="button"
-        onclick="document.getElementById('avatar-editor-modal').showModal()"
-        class="flex items-center gap-4 w-full group"
-      >
+      <div class="flex items-center gap-4 w-full">
         <div class="relative shrink-0">
           {displayAvatarUrl ? (
             <img src={displayAvatarUrl} alt="Avatar" class="w-16 h-16 rounded-full object-cover ring-2 ring-gray-100" />
@@ -57,18 +53,12 @@ const hasPrefs = !!(userPrefs.budget_range || userPrefs.travel_style?.length);
               {initials}
             </div>
           )}
-          <div class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </div>
         </div>
         <div class="flex-1 text-left">
-          <p class="text-sm font-semibold text-blue-600 group-hover:text-blue-700">Change profile photo</p>
+          <p class="text-sm font-semibold text-gray-700">{displayAvatarUrl ? 'Profile photo uploaded' : 'No photo uploaded'}</p>
           <p class="text-xs text-gray-400 mt-0.5">JPG or PNG, max 5MB</p>
         </div>
-      </button>
+      </div>
     </div>
 
     <!-- Edit categories -->

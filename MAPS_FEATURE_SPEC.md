@@ -19,16 +19,16 @@ The **Maps** feature enables users to discover trips through an interactive map 
 |------|-------|-----------|
 | Maps | `/maps` | `src/components/MapBox.astro` |
 
-The page is currently accessible at `/maps` but has a commented-out `PagePlate` wrapper (line 475 in MapBox.astro).
+The page is accessible at `/maps` with PagePlate wrapper enabled.
 
 ### 1.2 Key Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Province Search | ✅ Working | Searchbox filters PH provinces |
-| Trip Markers | ✅ Working | Custom markers with trip cover images |
-| Marker Clustering | ✅ Working | Groups nearby trips into cluster markers |
-| Filters | ⚠️ Partial | UI exists but filters aren't applied to query |
+| Trip Markers | ⚠️ Performance Issue | Custom DOM markers - slow with 500+ markers |
+| Marker Clustering | ⚠️ Performance Issue | Custom DOM clustering - should use Mapbox native |
+| Filters | ✅ Working | UI wired to action call (tags/locationType) |
 | Trip Detail Modal | ✅ Working | Popup shows trip info |
 | "Search this area" | ✅ Working | Fetches trips in current map bounds |
 | Geolocation | ✅ Working | Centers map on user's location |
@@ -63,7 +63,7 @@ The page is currently accessible at `/maps` but has a commented-out `PagePlate` 
 | US-M6 | As a user, I want to filter trips by type | Filter by destination/pickup/dropoff location type | ⚠️ Partial - UI works, not wired to query |
 | US-M7 | As a user, I want to filter by activities | Filter by tags (hiking, diving, etc.) | ⚠️ Partial - UI exists, not wired to query |
 | US-M8 | As a user, I want to see cluster counts | Clusters show number of trips inside | ✅ Pass |
-| US-M9 | As a user, I want to zoom into clusters | Clicking cluster zooms to show individual markers | ✅ Pass |
+| US-M9 | As a user, I want to zoom into clusters | Clicking cluster zooms to show individual markers | ⚠️ Partial - shows popup instead of zoom |
 | US-M10 | As a user, I want to see availability status | Markers colored by available/full status | ✅ Pass |
 | US-M11 | As a user, I want to use my location | Geolocate button centers map on user | ✅ Pass |
 
@@ -74,6 +74,34 @@ The page is currently accessible at `/maps` but has a commented-out `PagePlate` 
 | US-M12 | As a user, I want to save favorite locations | Save locations for quick access | ❌ Not started |
 | US-M13 | As a user, I want to see trip routes | Draw route lines between itinerary stops | ❌ Not started |
 | US-M14 | As a user, I want offline maps | Download map area for offline use | ❌ Not started |
+
+---
+
+## 2.3 Performance Improvements (P0/P1)
+
+### 🔴 Critical - Performance Fixes
+
+| # | Story | Acceptance Criteria | Priority | Status |
+|---|-------|---------------------|----------|--------|
+| US-MP1 | As a developer, I want to use GPU-accelerated markers | Replace DOM markers with GeoJSON symbol layers for 60 FPS rendering with 500+ markers | P0 | ✅ Complete |
+| US-MP2 | As a user, I want faster initial load | Implement parallel data loading to eliminate waterfall | P0 | ✅ Complete |
+| US-MP3 | As a developer, I want clean production code | Remove all debug console.log statements from MapApi.ts | P0 | ✅ Complete |
+
+### 🟡 High Impact - UX Improvements
+
+| # | Story | Acceptance Criteria | Priority | Status |
+|---|-------|---------------------|----------|--------|
+| US-MP4 | As a user, I want to zoom into clusters | Clicking cluster zooms to show individual markers (not popup) | P1 | ✅ Complete |
+| US-MP5 | As a user, I want responsive search | Add debounce to search this area and filter buttons | P1 | ✅ Complete |
+| US-MP6 | As a user, I want smooth map interactions | Add throttling to move events | P1 | ✅ Complete |
+
+### 🟢 Optimization - Polish
+
+| # | Story | Acceptance Criteria | Priority | Status |
+|---|-------|---------------------|----------|--------|
+| US-MP7 | As a user, I want no memory leaks | Reuse popup instances instead of creating new ones | P2 | ✅ Complete |
+| US-MP8 | As a developer, I want proper cleanup | Add map.remove() on component unmount | P2 | ✅ Complete |
+| US-MP9 | As a user on mobile, I want better performance | Add mobile-specific optimizations (reduced tile quality, limited pitch) | P2 | ✅ Complete |
 
 ---
 
@@ -138,31 +166,36 @@ getNearbyTrips: defineAction({
 
 ## 4. Known Issues
 
-### 4.1 High Priority
+### 4.1 🔴 Critical - Performance Issues (FIXED)
 
-| Issue | Location | Description |
-|-------|----------|-------------|
-| Debug console.log | MapBox.astro:683, 861 | Debug statements left in production code |
-| Filters not applied | MapBox.astro:995-1001 | Filters UI updates badge but doesn't filter trips |
-| PagePlate commented | MapBox.astro:475 | Layout wrapper disabled |
+| Issue | Location | Description | User Story | Status |
+|-------|----------|-------------|-------------|--------|
+| DOM Markers Performance | MapMarkers.ts:27-91, MapBox.astro:306-316 | Using DOM-based markers instead of symbol layers causes 15-20 FPS with 500+ markers | US-MP1 | ✅ Fixed |
+| Data Loading Waterfall | MapBox.astro:420-434 | Map waits to load until after map initializes, adding ~1s delay | US-MP2 | ✅ Fixed |
+| Debug console.log | MapApi.ts:4,52,72,82,85 | Debug statements left in production code | US-MP3 | ✅ Fixed |
 
-### 4.2 Medium Priority
+### 4.2 🟡 High Impact - UX Issues (FIXED)
 
-| Issue | Location | Description |
-|-------|----------|-------------|
-| No loading state | fetchNearbyTrips | No indicator while fetching trips |
-| Pagination not implemented | fetchNearbyTrips | Uses offset pagination but only fetches first page |
-| Cluster click shows popup | MapBox.astro:859-863 | Cluster click shows list but could zoom instead |
-| No error handling | fetchNearbyTrips | Silent failure on API errors |
+| Issue | Location | Description | User Story | Status |
+|-------|----------|-------------|-------------|--------|
+| Cluster click shows popup | MapBox.astro:312-315 | Should zoom into cluster instead of showing popup list | US-MP4 | ✅ Fixed |
+| No debounce on search | MapBox.astro:456-461 | Search triggers immediately without debounce, causing multiple API calls | US-MP5 | ✅ Fixed |
+| No event throttling | MapBox.astro:437-439 | moveend event fires without throttling | US-MP6 | ✅ Fixed |
 
-### 4.3 Low Priority
+### 4.3 🟢 Optimization - Memory & Mobile (FIXED)
 
-| Issue | Location | Description |
-|-------|----------|-------------|
-| Hardcoded tags | MapBox.astro:512-526 | Tags not synced with database |
-| No date filters | UI exists | Start/end date filters not wired |
-| No budget filters | UI exists | Budget min/max not wired |
-| Accessibility | Overall | Missing ARIA labels on interactive elements |
+| Issue | Location | Description | User Story | Status |
+|-------|----------|-------------|-------------|--------|
+| Popup memory leak | MapBox.astro:353-359 | Creates new popup on every click instead of reusing | US-MP7 | ✅ Fixed |
+| No map cleanup | MapBox.astro (missing) | No map.remove() called on unmount causes memory growth | US-MP8 | ✅ Fixed |
+| No mobile optimizations | MapBox.astro:420-425 | No mobile-specific settings for performance | US-MP9 | ✅ Fixed |
+
+### 4.4 Previously Reported Issues
+
+| Issue | Location | Description | Status |
+|-------|----------|-------------|--------|
+| Filters not applied | MapBox.astro:995-1001 | Filters UI updates badge but doesn't filter trips | ✅ Fixed |
+| PagePlate commented | MapBox.astro:475 | Layout wrapper disabled | ✅ Fixed |
 
 ---
 
@@ -175,34 +208,24 @@ Based on Mapbox best practices:
 | Practice | Current Implementation | Recommendation |
 |----------|----------------------|----------------|
 | **Clustering** | Custom DOM markers | Use Mapbox's built-in GeoJSON clustering for better performance with large datasets |
-| **Data Loading** | Fetch on every search | Use tilesets for server-side clustering (MTS) |
-| **Marker Performance** | DOM markers for <100 points | Use `symbol` layer with `circle` layer for 100+ points |
-| **Filters** | Client-side after fetch | Push filters to server-side RPC when possible |
+| **Data Loading** | Fetch on every search (after map loads) | Load data in parallel with map initialization |
+| **Marker Performance** | DOM markers for all points | Use `symbol` layer with `circle` layer for 100+ points |
+| **Filters** | Now wired to server ✅ | Push filters to server-side RPC when possible |
+| **Event Handling** | No debounce/throttle | Add debounce to search, throttle to move events |
+| **Memory Management** | Creates new popups | Reuse popup instances, cleanup on unmount |
 
-### 5.2 Recommended Improvements
+### 5.2 Implementation Status
 
-1. **Use Mapbox Native Clustering** - Replace custom cluster markers with Mapbox GeoJSON source clustering for better performance at scale
-
-2. **Server-Side Filtering** - The filter UI exists but doesn't call the action with filter params. Connect filters to `getNearbyTrips`:
-   ```typescript
-   // Current (broken)
-   const trips = await fetchNearbyTrips(center.lng, center.lat);
-   
-   // Should be
-   const trips = await fetchNearbyTrips({
-     latitude: center.lat,
-     longitude: center.lng,
-     radiusKm: getRadiusByZoom(map.getZoom()),
-     tags: activeTags,           // Not passed!
-     locationType: activeLocationType,  // Not passed!
-   });
-   ```
-
-3. **Add Loading States** - Show spinner/skeleton while fetching trips
-
-4. **Error Handling** - Display user-friendly error messages on failure
-
-5. **Lazy Load Mapbox** - Load mapbox-gl only when component enters viewport
+| Recommendation | Status | User Story |
+|---------------|--------|------------|
+| Use Mapbox Native Clustering | ✅ Implemented | US-MP1 |
+| Parallel Data Loading | ✅ Implemented | US-MP2 |
+| Remove console.log statements | ✅ Implemented | US-MP3 |
+| Cluster click → zoom | ✅ Implemented | US-MP4 |
+| Add debounce to search | ✅ Implemented | US-MP5 |
+| Reuse popup instances | ✅ Implemented | US-MP7 |
+| Add map cleanup | ✅ Implemented | US-MP8 |
+| Mobile optimizations | ✅ Implemented | US-MP9 |
 
 ---
 
@@ -250,27 +273,34 @@ src/
 
 ## 9. Implementation Plan
 
-### Phase 1: Fix Critical Issues (P0)
-- [x] Remove debug console.log statements (refactored to components)
-- [x] Wire up filters to action call (now passes tags/locationType)
-- [x] Enable PagePlate wrapper (now included in MapBox.astro)
-- [x] Create new RPC function `get_nearby_trips` (migration 035)
-- [x] Update Astro action to use new RPC function
-- [x] Sync MapApi.ts with new location types (dropoff, all)
-- [ ] Add loading states
+### Phase 1: 🔴 Critical Performance Fixes (P0)
 
-### Phase 2: Improve UX (P1)
+- [x] **US-MP3**: Remove debug console.log statements from MapApi.ts
+- [x] **US-MP2**: Fix data loading waterfall - start data fetch in parallel with map init
+- [x] **US-MP1**: Replace DOM markers with GeoJSON symbol layers + native clustering
+
+### Phase 2: 🟡 High Impact UX (P1)
+
+- [x] **US-MP4**: Change cluster click behavior from popup to zoom
+- [x] **US-MP5**: Add debounce to search this area and filter buttons
+- [x] **US-MP6**: Add throttling to map move events
+
+### Phase 3: 🟢 Optimization (P2)
+
+- [x] **US-MP7**: Reuse popup instance instead of creating new ones
+- [x] **US-MP8**: Add map cleanup on component unmount
+- [x] **US-MP9**: Add mobile-specific optimizations
+
+### Phase 4: Previously Planned
+
+- [ ] Add loading states
 - [ ] Add error handling with user feedback
 - [ ] Implement pagination (load more on scroll)
 - [ ] Add date range filter
 - [ ] Add budget range filter
 
-### Phase 3: Performance (P2)
-- [ ] Consider Mapbox native clustering for large datasets
-- [ ] Lazy load map on scroll into view
-- [ ] Add tile-based loading for very large datasets
-
 ---
 
+*Last updated: 2026-03-04*
 *Last updated: 2026-02-21*
 *Created: Maps feature analysis and specification*

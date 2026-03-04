@@ -39,17 +39,11 @@ const overflow = interests.length - 8;
         )}
       </div>
     ) : (
-      <div class="flex flex-col items-center py-6 text-center">
-        <p class="text-sm text-gray-400 italic mb-3">No interests added yet.</p>
-        <a href="/profile/edit/interests" class="text-xs font-semibold text-white brand-gradient px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">
-          Add interests
-        </a>
-      </div>
+      <p class="text-sm text-gray-400 italic">No interests added yet.</p>
     )}
   </div>
 </div>
 
 <style>
-  .brand-gradient { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
   .section-title  { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; }
 </style>

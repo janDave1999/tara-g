@@ -53,6 +53,7 @@ export const auth = {
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
         password: newPassword,
+        user_metadata: { password_set: true },
       });
       if (error) throw new ActionError({ code: "BAD_REQUEST", message: error.message });
 

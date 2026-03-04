@@ -50,6 +50,7 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
   <div class="max-w-4xl mx-auto px-4 pt-5 space-y-4">
 
     <ProfileHeader
+      username={userData.username}
       userData={userData}         userInfo={userInfo}
       userStats={userStats}       displayAvatarUrl={displayAvatarUrl}
       initials={initials}         memberSince={memberSince}

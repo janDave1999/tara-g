@@ -42,12 +42,16 @@
   }
 
   (window as any).showTripDetail = function(trip: any) {
+    // Parse stringified arrays if needed
+    const images = typeof trip.images === 'string' ? JSON.parse(trip.images) : (trip.images || []);
+    const tags = typeof trip.tags === 'string' ? JSON.parse(trip.tags) : (trip.tags || []);
+    
     const hasSlots  = trip.current_participants < trip.max_participants;
     const slotsLeft = trip.max_participants - trip.current_participants;
     const current   = trip.current_participants || 0;
     const max       = trip.max_participants || 0;
     const fillPct   = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
-    const img       = trip.images?.[0] ? `${PUBLIC_R2_URL}${trip.images[0]}` : '/images/default-trip.jpg';
+    const img       = images?.[0] ? `${PUBLIC_R2_URL}${images[0]}` : '/images/default-trip.jpg';
 
     const accentColor = hasSlots ? (slotsLeft <= 3 ? '#f59e0b' : '#10b981') : '#ef4444';
     const pillTxt     = hasSlots
@@ -70,8 +74,6 @@
       if (loc.toLowerCase().includes(region.toLowerCase())) return loc;
       return `${loc}, ${region}`;
     })();
-
-    const tags = (trip.tags || []) as string[];
 
     tripContent.innerHTML = `
       <!-- ── HERO ──────────────────────────────────── -->

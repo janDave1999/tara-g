@@ -3,6 +3,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
 import MapSearchBox from "./MapSearchBox.astro";
 import MapFilterModal from "./MapFilterModal.astro";
 import MapTripDetail from "./MapTripDetail.astro";
+import 'mapbox-gl/dist/mapbox-gl.css';
 ---
 
 <PagePlate title="Maps" noContainer description={{
@@ -136,24 +137,6 @@ import MapTripDetail from "./MapTripDetail.astro";
     display: none;
   }
 
-  .custom-marker {
-    width: 48px;
-    height: 48px;
-    cursor: pointer;
-  }
-
-  .marker-image {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  }
-
-  .marker-image.full { border-color: #ef4444; }
-  .marker-image.available { border-color: #10b981; }
-
   .cluster-marker {
     width: 48px;
     height: 48px;
@@ -259,10 +242,16 @@ import MapTripDetail from "./MapTripDetail.astro";
   import mapboxgl from "mapbox-gl";
   import { fetchNearbyTrips, getMapboxToken } from "../scripts/map/MapApi";
   import { CONFIG, getRadiusByZoom } from "../scripts/map/MapConfig";
-  import { createTripMarker, createClusterMarker, groupTripsByLocation, clearMarkers } from "../scripts/map/MapMarkers";
+  import { tripsToGeoJSON, addImageMarkerLayers, removeTripMarkerLayers, updateTripMarkers, clearMarkers } from "../scripts/map/MapMarkers";
 
   let map: mapboxgl.Map;
-  let markers: mapboxgl.Marker[] = [];
+  let popup: mapboxgl.Popup;
+  
+  // Marker configuration
+  const markerConfig = {
+    singleMarkerRadius: 16,    // Smaller markers (was 22)
+    clusterRadius: 0.001       // Grouping distance (lat/lng deg, ~111m at equator)
+  };
   
   // Filter state
   let activeTags: string[] = [];
@@ -270,6 +259,14 @@ import MapTripDetail from "./MapTripDetail.astro";
 
   const searchBtn = document.getElementById("search-area-btn") as HTMLButtonElement;
   const filterBtn = document.getElementById("filter-btn") as HTMLButtonElement;
+  
+  // Initialize reusable popup once
+  function initPopup(): void {
+    popup = new mapboxgl.Popup({
+      closeButton: true,
+      maxWidth: 'none'
+    });
+  }
 
 async function loadTrips(lng: number, lat: number, zoom: number) {
     const loadingEl = document.getElementById('map-loading');
@@ -294,28 +291,29 @@ async function loadTrips(lng: number, lat: number, zoom: number) {
   }
 
   function updateMap(trips: any[]) {
-    clearMarkers(markers);
-    markers = [];
+    // Remove old layers and source if they exist
+    removeTripMarkerLayers(map, 'trips');
     
-    const groups = groupTripsByLocation(trips);
+    // Add new GeoJSON source with grouping (no drift!)
+    const geoData = tripsToGeoJSON(trips, markerConfig);
     
-    groups.forEach((tripGroup, key) => {
-      const [lat, lng] = key.split(',').map(Number);
-      const coordinates: [number, number] = [lng, lat];
-      
-      if (tripGroup.length === 1) {
-        const marker = createTripMarker(tripGroup[0], map, (trip) => {
-          (window as any).showTripDetail(trip);
-        });
-        markers.push(marker);
-      } else {
-        const marker = createClusterMarker(tripGroup, coordinates, map, (tripGroup, coords) => {
-          showTripList(tripGroup, coords);
-        });
-        markers.push(marker);
-      }
-    });
+    const source = map.getSource('trips');
+    if (!source) {
+      map.addSource('trips', {
+        type: 'geojson',
+        data: geoData
+      });
+    } else {
+      (source as mapboxgl.GeoJSONSource).setData(geoData);
+    }
+    
+    // Add interaction layers with configuration
+    addImageMarkerLayers(map, 'trips', (trip) => {
+      (window as any).showTripDetail(trip);
+    }, markerConfig);
   }
+
+
 
   function showTripList(trips: any[], coordinates: [number, number]) {
     const html = `
@@ -350,18 +348,13 @@ async function loadTrips(lng: number, lat: number, zoom: number) {
       </div>
     `;
     
-    const popup = new mapboxgl.Popup({
-      closeButton: true,
-      maxWidth: 'none',
-    })
-      .setLngLat(coordinates)
-      .setHTML(html)
-      .addTo(map);
+    // Use reusable popup instance
+    popup.setLngLat(coordinates).setHTML(html).addTo(map);
     
     setTimeout(() => {
-      document.querySelectorAll('.trip-list-item').forEach(item => {
+      document.querySelectorAll('.trip-list-item').forEach((item: Element) => {
         item.addEventListener('click', () => {
-          const tripId = item.getAttribute('data-trip-id');
+          const tripId = (item as HTMLElement).getAttribute('data-trip-id');
           const trip = trips.find(t => t.trip_id === tripId);
           if (trip) {
             popup.remove();
@@ -417,11 +410,29 @@ async function initMap() {
       });
     }
 
+    // Start fetching trips immediately (parallel with map init)
+    const initialTripsPromise = fetchNearbyTrips({
+      latitude: userLocation[1],
+      longitude: userLocation[0],
+      zoom: CONFIG.DEFAULT_ZOOM,
+      tags: activeTags.length > 0 ? activeTags : undefined,
+      locationType: activeLocationType as 'destination' | 'pickup' | 'dropoff' | 'all',
+    });
+
+    // Mobile detection for performance optimizations
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     map = new mapboxgl.Map({
       container: "map",
       style: "mapbox://styles/mapbox/standard",
       center: userLocation,
-      zoom: CONFIG.DEFAULT_ZOOM
+      zoom: CONFIG.DEFAULT_ZOOM,
+      // Mobile optimizations
+      ...(isMobile && {
+        fadeDuration: 100,
+        maxPitch: 45,
+        attributionControl: false
+      })
     });
 
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-left');
@@ -431,20 +442,32 @@ async function initMap() {
     }), 'bottom-left');
 
     map.on("load", async () => {
-      await loadTrips(userLocation[0], userLocation[1], CONFIG.DEFAULT_ZOOM);
+      // Data was already fetched in parallel, just update map
+      const trips = await initialTripsPromise;
+      updateMap(trips);
     });
 
+    // Throttled moveend handler
+    let moveEndThrottleTimeout: ReturnType<typeof setTimeout> | null = null;
     map.on("moveend", () => {
-      searchBtn.style.display = "block";
+      if (moveEndThrottleTimeout) return;
+      moveEndThrottleTimeout = setTimeout(() => {
+        moveEndThrottleTimeout = null;
+        searchBtn.style.display = "block";
+      }, 300);
     });
 
-    // Search area button
+    // Debounced search area button
+    let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
     searchBtn?.addEventListener("click", async () => {
-      searchBtn.textContent = "Searching...";
-      const center = map.getCenter();
-      await loadTrips(center.lng, center.lat, map.getZoom());
-      searchBtn.textContent = "Search this area";
-      searchBtn.style.display = "none";
+      if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(async () => {
+        searchBtn.textContent = "Searching...";
+        const center = map.getCenter();
+        await loadTrips(center.lng, center.lat, map.getZoom());
+        searchBtn.textContent = "Search this area";
+        searchBtn.style.display = "none";
+      }, 300);
     });
 
     // Province selection from search
@@ -452,16 +475,51 @@ async function initMap() {
       handleProvinceSelect(e.detail);
     }) as EventListener);
 
-    // Filters applied
+    // Debounced filters applied
+    let filtersDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
     window.addEventListener('filters-apply', ((e: CustomEvent) => {
-      activeTags = e.detail.tags;
-      activeLocationType = e.detail.locationType;
-      const center = map.getCenter();
-      loadTrips(center.lng, center.lat, map.getZoom());
+      if (filtersDebounceTimeout) clearTimeout(filtersDebounceTimeout);
+      filtersDebounceTimeout = setTimeout(() => {
+        activeTags = e.detail.tags;
+        activeLocationType = e.detail.locationType;
+        const center = map.getCenter();
+        loadTrips(center.lng, center.lat, map.getZoom());
+      }, 300);
     }) as EventListener);
   }
 
-window.addEventListener("DOMContentLoaded", () => {
+  // Cleanup function to prevent memory leaks
+  function cleanupMap(): void {
+    if (!map) return;
+    
+    // Remove map event listeners
+    map.off('load', () => {});
+    map.off('moveend', () => {});
+    
+    // Remove layers
+    removeTripMarkerLayers(map, 'trips');
+    
+    // Remove province layers if exist
+    if (map.getLayer('province')) map.removeLayer('province');
+    if (map.getSource('province')) map.removeSource('province');
+    
+    // Remove popup
+    if (popup) {
+      popup.remove();
+      popup = undefined as any;
+    }
+    
+    // Remove map instance
+    map.remove();
+    map = undefined as any;
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    initPopup();
     initMap();
   });
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', cleanupMap);
+  window.addEventListener('pagehide', cleanupMap);
 </script>

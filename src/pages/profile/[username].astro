@@ -113,7 +113,16 @@ const locationStr = [userInfo.location_city, userInfo.location_country].filter(B
 const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0;
 ---
 
-<PagePlate title={`${profile.full_name || username} (@${username}) | Tara G!`}>
+<PagePlate title={`${profile.full_name || username} (@${username}) | Tara G!`}
+  description={{
+    title: `${profile.full_name || username} (@${username})`,
+    type: "profile",
+    description: profile.bio 
+      ? profile.bio.substring(0, 155) 
+      : `Check out ${profile.full_name || username}'s travel profile on Tara G!`,
+    previewImage: displayAvatarUrl,
+  }}
+>
 <div class="min-h-screen bg-gray-50 pb-24">
   <div class="max-w-4xl mx-auto px-4 pt-5 space-y-4">
 

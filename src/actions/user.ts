@@ -279,9 +279,9 @@ export const onboarding = {
   // ============================================================================
   setTravelPreferences: defineAction({
     input: z.object({
-      budget_range: z.enum(['budget', 'moderate', 'luxury']).optional(),
+      budget_range: z.enum(['budget', 'moderate', 'luxury', 'any']).optional(),
       travel_style: z.array(z.string()).optional(),
-      pace_preference: z.enum(['relaxed', 'moderate', 'packed']).optional(),
+      pace_preference: z.enum(['relaxed', 'moderate', 'fast', 'any']).optional(),
       accommodation_type: z.array(z.string()).optional(),
       preferred_group_size: z.number().int().min(1).max(50).optional(),
       max_group_size: z.number().int().min(1).max(100).optional(),

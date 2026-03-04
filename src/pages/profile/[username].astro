@@ -116,11 +116,11 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
 <PagePlate title={`${profile.full_name || username} (@${username}) | Tara G!`}
   description={{
     title: `${profile.full_name || username} (@${username})`,
-    type: "profile",
+    type: "ProfilePage",
     description: profile.bio 
       ? profile.bio.substring(0, 155) 
       : `Check out ${profile.full_name || username}'s travel profile on Tara G!`,
-    previewImage: displayAvatarUrl,
+    previewImage: displayAvatarUrl || undefined,
   }}
 >
 <div class="min-h-screen bg-gray-50 pb-24">

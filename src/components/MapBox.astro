@@ -5,7 +5,12 @@ import MapFilterModal from "./MapFilterModal.astro";
 import MapTripDetail from "./MapTripDetail.astro";
 ---
 
-<PagePlate title="Maps" noContainer>
+<PagePlate title="Maps" noContainer description={{
+  title: "Interactive Maps - Tara G!",
+  description: "Explore interactive maps of Philippine destinations. Discover trips, places, and travel routes across all 82 provinces.",
+  author: "Tara G!",
+  authorIs: "Organization",
+}}>
   <div id="search-box">
     <MapSearchBox />
     

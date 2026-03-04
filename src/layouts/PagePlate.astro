@@ -49,6 +49,18 @@ if(description && !description.title){
 <Layout title={title} html={html}>
   <Fragment slot={`head-last`}>
     <SeoHead description={description} prefetch={prefetch} showFb={!!description?.fbAppId} />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Tara G!",
+      "url": "https://tara-g.site",
+      "logo": `${PUBLIC_R2_URL}logo-with-bg.jpg`,
+      "description": "Explore the Philippines together with Tara G! - Join or create trips, connect with fellow travelers, and discover all 82 Philippine provinces.",
+      "sameAs": [
+        "https://www.facebook.com/taragph",
+        "https://www.instagram.com/taragph"
+      ]
+    })} />
     <slot name="head-extra" />
   </Fragment>
     {clean?"":<>

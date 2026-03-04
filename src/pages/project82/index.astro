@@ -270,7 +270,12 @@ const authId = Astro.locals.user_id ?? "";
 
 <body>
 
-<PagePlate title="Project 82" noContainer>
+<PagePlate title="Project 82" noContainer description={{
+  title: "Project 82 - Tara G!",
+  description: "Visit all 82 provinces of the Philippines with Tara G! Track your progress and connect with fellow travelers on this epic journey.",
+  author: "Tara G!",
+  authorIs: "Organization",
+}}>
   <!-- Page shell -->
   <div id="p82-shell" data-auth={authId}>
 

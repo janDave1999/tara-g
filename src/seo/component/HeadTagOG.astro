@@ -1,5 +1,6 @@
 ---
 import { SEO } from "astro-seo";
+import { PUBLIC_R2_URL } from "astro:env/client";
 
 interface Props {
   description?: {
@@ -17,7 +18,7 @@ interface Props {
 
 const { description } = Astro.props as Props;
 const desc = description || {};
-const fallbackImage = `${Astro.url.origin}/images/og-preview.png`;
+const fallbackImage = `${PUBLIC_R2_URL}logo-with-bg.jpg`;
 const imageUrl = desc.previewImage || fallbackImage;
 ---
 

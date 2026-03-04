@@ -3,7 +3,12 @@ import PagePlate from "@/layouts/PagePlate.astro";
 import { PUBLIC_R2_URL } from "astro:env/client";
 ---
 
-<PagePlate title="Discover Adventures">
+<PagePlate title="Discover Adventures" description={{
+  title: "Discover Adventures - Tara G!",
+  description: "Discover hidden gems and popular destinations across the Philippines. Find your next adventure with Tara G!",
+  author: "Tara G!",
+  authorIs: "Organization",
+}}>
   <section class="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-24">
 
     <!-- Hero / Intro -->

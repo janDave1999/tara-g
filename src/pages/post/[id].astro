@@ -1,0 +1,737 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import { supabaseAdmin } from "@/lib/supabase";
+import { PUBLIC_R2_URL } from "astro:env/client";
+
+const { id } = Astro.params;
+const userId = Astro.locals.user_id ?? null;
+
+if (!id) return Astro.redirect("/feeds");
+
+const { data: post, error } = await supabaseAdmin.rpc("get_single_post", {
+  p_post_id:   id,
+  p_viewer_id: userId,
+});
+
+if (error || !post) return Astro.redirect("/feeds");
+
+const firstMediaKey = (post.media_urls as string[] | null)?.[0] ?? null;
+const ogImage = firstMediaKey
+  ? firstMediaKey.startsWith("http") ? firstMediaKey : `${PUBLIC_R2_URL}${firstMediaKey}`
+  : undefined;
+
+const avatarSrc = post.author_avatar
+  ? post.author_avatar.startsWith("http") ? post.author_avatar : `${PUBLIC_R2_URL}${post.author_avatar}`
+  : null;
+
+const photos: string[] = ((post.media_urls as string[]) ?? []).map((key: string) =>
+  key.startsWith("http") ? key : `${PUBLIC_R2_URL}${key}`
+);
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)  return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+}
+
+const ogDescription = {
+  title:           (post.title as string | null) ?? `${post.author_full_name} on Tara-G`,
+  description:     (post.content as string).slice(0, 160),
+  previewImage:    ogImage,
+  containsArticle: true,
+  datePublished:   post.created_at as string,
+  author:          post.author_full_name as string,
+};
+---
+
+<PagePlate title={ogDescription.title} description={ogDescription} noFooter>
+  <div class="max-w-2xl mx-auto py-4">
+
+    <!-- Back -->
+    <a
+      href="/feeds"
+      class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      Back to Feed
+    </a>
+
+    <!-- Post card -->
+    <article class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+
+      <!-- Author row -->
+      <div class="flex items-center gap-3">
+        <a href={`/profile/${post.author_username}`} class="flex-shrink-0">
+          {avatarSrc ? (
+            <img
+              src={avatarSrc}
+              alt={post.author_full_name as string}
+              class="w-11 h-11 rounded-full object-cover"
+            />
+          ) : (
+            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold">
+              {(post.author_full_name as string).charAt(0).toUpperCase()}
+            </div>
+          )}
+        </a>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <a href={`/profile/${post.author_username}`} class="font-semibold text-gray-900 text-sm hover:underline">
+              {post.author_full_name}
+            </a>
+            <span class="text-gray-400 text-xs">@{post.author_username}</span>
+            <span class="text-gray-300 text-xs">·</span>
+            <span class="text-gray-400 text-xs">{timeAgo(post.created_at as string)}</span>
+          </div>
+          <span class="inline-block mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+            Trip Post
+          </span>
+        </div>
+      </div>
+
+      <!-- Trip badge -->
+      {post.trip_id && post.trip_title && (
+        <a
+          href={`/trips/${post.trip_id}`}
+          class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full hover:bg-blue-100 transition"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {post.trip_title}
+        </a>
+      )}
+
+      <!-- Content -->
+      <div class="space-y-1.5">
+        {post.title && (
+          <h1 class="font-semibold text-gray-900 text-base">{post.title}</h1>
+        )}
+        <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
+
+        {post.location_name && (
+          <p class="flex items-center gap-1 text-gray-400 text-xs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            {post.location_name}
+          </p>
+        )}
+      </div>
+
+      <!-- Photo grid -->
+      {photos.length === 1 && (
+        <div class="rounded-xl overflow-hidden">
+          <img src={photos[0]} alt="post photo" class="w-full max-h-96 object-cover" loading="lazy" />
+        </div>
+      )}
+      {photos.length === 2 && (
+        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+          {photos.map((src) => <img src={src} alt="post photo" class="w-full h-52 object-cover" loading="lazy" />)}
+        </div>
+      )}
+      {photos.length === 3 && (
+        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+          <img src={photos[0]} alt="post photo" class="w-full h-52 object-cover row-span-2" loading="lazy" />
+          <img src={photos[1]} alt="post photo" class="w-full h-[102px] object-cover" loading="lazy" />
+          <img src={photos[2]} alt="post photo" class="w-full h-[102px] object-cover" loading="lazy" />
+        </div>
+      )}
+      {photos.length >= 4 && (
+        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+          {photos.slice(0, 4).map((src) => <img src={src} alt="post photo" class="w-full h-44 object-cover" loading="lazy" />)}
+        </div>
+      )}
+
+      <!-- Hashtags -->
+      {(post.hashtags as string[])?.length > 0 && (
+        <div class="flex flex-wrap gap-1.5">
+          {(post.hashtags as string[]).map((tag) => (
+            <a href={`/search?q=%23${tag}`} class="text-blue-500 text-xs font-medium hover:underline">
+              #{tag}
+            </a>
+          ))}
+        </div>
+      )}
+
+      <!-- Counts row -->
+      <div class="flex items-center gap-4 text-xs text-gray-400 pt-1">
+        <span id="post-like-count-display">{(post.like_count as number) > 0 ? `${post.like_count} likes` : ""}</span>
+        <span id="post-comment-count-display">{(post.comment_count as number) > 0 ? `${post.comment_count} comments` : ""}</span>
+        <span id="post-share-count-display">{(post.share_count as number) > 0 ? `${post.share_count} shares` : ""}</span>
+      </div>
+
+      <!-- Action bar -->
+      <div class="flex items-center gap-2 pt-1 border-t border-gray-100">
+        <!-- Like -->
+        <button
+          id="post-like-btn"
+          type="button"
+          data-post-id={post.post_id as string}
+          data-liked={post.is_liked_by_viewer ? "true" : "false"}
+          data-like-count={String(post.like_count ?? 0)}
+          data-authed={userId ? "true" : "false"}
+          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50"
+          class:list={[post.is_liked_by_viewer ? "text-red-500" : "text-gray-500"]}
+        >
+          <svg id="post-like-icon" class={`w-5 h-5 ${post.is_liked_by_viewer ? "text-red-500" : "text-gray-400"}`}
+            fill={post.is_liked_by_viewer ? "currentColor" : "none"}
+            stroke={post.is_liked_by_viewer ? "none" : "currentColor"}
+            viewBox="0 0 24 24">
+            {post.is_liked_by_viewer ? (
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            ) : (
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            )}
+          </svg>
+          Like
+        </button>
+
+        <!-- Comment (scrolls to comment section) -->
+        <button
+          id="post-comment-btn"
+          type="button"
+          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          Comment
+        </button>
+
+        <!-- Share -->
+        <button
+          id="post-share-btn"
+          type="button"
+          data-post-id={post.post_id as string}
+          data-title={ogDescription.title}
+          data-content={post.content as string}
+          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          Share
+        </button>
+      </div>
+
+      <!-- Sign-in note (unauthenticated only) -->
+      {!userId && (
+        <p id="signin-note" class="text-center text-xs text-gray-500 bg-gray-50 rounded-xl py-2 px-3">
+          <a href={`/signin?from=/post/${post.post_id}`} class="text-blue-600 font-medium hover:underline">Sign in</a>
+          {" "}to like and comment on this post.
+        </p>
+      )}
+    </article>
+
+    <!-- Comments section -->
+    <section class="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-gray-900">Comments <span id="comment-count-label" class="text-gray-400 font-normal text-sm"></span></h2>
+      </div>
+
+      <!-- Reply banner -->
+      <div id="reply-banner" class="hidden items-center gap-2 mb-3 px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+        </svg>
+        <span id="reply-banner-text">Replying to …</span>
+        <button id="reply-cancel" class="ml-auto text-blue-500 hover:text-blue-700 font-medium">Cancel</button>
+      </div>
+
+      <!-- Report picker -->
+      <div id="report-picker" class="hidden flex-col gap-2 mb-3 px-3 py-2 bg-red-50 rounded-xl">
+        <p class="text-xs font-semibold text-red-700">Why are you reporting this?</p>
+        <div class="flex flex-wrap gap-2">
+          {['spam', 'inappropriate', 'harassment', 'misinformation', 'other'].map(r => (
+            <button data-reason={r}
+              class="report-reason-btn px-3 py-1 rounded-full text-xs border border-red-300 text-red-600 hover:bg-red-100 transition capitalize">
+              {r}
+            </button>
+          ))}
+        </div>
+        <button id="report-cancel" class="text-xs text-gray-500 hover:text-gray-700 self-start mt-1">Cancel</button>
+      </div>
+
+      <!-- Comment input (authenticated only) -->
+      {userId && (
+        <div class="flex flex-col gap-1 mb-4">
+          <div class="flex items-end gap-2">
+            <textarea
+              id="page-comment-input"
+              rows="1"
+              maxlength="500"
+              placeholder="Write a comment…"
+              class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
+            ></textarea>
+            <button
+              id="page-comment-send"
+              type="button"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              Send
+            </button>
+          </div>
+          <span id="page-comment-char" class="text-xs text-gray-400 text-right">0 / 500</span>
+        </div>
+      )}
+
+      <!-- Comment list -->
+      <div id="page-comment-list" class="space-y-4">
+        <p class="text-center text-gray-400 text-sm py-4">Loading comments…</p>
+      </div>
+    </section>
+
+  </div>
+</PagePlate>
+
+<script
+  define:vars={{
+    POST_ID:        post.post_id,
+    IS_AUTHED:      !!userId,
+    AUTH_USER_ID:   userId ?? null,
+    VIEWER_USERNAME: Astro.locals.username ?? null,
+    VIEWER_FULLNAME: Astro.locals.full_name ?? null,
+    VIEWER_AVATAR:   Astro.locals.avatar_url ?? null,
+  }}
+  is:inline
+>
+  window.__POST_ID__         = POST_ID;
+  window.__IS_AUTHED__       = IS_AUTHED;
+  window.__AUTH_USER_ID__    = AUTH_USER_ID;
+  window.__VIEWER_USERNAME__ = VIEWER_USERNAME;
+  window.__VIEWER_FULLNAME__ = VIEWER_FULLNAME;
+  window.__VIEWER_AVATAR__   = VIEWER_AVATAR;
+</script>
+
+<script>
+  import { actions } from "astro:actions";
+  import { showToast } from "@/scripts/Toast";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const POST_ID         = (window as any).__POST_ID__;
+  const IS_AUTHED       = (window as any).__IS_AUTHED__;
+  const AUTH_USER_ID    = (window as any).__AUTH_USER_ID__;
+  const VIEWER_USERNAME = (window as any).__VIEWER_USERNAME__;
+  const VIEWER_FULLNAME = (window as any).__VIEWER_FULLNAME__;
+  const VIEWER_AVATAR   = (window as any).__VIEWER_AVATAR__;
+
+  // ── Visitor token (for share visit tracking) ──────────────────────────────
+  function getVisitorToken(): string {
+    if (AUTH_USER_ID) return String(AUTH_USER_ID);
+    const key = '__tara_visitor__';
+    let token = localStorage.getItem(key);
+    if (!token) { token = crypto.randomUUID(); localStorage.setItem(key, token); }
+    return token;
+  }
+
+  // ── Record share visit if ?sid= is present ────────────────────────────────
+  const urlParams = new URLSearchParams(location.search);
+  const incomingShareId = urlParams.get('sid');
+  if (incomingShareId) {
+    // Fire-and-forget — don't block page render
+    actions.feed.recordShareVisit({
+      shareId:      incomingShareId,
+      visitorToken: getVisitorToken(),
+    });
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7)  return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+
+  function avatarHtml(avatar, name, size = "w-7 h-7") {
+    if (avatar) {
+      const src = avatar.startsWith("http") ? avatar : `${PUBLIC_R2_URL}${avatar}`;
+      return `<img src="${esc(src)}" alt="${esc(name)}" class="${size} rounded-full object-cover flex-shrink-0" />`;
+    }
+    return `<div class="${size} rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">${esc(name.charAt(0).toUpperCase())}</div>`;
+  }
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let replyingTo = null; // { commentId, username, level }
+  let reportingComment = null;
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────────
+  const list           = document.getElementById("page-comment-list");
+  const countLabel     = document.getElementById("comment-count-label");
+  const replyBanner    = document.getElementById("reply-banner");
+  const replyBannerTxt = document.getElementById("reply-banner-text");
+  const replyCancelBtn = document.getElementById("reply-cancel");
+  const reportPicker   = document.getElementById("report-picker");
+  const reportCancelBtn = document.getElementById("report-cancel");
+  const commentInput   = document.getElementById("page-comment-input");
+  const commentSend    = document.getElementById("page-comment-send");
+  const commentChar    = document.getElementById("page-comment-char");
+  const likeBtn        = document.getElementById("post-like-btn");
+  const likeIcon       = document.getElementById("post-like-icon");
+  const shareBtn       = document.getElementById("post-share-btn");
+  const commentNavBtn  = document.getElementById("post-comment-btn");
+  const likeCountEl    = document.getElementById("post-like-count-display");
+  const shareCountEl   = document.getElementById("post-share-count-display");
+
+  // ── Tree building ─────────────────────────────────────────────────────────
+  function buildTree(flat) {
+    const childrenOf = new Map();
+    const roots = [];
+    for (const c of flat) {
+      if (!c.parent_comment_id) {
+        roots.push(c);
+      } else {
+        if (!childrenOf.has(c.parent_comment_id)) childrenOf.set(c.parent_comment_id, []);
+        childrenOf.get(c.parent_comment_id).push(c);
+      }
+    }
+    return { roots, childrenOf };
+  }
+
+  function commentHtml(c, level) {
+    const isLiked    = c.viewer_interaction === "like";
+    const isDisliked = c.viewer_interaction === "dislike";
+    const canReply   = level < 2;
+    return `
+      <div class="flex gap-2" data-comment-id="${esc(c.comment_id)}" data-level="${level}">
+        ${avatarHtml(c.author_avatar, c.author_full_name)}
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-1">
+            <div class="flex items-baseline gap-1.5 flex-wrap">
+              <a href="/profile/${esc(c.author_username)}" class="text-xs font-semibold text-gray-900 hover:underline">${esc(c.author_full_name)}</a>
+              <span class="text-xs text-gray-400">${timeAgo(c.created_at)}</span>
+            </div>
+            <button class="comment-menu-btn flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition rounded"
+              data-comment-id="${esc(c.comment_id)}" aria-label="More options">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-sm text-gray-700 mt-0.5 leading-relaxed">${esc(c.content)}</p>
+          <div class="flex items-center gap-3 mt-1.5">
+            <button class="comment-like-btn flex items-center gap-1 text-xs transition"
+              data-comment-id="${esc(c.comment_id)}" data-type="like"
+              data-like-count="${c.like_count}" data-dislike-count="${c.dislike_count}"
+              data-active="${c.viewer_interaction ?? ''}">
+              <svg class="w-3.5 h-3.5 ${isLiked ? 'text-blue-500' : 'text-gray-400'}"
+                fill="${isLiked ? 'currentColor' : 'none'}" stroke="${isLiked ? 'none' : 'currentColor'}"
+                viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
+              </svg>
+              <span class="comment-like-count ${isLiked ? 'text-blue-500' : 'text-gray-400'}">${c.like_count > 0 ? c.like_count : ''}</span>
+            </button>
+            <button class="comment-dislike-btn flex items-center gap-1 text-xs transition"
+              data-comment-id="${esc(c.comment_id)}" data-type="dislike">
+              <svg class="w-3.5 h-3.5 ${isDisliked ? 'text-red-500' : 'text-gray-400'}"
+                fill="${isDisliked ? 'currentColor' : 'none'}" stroke="${isDisliked ? 'none' : 'currentColor'}"
+                viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+              </svg>
+              <span class="comment-dislike-count ${isDisliked ? 'text-red-500' : 'text-gray-400'}">${c.dislike_count > 0 ? c.dislike_count : ''}</span>
+            </button>
+            ${canReply ? `<button class="comment-reply-btn text-xs text-gray-400 hover:text-blue-500 transition font-medium"
+              data-comment-id="${esc(c.comment_id)}" data-username="${esc(c.author_full_name)}" data-level="${level}">Reply</button>` : ''}
+          </div>
+          <div class="comment-children mt-3 space-y-3 pl-2 border-l-2 border-gray-100"></div>
+        </div>
+      </div>`;
+  }
+
+  function renderComments(flat) {
+    if (!list) return;
+    if (flat.length === 0) {
+      list.innerHTML = `<p class="text-center text-gray-400 text-sm py-4">No comments yet. Be the first!</p>`;
+      if (countLabel) countLabel.textContent = "";
+      return;
+    }
+    const { roots, childrenOf } = buildTree(flat);
+    list.innerHTML = roots.map(r => commentHtml(r, 0)).join("");
+    if (countLabel) countLabel.textContent = `(${flat.length})`;
+
+    for (const root of roots) {
+      const l1s = childrenOf.get(root.comment_id) ?? [];
+      if (!l1s.length) continue;
+      const slot = list.querySelector(`[data-comment-id="${root.comment_id}"] .comment-children`);
+      if (!slot) continue;
+      slot.innerHTML = l1s.map(l1 => commentHtml(l1, 1)).join("");
+      for (const l1 of l1s) {
+        const l2s = childrenOf.get(l1.comment_id) ?? [];
+        if (!l2s.length) continue;
+        const slot2 = slot.querySelector(`[data-comment-id="${l1.comment_id}"] .comment-children`);
+        if (!slot2) continue;
+        slot2.innerHTML = l2s.map(l2 => commentHtml(l2, 2)).join("");
+      }
+    }
+    attachCommentHandlers();
+  }
+
+  function appendOptimisticComment(content, parentCommentId, level) {
+    const c = {
+      comment_id:         crypto.randomUUID(),
+      parent_comment_id:  parentCommentId,
+      author_auth_id:     "",
+      author_username:    VIEWER_USERNAME ?? "",
+      author_full_name:   VIEWER_FULLNAME ?? "You",
+      author_avatar:      VIEWER_AVATAR ?? null,
+      content,
+      like_count:         0,
+      dislike_count:      0,
+      viewer_interaction: null,
+      created_at:         new Date().toISOString(),
+    };
+    const html = commentHtml(c, level);
+    if (!parentCommentId) {
+      list.insertAdjacentHTML("beforeend", html);
+    } else {
+      const slot = list.querySelector(`[data-comment-id="${parentCommentId}"] .comment-children`);
+      if (slot) slot.insertAdjacentHTML("beforeend", html);
+    }
+    const current = parseInt(countLabel?.textContent?.replace(/\D/g, "") || "0", 10);
+    if (countLabel) countLabel.textContent = `(${current + 1})`;
+    attachCommentHandlers();
+  }
+
+  // ── Attach interactive handlers to comment nodes ──────────────────────────
+  function attachCommentHandlers() {
+    // Like / Dislike
+    list.querySelectorAll(".comment-like-btn:not([data-bound]), .comment-dislike-btn:not([data-bound])").forEach(btn => {
+      btn.setAttribute("data-bound", "1");
+      btn.addEventListener("click", async () => {
+        if (!IS_AUTHED) {
+          showToast({ message: "Sign in to react to comments.", type: "info" });
+          return;
+        }
+        const commentId   = btn.dataset.commentId;
+        const type        = btn.dataset.type; // 'like' | 'dislike'
+        const node        = list.querySelector(`[data-comment-id="${commentId}"]`);
+        if (!node) return;
+        const likeBtn2    = node.querySelector(".comment-like-btn");
+        const dislikeBtn2 = node.querySelector(".comment-dislike-btn");
+        const likeCount   = parseInt(likeBtn2?.dataset.likeCount ?? "0", 10);
+        const dislikeCount = parseInt(likeBtn2?.dataset.dislikeCount ?? "0", 10);
+        const active      = likeBtn2?.dataset.active ?? "";
+
+        const res = await actions.feed.toggleCommentLike({ commentId, type });
+        if (res.error) return;
+
+        const { activeInteraction, newLikeCount, newDislikeCount } = res.data;
+        likeBtn2.dataset.likeCount    = String(newLikeCount);
+        likeBtn2.dataset.dislikeCount = String(newDislikeCount);
+        likeBtn2.dataset.active       = activeInteraction ?? "";
+
+        const likeCountSpan    = likeBtn2.querySelector(".comment-like-count");
+        const dislikeCountSpan = dislikeBtn2?.querySelector(".comment-dislike-count");
+        if (likeCountSpan)    likeCountSpan.textContent    = newLikeCount    > 0 ? String(newLikeCount) : "";
+        if (dislikeCountSpan) dislikeCountSpan.textContent = newDislikeCount > 0 ? String(newDislikeCount) : "";
+
+        // Update icon colours
+        const likeIcon2    = likeBtn2.querySelector("svg");
+        const dislikeIcon2 = dislikeBtn2?.querySelector("svg");
+        const likeSpan     = likeBtn2.querySelector("span");
+        const dislikeSpan  = dislikeBtn2?.querySelector("span");
+        const nowLiked    = activeInteraction === "like";
+        const nowDisliked = activeInteraction === "dislike";
+        if (likeIcon2) {
+          likeIcon2.setAttribute("fill", nowLiked ? "currentColor" : "none");
+          likeIcon2.setAttribute("stroke", nowLiked ? "none" : "currentColor");
+          likeIcon2.className = `w-3.5 h-3.5 ${nowLiked ? "text-blue-500" : "text-gray-400"}`;
+        }
+        if (likeSpan) likeSpan.className = `comment-like-count ${nowLiked ? "text-blue-500" : "text-gray-400"}`;
+        if (dislikeIcon2) {
+          dislikeIcon2.setAttribute("fill", nowDisliked ? "currentColor" : "none");
+          dislikeIcon2.setAttribute("stroke", nowDisliked ? "none" : "currentColor");
+          dislikeIcon2.className = `w-3.5 h-3.5 ${nowDisliked ? "text-red-500" : "text-gray-400"}`;
+        }
+        if (dislikeSpan) dislikeSpan.className = `comment-dislike-count ${nowDisliked ? "text-red-500" : "text-gray-400"}`;
+      });
+    });
+
+    // Reply
+    list.querySelectorAll(".comment-reply-btn:not([data-bound])").forEach(btn => {
+      btn.setAttribute("data-bound", "1");
+      btn.addEventListener("click", () => {
+        if (!IS_AUTHED) {
+          showToast({ message: "Sign in to reply.", type: "info" });
+          return;
+        }
+        replyingTo = { commentId: btn.dataset.commentId, username: btn.dataset.username, level: Number(btn.dataset.level) };
+        if (replyBannerTxt) replyBannerTxt.textContent = `Replying to ${replyingTo.username}`;
+        replyBanner?.classList.remove("hidden");
+        replyBanner?.classList.add("flex");
+        if (commentInput) { commentInput.placeholder = `Reply to ${replyingTo.username}…`; commentInput.focus(); }
+      });
+    });
+
+    // Menu (report)
+    list.querySelectorAll(".comment-menu-btn:not([data-bound])").forEach(btn => {
+      btn.setAttribute("data-bound", "1");
+      btn.addEventListener("click", () => {
+        if (!IS_AUTHED) { showToast({ message: "Sign in to report.", type: "info" }); return; }
+        reportingComment = btn.dataset.commentId;
+        reportPicker?.classList.remove("hidden");
+        reportPicker?.classList.add("flex");
+      });
+    });
+  }
+
+  // ── Reply cancel ──────────────────────────────────────────────────────────
+  replyCancelBtn?.addEventListener("click", () => {
+    replyingTo = null;
+    replyBanner?.classList.add("hidden");
+    replyBanner?.classList.remove("flex");
+    if (commentInput) commentInput.placeholder = "Write a comment…";
+  });
+
+  // ── Report cancel / reason ────────────────────────────────────────────────
+  reportCancelBtn?.addEventListener("click", () => {
+    reportingComment = null;
+    reportPicker?.classList.add("hidden");
+    reportPicker?.classList.remove("flex");
+  });
+
+  document.querySelectorAll(".report-reason-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!reportingComment) return;
+      const reason = btn.dataset.reason;
+      reportPicker?.classList.add("hidden");
+      reportPicker?.classList.remove("flex");
+      const res = await actions.feed.createReport({ targetType: "comment", targetId: reportingComment, reason });
+      if (!res.error) {
+        showToast({ message: res.data?.alreadyReported ? "You've already reported this." : "Thanks for your report.", type: "info" });
+      }
+      reportingComment = null;
+    });
+  });
+
+  // ── Comment input ─────────────────────────────────────────────────────────
+  if (commentInput) {
+    commentInput.addEventListener("input", () => {
+      const len = commentInput.value.length;
+      if (commentChar) commentChar.textContent = `${len} / 500`;
+      commentInput.style.height = "auto";
+      commentInput.style.height = `${Math.min(commentInput.scrollHeight, 112)}px`;
+    });
+  }
+
+  commentSend?.addEventListener("click", async () => {
+    const content = commentInput?.value.trim() ?? "";
+    if (!content) return;
+    commentSend.disabled = true;
+    const parentId = replyingTo?.commentId ?? null;
+    const level    = replyingTo ? replyingTo.level + 1 : 0;
+
+    appendOptimisticComment(content, parentId, level);
+    if (commentInput) { commentInput.value = ""; commentInput.style.height = "auto"; }
+    if (commentChar) commentChar.textContent = "0 / 500";
+    replyCancelBtn?.click();
+
+    const res = await actions.feed.createComment({ postId: POST_ID, content, parentCommentId: parentId ?? undefined });
+    if (res.error) showToast({ message: "Failed to post comment.", type: "error" });
+    commentSend.disabled = false;
+  });
+
+  // ── Like (post) ───────────────────────────────────────────────────────────
+  likeBtn?.addEventListener("click", async () => {
+    if (!IS_AUTHED) {
+      showToast({ message: "Sign in to like this post.", type: "info" });
+      return;
+    }
+    const isLiked  = likeBtn.dataset.liked === "true";
+    const count    = parseInt(likeBtn.dataset.likeCount ?? "0", 10);
+    const newLiked = !isLiked;
+    const newCount = newLiked ? count + 1 : Math.max(0, count - 1);
+
+    // Optimistic
+    likeBtn.dataset.liked      = String(newLiked);
+    likeBtn.dataset.likeCount  = String(newCount);
+    likeBtn.className          = `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${newLiked ? "text-red-500" : "text-gray-500"}`;
+    if (likeIcon) {
+      likeIcon.setAttribute("fill", newLiked ? "currentColor" : "none");
+      likeIcon.setAttribute("stroke", newLiked ? "none" : "currentColor");
+      likeIcon.className = `w-5 h-5 ${newLiked ? "text-red-500" : "text-gray-400"}`;
+      likeIcon.innerHTML = newLiked
+        ? `<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />`
+        : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />`;
+    }
+    if (likeCountEl) likeCountEl.textContent = newCount > 0 ? `${newCount} likes` : "";
+
+    const res = await actions.feed.toggleLike({ postId: POST_ID });
+    if (res.error) {
+      // Revert
+      likeBtn.dataset.liked     = String(isLiked);
+      likeBtn.dataset.likeCount = String(count);
+      likeBtn.className         = `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${isLiked ? "text-red-500" : "text-gray-500"}`;
+      if (likeCountEl) likeCountEl.textContent = count > 0 ? `${count} likes` : "";
+      showToast({ message: "Could not update like. Try again.", type: "error" });
+      return;
+    }
+    const confirmed = res.data.newLikeCount;
+    likeBtn.dataset.likeCount = String(confirmed);
+    if (likeCountEl) likeCountEl.textContent = confirmed > 0 ? `${confirmed} likes` : "";
+  });
+
+  // ── Comment nav button (scroll to comments) ───────────────────────────────
+  commentNavBtn?.addEventListener("click", () => {
+    document.getElementById("page-comment-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (IS_AUTHED && commentInput) commentInput.focus();
+  });
+
+  // ── Share ─────────────────────────────────────────────────────────────────
+  shareBtn?.addEventListener("click", async () => {
+    const postId  = shareBtn.dataset.postId;
+    const title   = shareBtn.dataset.title;
+    const content = shareBtn.dataset.content ?? "";
+    const text    = content.slice(0, 100) + (content.length > 100 ? "…" : "");
+
+    // 1. Generate trackable share link
+    const linkRes = await actions.feed.createShareLink({ postId });
+    if (linkRes.error || !linkRes.data?.shareId) return;
+    const url = `${location.origin}/post/${postId}?sid=${linkRes.data.shareId}`;
+
+    // 2. Native share sheet or clipboard fallback
+    let shared = false;
+    if (navigator.share) {
+      try { await navigator.share({ title, text, url }); shared = true; } catch {}
+    }
+    if (!shared) {
+      try { await navigator.clipboard.writeText(url); } catch {
+        const el = document.createElement("textarea");
+        el.value = url; document.body.appendChild(el); el.select();
+        document.execCommand("copy"); document.body.removeChild(el);
+      }
+      showToast({ message: "Link copied!", type: "success" });
+      shared = true;
+    }
+    // Note: share_count increments when recipients open the link, not here
+  });
+
+  // ── Load comments on mount ────────────────────────────────────────────────
+  (async () => {
+    const res = await actions.feed.getComments({ postId: POST_ID, limit: 50, offset: 0 });
+    if (res.error || !res.data) {
+      if (list) list.innerHTML = `<p class="text-center text-gray-400 text-sm py-4">Could not load comments.</p>`;
+      return;
+    }
+    renderComments(res.data.comments ?? []);
+  })();
+</script>

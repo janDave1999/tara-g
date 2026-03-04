@@ -167,7 +167,6 @@ export const feed = {
       offset: z.number().int().min(0).default(0),
     }),
     handler: async ({ postId, limit, offset }, context) => {
-      if (!context.locals.user_id) return { comments: [] };
 
       const { data, error } = await supabaseAdmin.rpc("get_post_comments", {
         p_post_id:   postId,
@@ -232,6 +231,45 @@ export const feed = {
         newDislikeCount:   data?.[0]?.new_dislike_count ?? 0,
       };
     }),
+  }),
+
+  getPost: defineAction({
+    input: z.object({ postId: z.string().uuid() }),
+    handler: async ({ postId }, context) => {
+      const { data, error } = await supabaseAdmin.rpc('get_single_post', {
+        p_post_id:   postId,
+        p_viewer_id: context.locals.user_id ?? null,
+      });
+      if (error) console.error("[feed.getPost]", error);
+      return { post: (data as any) ?? null };
+    },
+  }),
+
+  createShareLink: defineAction({
+    input: z.object({ postId: z.string().uuid() }),
+    handler: async ({ postId }, context) => {
+      const { data, error } = await supabaseAdmin.rpc('create_share_link', {
+        p_post_id: postId,
+        p_user_id: context.locals.user_id ?? null,
+      });
+      if (error) console.error("[feed.createShareLink]", error);
+      return { shareId: data as string };
+    },
+  }),
+
+  recordShareVisit: defineAction({
+    input: z.object({
+      shareId:      z.string().uuid(),
+      visitorToken: z.string().min(1),
+    }),
+    handler: async ({ shareId, visitorToken }) => {
+      const { error } = await supabaseAdmin.rpc('record_share_visit', {
+        p_share_id:      shareId,
+        p_visitor_token: visitorToken,
+      });
+      if (error) console.error("[feed.recordShareVisit]", error);
+      return { ok: !error };
+    },
   }),
 
   createReport: defineAction({

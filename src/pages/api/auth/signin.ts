@@ -44,6 +44,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const password = formData.get("password")?.toString();
     const provider = formData.get("provider")?.toString();
     const nextParam = formData.get("next")?.toString();
+    const remember = formData.get("remember") === "on";
     const safeNext = nextParam && nextParam.startsWith('/') ? nextParam : null;
 
     if (provider) {
@@ -135,12 +136,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const { access_token, refresh_token } = data.session;
     const sessionId = v4();
     
+    const maxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 4; // 30 days if remember, else 4 hours
+    
     const cookieOptions = {
       path: "/",
       httpOnly: true,
       secure: import.meta.env.PROD,
       sameSite: 'strict' as const,
-      maxAge: 60 * 60 * 4, // 4 hours
+      maxAge,
     };
 
     cookies.set("sb-access-token", access_token, cookieOptions);

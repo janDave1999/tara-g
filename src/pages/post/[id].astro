@@ -346,7 +346,7 @@ const ogDescription = {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  function timeAgo(dateStr) {
+  function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1)  return "just now";
@@ -358,11 +358,11 @@ const ogDescription = {
     return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
   }
 
-  function esc(s) {
+  function esc(s: unknown): string {
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
 
-  function avatarHtml(avatar, name, size = "w-7 h-7") {
+  function avatarHtml(avatar: string | null, name: string, size = "w-7 h-7"): string {
     if (avatar) {
       const src = avatar.startsWith("http") ? avatar : `${PUBLIC_R2_URL}${avatar}`;
       return `<img src="${esc(src)}" alt="${esc(name)}" class="${size} rounded-full object-cover flex-shrink-0" />`;
@@ -371,43 +371,62 @@ const ogDescription = {
   }
 
   // ── State ────────────────────────────────────────────────────────────────────
-  let replyingTo = null; // { commentId, username, level }
-  let reportingComment = null;
+  interface ReplyState {
+    commentId: string;
+    username: string;
+    level: number;
+  }
+
+  let replyingTo: ReplyState | null = null;
+  let reportingComment: string | null = null;
 
   // ── DOM refs ─────────────────────────────────────────────────────────────────
-  const list           = document.getElementById("page-comment-list");
-  const countLabel     = document.getElementById("comment-count-label");
-  const replyBanner    = document.getElementById("reply-banner");
-  const replyBannerTxt = document.getElementById("reply-banner-text");
-  const replyCancelBtn = document.getElementById("reply-cancel");
-  const reportPicker   = document.getElementById("report-picker");
-  const reportCancelBtn = document.getElementById("report-cancel");
-  const commentInput   = document.getElementById("page-comment-input");
-  const commentSend    = document.getElementById("page-comment-send");
-  const commentChar    = document.getElementById("page-comment-char");
-  const likeBtn        = document.getElementById("post-like-btn");
-  const likeIcon       = document.getElementById("post-like-icon");
-  const shareBtn       = document.getElementById("post-share-btn");
-  const commentNavBtn  = document.getElementById("post-comment-btn");
-  const likeCountEl    = document.getElementById("post-like-count-display");
-  const shareCountEl   = document.getElementById("post-share-count-display");
+  const list = document.getElementById("page-comment-list") as HTMLElement | null;
+  const countLabel = document.getElementById("comment-count-label") as HTMLElement | null;
+  const replyBanner = document.getElementById("reply-banner") as HTMLElement | null;
+  const replyBannerTxt = document.getElementById("reply-banner-text") as HTMLElement | null;
+  const replyCancelBtn = document.getElementById("reply-cancel") as HTMLButtonElement | null;
+  const reportPicker = document.getElementById("report-picker") as HTMLElement | null;
+  const reportCancelBtn = document.getElementById("report-cancel") as HTMLButtonElement | null;
+  const commentInput = document.getElementById("page-comment-input") as HTMLTextAreaElement | null;
+  const commentSend = document.getElementById("page-comment-send") as HTMLButtonElement | null;
+  const commentChar = document.getElementById("page-comment-char") as HTMLElement | null;
+  const likeBtn = document.getElementById("post-like-btn") as HTMLButtonElement | null;
+  const likeIcon = document.getElementById("post-like-icon") as SVGElement | null;
+  const shareBtn = document.getElementById("post-share-btn") as HTMLButtonElement | null;
+  const commentNavBtn = document.getElementById("post-comment-btn") as HTMLButtonElement | null;
+  const likeCountEl = document.getElementById("post-like-count-display") as HTMLElement | null;
+  const shareCountEl = document.getElementById("post-share-count-display");
 
   // ── Tree building ─────────────────────────────────────────────────────────
-  function buildTree(flat) {
-    const childrenOf = new Map();
-    const roots = [];
+  interface Comment {
+    comment_id: string;
+    parent_comment_id: string | null;
+    author_username: string;
+    author_full_name: string;
+    author_avatar: string | null;
+    content: string;
+    like_count: number;
+    dislike_count: number;
+    viewer_interaction: string | null;
+    created_at: string;
+  }
+
+  function buildTree(flat: Comment[]) {
+    const childrenOf = new Map<string, Comment[]>();
+    const roots: Comment[] = [];
     for (const c of flat) {
       if (!c.parent_comment_id) {
         roots.push(c);
       } else {
         if (!childrenOf.has(c.parent_comment_id)) childrenOf.set(c.parent_comment_id, []);
-        childrenOf.get(c.parent_comment_id).push(c);
+        childrenOf.get(c.parent_comment_id)!.push(c);
       }
     }
     return { roots, childrenOf };
   }
 
-  function commentHtml(c, level) {
+  function commentHtml(c: Comment, level: number): string {
     const isLiked    = c.viewer_interaction === "like";
     const isDisliked = c.viewer_interaction === "dislike";
     const canReply   = level < 2;
@@ -457,7 +476,7 @@ const ogDescription = {
       </div>`;
   }
 
-  function renderComments(flat) {
+  function renderComments(flat: Comment[]) {
     if (!list) return;
     if (flat.length === 0) {
       list.innerHTML = `<p class="text-center text-gray-400 text-sm py-4">No comments yet. Be the first!</p>`;
@@ -485,7 +504,7 @@ const ogDescription = {
     attachCommentHandlers();
   }
 
-  function appendOptimisticComment(content, parentCommentId, level) {
+  function appendOptimisticComment(content: string, parentCommentId: string | null, level: number) {
     const c = {
       comment_id:         crypto.randomUUID(),
       parent_comment_id:  parentCommentId,
@@ -500,6 +519,7 @@ const ogDescription = {
       created_at:         new Date().toISOString(),
     };
     const html = commentHtml(c, level);
+    if (!list) return;
     if (!parentCommentId) {
       list.insertAdjacentHTML("beforeend", html);
     } else {
@@ -513,23 +533,26 @@ const ogDescription = {
 
   // ── Attach interactive handlers to comment nodes ──────────────────────────
   function attachCommentHandlers() {
+    if (!list) return;
     // Like / Dislike
-    list.querySelectorAll(".comment-like-btn:not([data-bound]), .comment-dislike-btn:not([data-bound])").forEach(btn => {
+    list.querySelectorAll<HTMLButtonElement>(".comment-like-btn:not([data-bound]), .comment-dislike-btn:not([data-bound])").forEach(btn => {
       btn.setAttribute("data-bound", "1");
       btn.addEventListener("click", async () => {
         if (!IS_AUTHED) {
           showToast({ message: "Sign in to react to comments.", type: "info" });
           return;
         }
-        const commentId   = btn.dataset.commentId;
-        const type        = btn.dataset.type; // 'like' | 'dislike'
+        const commentId   = btn.dataset.commentId!;
+        const type        = btn.dataset.type as "like" | "dislike";
+        if (!commentId || !type) return;
         const node        = list.querySelector(`[data-comment-id="${commentId}"]`);
         if (!node) return;
-        const likeBtn2    = node.querySelector(".comment-like-btn");
-        const dislikeBtn2 = node.querySelector(".comment-dislike-btn");
-        const likeCount   = parseInt(likeBtn2?.dataset.likeCount ?? "0", 10);
-        const dislikeCount = parseInt(likeBtn2?.dataset.dislikeCount ?? "0", 10);
-        const active      = likeBtn2?.dataset.active ?? "";
+        const likeBtn2    = node.querySelector(".comment-like-btn") as HTMLButtonElement | null;
+        const dislikeBtn2 = node.querySelector(".comment-dislike-btn") as HTMLButtonElement | null;
+        if (!likeBtn2) return;
+        const likeCount   = parseInt(likeBtn2.dataset.likeCount ?? "0", 10);
+        const dislikeCount = parseInt(likeBtn2.dataset.dislikeCount ?? "0", 10);
+        const active      = likeBtn2.dataset.active ?? "";
 
         const res = await actions.feed.toggleCommentLike({ commentId, type });
         if (res.error) return;
@@ -554,27 +577,27 @@ const ogDescription = {
         if (likeIcon2) {
           likeIcon2.setAttribute("fill", nowLiked ? "currentColor" : "none");
           likeIcon2.setAttribute("stroke", nowLiked ? "none" : "currentColor");
-          likeIcon2.className = `w-3.5 h-3.5 ${nowLiked ? "text-blue-500" : "text-gray-400"}`;
+          likeIcon2.setAttribute("class", `w-3.5 h-3.5 ${nowLiked ? "text-blue-500" : "text-gray-400"}`);
         }
-        if (likeSpan) likeSpan.className = `comment-like-count ${nowLiked ? "text-blue-500" : "text-gray-400"}`;
+        if (likeSpan) likeSpan.setAttribute("class", `comment-like-count ${nowLiked ? "text-blue-500" : "text-gray-400"}`);
         if (dislikeIcon2) {
           dislikeIcon2.setAttribute("fill", nowDisliked ? "currentColor" : "none");
           dislikeIcon2.setAttribute("stroke", nowDisliked ? "none" : "currentColor");
-          dislikeIcon2.className = `w-3.5 h-3.5 ${nowDisliked ? "text-red-500" : "text-gray-400"}`;
+          dislikeIcon2.setAttribute("class", `w-3.5 h-3.5 ${nowDisliked ? "text-red-500" : "text-gray-400"}`);
         }
-        if (dislikeSpan) dislikeSpan.className = `comment-dislike-count ${nowDisliked ? "text-red-500" : "text-gray-400"}`;
+        if (dislikeSpan) dislikeSpan.setAttribute("class", `comment-dislike-count ${nowDisliked ? "text-red-500" : "text-gray-400"}`);
       });
     });
 
     // Reply
-    list.querySelectorAll(".comment-reply-btn:not([data-bound])").forEach(btn => {
+    list.querySelectorAll<HTMLButtonElement>(".comment-reply-btn:not([data-bound])").forEach(btn => {
       btn.setAttribute("data-bound", "1");
       btn.addEventListener("click", () => {
         if (!IS_AUTHED) {
           showToast({ message: "Sign in to reply.", type: "info" });
           return;
         }
-        replyingTo = { commentId: btn.dataset.commentId, username: btn.dataset.username, level: Number(btn.dataset.level) };
+        replyingTo = { commentId: btn.dataset.commentId!, username: btn.dataset.username!, level: Number(btn.dataset.level) };
         if (replyBannerTxt) replyBannerTxt.textContent = `Replying to ${replyingTo.username}`;
         replyBanner?.classList.remove("hidden");
         replyBanner?.classList.add("flex");
@@ -583,11 +606,11 @@ const ogDescription = {
     });
 
     // Menu (report)
-    list.querySelectorAll(".comment-menu-btn:not([data-bound])").forEach(btn => {
+    list.querySelectorAll<HTMLButtonElement>(".comment-menu-btn:not([data-bound])").forEach(btn => {
       btn.setAttribute("data-bound", "1");
       btn.addEventListener("click", () => {
         if (!IS_AUTHED) { showToast({ message: "Sign in to report.", type: "info" }); return; }
-        reportingComment = btn.dataset.commentId;
+        reportingComment = btn.dataset.commentId!;
         reportPicker?.classList.remove("hidden");
         reportPicker?.classList.add("flex");
       });
@@ -609,10 +632,11 @@ const ogDescription = {
     reportPicker?.classList.remove("flex");
   });
 
-  document.querySelectorAll(".report-reason-btn").forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>(".report-reason-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (!reportingComment) return;
-      const reason = btn.dataset.reason;
+      const reason = btn.dataset.reason as "spam" | "inappropriate" | "harassment" | "misinformation" | "other";
+      if (!reason) return;
       reportPicker?.classList.add("hidden");
       reportPicker?.classList.remove("flex");
       const res = await actions.feed.createReport({ targetType: "comment", targetId: reportingComment, reason });
@@ -664,11 +688,11 @@ const ogDescription = {
     // Optimistic
     likeBtn.dataset.liked      = String(newLiked);
     likeBtn.dataset.likeCount  = String(newCount);
-    likeBtn.className          = `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${newLiked ? "text-red-500" : "text-gray-500"}`;
+    likeBtn.setAttribute("class", `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${newLiked ? "text-red-500" : "text-gray-500"}`);
     if (likeIcon) {
       likeIcon.setAttribute("fill", newLiked ? "currentColor" : "none");
       likeIcon.setAttribute("stroke", newLiked ? "none" : "currentColor");
-      likeIcon.className = `w-5 h-5 ${newLiked ? "text-red-500" : "text-gray-400"}`;
+      likeIcon.setAttribute("class", `w-5 h-5 ${newLiked ? "text-red-500" : "text-gray-400"}`);
       likeIcon.innerHTML = newLiked
         ? `<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />`
         : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />`;
@@ -680,7 +704,7 @@ const ogDescription = {
       // Revert
       likeBtn.dataset.liked     = String(isLiked);
       likeBtn.dataset.likeCount = String(count);
-      likeBtn.className         = `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${isLiked ? "text-red-500" : "text-gray-500"}`;
+      likeBtn.setAttribute("class", `flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50 ${isLiked ? "text-red-500" : "text-gray-500"}`);
       if (likeCountEl) likeCountEl.textContent = count > 0 ? `${count} likes` : "";
       showToast({ message: "Could not update like. Try again.", type: "error" });
       return;
@@ -699,7 +723,8 @@ const ogDescription = {
   // ── Share ─────────────────────────────────────────────────────────────────
   shareBtn?.addEventListener("click", async () => {
     const postId  = shareBtn.dataset.postId;
-    const title   = shareBtn.dataset.title;
+    if (!postId) return;
+    const title   = shareBtn.dataset.title ?? "";
     const content = shareBtn.dataset.content ?? "";
     const text    = content.slice(0, 100) + (content.length > 100 ? "…" : "");
 

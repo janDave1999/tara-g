@@ -1,198 +1,181 @@
 # SEO Audit Report
 
-**Project:** Travel Trip Application (Walang Magawa)  
-**Date:** February 21, 2026  
+**Project:** Tara G! - Philippine Travel Community Platform  
+**Date:** March 4, 2026  
 **Auditor:** Automated SEO Analysis
 
 ---
 
 ## Executive Summary
 
-This report documents SEO findings for the travel trip application. The site has a reasonable SEO foundation using Astro's SEO components, but there are **critical configuration issues** and several optimization opportunities.
+This report documents SEO findings for the Tara G! travel community platform. The site has a **solid SEO foundation** using Astro's SEO components with proper schema markup, canonical URLs, and robots.txt configuration. However, several configuration inconsistencies and optimization opportunities remain.
 
-**Overall Health:** ⚠️ Needs Attention
+**Overall Health:** ⚠️ Needs Attention (Improved from previous audit)
+
+**Key Improvements Since Last Audit:**
+- ✅ Site URL properly configured to `https://tara-g.site`
+- ✅ robots.txt created with proper directives
+- ✅ Canonical URLs implemented
+- ✅ Sitemap dynamically generated
+- ✅ WebPage schema markup in place
 
 **Top Priority Issues:**
-1. Site URL still configured as placeholder `__YOUR_DOMAIN__.com/`
-2. Missing robots.txt file
-3. No canonical URLs implementation
+1. Sitemap URL mismatch (robots.txt vs Layout reference)
+2. Missing OG preview image file
+3. No Organization schema
+4. Duplicate meta descriptions on some pages
 
 ---
 
 ## Technical SEO Findings
 
-### 1. CRITICAL: Site URL Not Configured
+### 1. CRITICAL: Sitemap URL Mismatch
 
-**Issue:** Site URL in `astro.config.mjs:97` is set to placeholder value.
+**Issue:** robots.txt references `/sitemap.xml` but Layout.astro references `/sitemap-index.xml`.
 
-```javascript
-site:"https://__YOUR_DOMAIN__.com/",  // WRONG - placeholder not replaced
-```
-
-**Impact:** Critical
-- Sitemap will contain wrong URLs
-- All canonical URLs will be incorrect
-- Open Graph URLs will be broken
-- Social sharing will fail
-
-**Fix:** Replace with actual domain:
-```javascript
-site:"https://your-actual-domain.com/",
-```
-
----
-
-### 2. HIGH: Missing robots.txt
-
-**Issue:** No `public/robots.txt` file exists.
+**Location:** 
+- `src/layouts/Layout.astro:35` - references `/sitemap-index.xml`
+- `public/robots.txt:23` - references `/sitemap.xml`
 
 **Impact:** High
-- Cannot control crawler access to specific paths
-- No sitemap reference for search engines
-- Potential for unintended pages being indexed
+- Search engines may not find the sitemap
+- Inconsistent sitemap discovery
 
-**Fix:** Create `public/robots.txt`:
-```txt
-User-agent: *
-Allow: /
-
-# Disallow admin/private areas
-Disallow: /api/
-Disallow: /admin/
-Disallow: /*?*
-
-# Sitemap location
-Sitemap: https://your-actual-domain.com/sitemap-index.xml
-```
-
----
-
-### 3. HIGH: No Explicit Canonical URLs
-
-**Issue:** No canonical URL tags implemented in pages.
-
-**Impact:** High
-- Google may choose wrong URL as canonical
-- Potential duplicate content issues
-- Page authority may be split
-
-**Fix:** Add canonical URL to `Layout.astro`:
+**Fix:** Update `src/layouts/Layout.astro:35`:
 ```astro
-<link rel="canonical" href={Astro.url.href} />
-```
-
-Or update `HeadTagBasic.astro` to include canonical:
-```astro
-<SEO 
-  title={description?.title}
-  description={description?.description}
-  canonicalURL={Astro.url.href}
-/>
+<link rel="sitemap" href="/sitemap.xml" />
 ```
 
 ---
 
-### 4. MEDIUM: Sitemap Not Fully Configured
+### 2. HIGH: Missing OG Preview Image
 
-**Issue:** Sitemap integration exists but:
-- Filter doesn't exclude all non-indexable pages
-- i18n locales not fully mapped to real domain
+**Issue:** OG/Twitter tags reference `og-preview.png` that may not exist.
 
-**Current config (astro.config.mjs:85-96):**
+**Location:** `src/seo/component/HeadTagOG.astro:20`
 ```javascript
-sitemap({
-  filter: (page) =>
-    page !== "/500" &&
-    page !== "/404",
-  i18n: {
-    defaultLocale: 'en',
-    locales: {
-      en: 'en-PH',
-      ph: 'ph-PH',
-    }
-  }
-}),
-```
-
-**Fix:** 
-1. Update site URL (Issue #1)
-2. Add more exclusions for dynamic/non-content pages:
-```javascript
-filter: (page) =>
-  page !== "/500" &&
-  page !== "/404" &&
-  !page.startsWith("/api/") &&
-  !page.startsWith("/admin/"),
-```
-
----
-
-### 5. MEDIUM: Generic Preview Images
-
-**Issue:** Twitter and OG tags use generic fallback image:
-```javascript
-image: `${Astro.url.origin}/images/generic-preview-page.png`
+const fallbackImage = `${Astro.url.origin}/images/og-preview.png`;
 ```
 
 **Impact:** Medium
 - Social sharing less engaging
 - Lower CTR in social feeds
 
-**Fix:** Create branded social sharing images for:
-- Homepage
-- Trip discovery page
-- Blog/article pages (if applicable)
+**Fix:** Create `public/images/og-preview.png` (1200x630px) with branded Tara G! imagery
 
 ---
 
-### 6. LOW: Missing HTML Lang Attributes
+### 3. MEDIUM: No Organization Schema
 
-**Issue:** Layout sets `lang` attribute but i18n implementation may have gaps.
+**Issue:** Only WebPage schema is implemented. Missing Organization schema for business info.
 
-**Current (Layout.astro:23):**
-```html
-<html lang={currentLang} {...html}>
+**Location:** `src/seo/component/PageSchema.astro`
+
+**Impact:** Medium
+- No structured data for business/brand information
+- Missed rich result opportunities
+
+**Fix:** Add Organization schema to footer or about page:
+```typescript
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Tara G!",
+  "url": "https://tara-g.site",
+  "logo": "https://tara-g.site/logo.png",
+  "description": "Explore the Philippines together with Tara G! - Join or create trips, connect with fellow travelers, and discover all 82 Philippine provinces."
+}
 ```
 
-**Status:** Partially addressed. Verify `currentLang` properly maps to `en`/`ph`.
+---
+
+### 4. MEDIUM: Duplicate Meta Descriptions
+
+**Issue:** Many pages use the default fallback description.
+
+**Location:** `src/layouts/PagePlate.astro:39`
+```javascript
+description: "Discover amazing trips and experiences with Tara G!",
+```
+
+**Impact:** Medium
+- Poor SERP differentiation
+- Lower CTR for internal pages
+
+**Pages needing unique descriptions:**
+- `/trips` - "Find and join trips across the Philippines with Tara G!"
+- `/discover` - "Discover hidden gems and popular destinations in the Philippines"
+- `/maps` - "Explore interactive maps of Philippine destinations"
+- `/project82` - "Visit all 82 provinces of the Philippines with Tara G!"
+
+---
+
+### 5. MEDIUM: Missing Blog Post Schema
+
+**Issue:** Blog posts use generic WebPage schema instead of Article schema.
+
+**Location:** `src/seo/component/PageSchema.astro`
+
+**Impact:** Medium
+- Missed rich result opportunities (Article, BreadcrumbList)
+- Less visibility in Google Discover
+
+**Fix:** Add Article schema for blog posts in `src/pages/blogs/[slug].astro`
+
+---
+
+### 6. LOW: Generic Preview Images
+
+**Issue:** Twitter and OG tags use generic fallback image for most pages.
+
+**Current:** Only homepage and blog posts pass `previewImage` in description props.
+
+**Recommendation:** Add unique preview images for:
+- Trip pages (trip thumbnail)
+- Profile pages (user avatar)
+- Project 82 (province map)
 
 ---
 
 ## On-Page SEO Findings
 
-### 7. HIGH: Title Tag Format Inconsistency
+### 7. Title Tag Format
 
-**Issue:** No consistent title template across pages.
+**Status:** ✅ Good
 
-**Observation:** Titles are set per-page but there's no documented convention.
+**Observation:** Titles are set per-page with consistent format:
+- Homepage: `Tara G! — Explore the Philippines Together`
+- About: `About Us`
+- Blog posts: `{Post Title}`
 
-**Recommendation:** Implement title template:
-- Homepage: `{Site Name} - Discover & Plan Trips`
-- Trip pages: `{Trip Title} | Walang Magawa`
-- Profile pages: `{Username}'s Profile | Walang Magawa`
-
----
-
-### 8. MEDIUM: Meta Descriptions
-
-**Issue:** Not all pages have custom meta descriptions.
-
-**Current:** Uses `astro-seo` package with fallback, but descriptions may be auto-generated or missing.
-
-**Recommendation:** 
-- Create meta description templates per page type
-- Ensure 150-160 characters
-- Include primary keyword naturally
+**Recommendation:** Add brand name to more pages:
+- Trip pages: `{Trip Title} | Tara G!`
+- Profile pages: `{Username}'s Profile | Tara G!`
 
 ---
 
-### 9. LOW: Heading Structure
+### 8. Meta Descriptions
 
-**Recommendation:** Audit pages to ensure:
+**Status:** ⚠️ Partial
+
+**Good:**
+- Homepage has unique description
+- Blog posts have descriptions
+- Legal pages have descriptions
+
+**Needs Improvement:**
+- Most dynamic pages rely on default fallback
+
+---
+
+### 9. Heading Structure
+
+**Status:** ✅ Good
+
+**Found:**
 - Single H1 per page
-- H1 contains primary keyword
-- Logical heading hierarchy (H1 → H2 → H3)
-- Headings describe content, not just styling
+- Logical hierarchy (H1 → H2 → H3)
+- Headings describe content
 
 ---
 
@@ -202,103 +185,104 @@ image: `${Astro.url.origin}/images/generic-preview-page.png`
 
 **Found:**
 - Images use Cloudflare R2/CDN
-- Remote patterns configured for optimization
-- Responsive images via Astro's image service
+- Lazy loading implemented
+- Responsive images via `<picture>` element in Header
 
-**Recommendation:** 
-- Ensure all `<img>` tags have descriptive `alt` text
-- Verify lazy loading is implemented on below-fold images
+**Recommendation:** Audit alt text on user-generated images
+
+---
+
+### 11. URL Structure
+
+**Status:** ✅ Good
+
+**Found:**
+- Clean, readable URLs
+- Hyphen-separated
+- No unnecessary parameters
+
+**Examples:**
+- `/trips/` - trips listing
+- `/trips/[trip_id]` - individual trip
+- `/blogs/[slug]` - blog post
+- `/profile/[username]` - user profile
 
 ---
 
 ## Content & Schema Findings
 
-### 11. Schema.org Implementation
+### 12. Schema.org Implementation
 
 **Status:** ⚠️ Partial
 
-**Found:** `src/seo/tagging/schemaTagging.ts` implements WebPage schema with:
-- Title, description, URL
-- Author information
-- Image (previewImage)
-- Breadcrumb support
-- Article properties (for blog)
+**Implemented:**
+- ✅ WebPage schema with title, description, URL
+- ✅ Author information
+- ✅ Image (previewImage)
+- ✅ Breadcrumb support
+- ✅ Article properties (for blog posts via PagePlate)
 
-**Not Found:**
-- Organization schema (for local business info)
-- Trip/Event schema (for trip listings)
-- FAQ schema (if applicable)
-- Review/Rating schema
-
-**Recommendation:** Add more schema types:
-```typescript
-// Organization schema for footer/about
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "Walang Magawa",
-  "url": "https://your-domain.com",
-  "logo": "https://your-domain.com/logo.png",
-  "contactPoint": {
-    "@type": "ContactPoint",
-    "telephone": "+63-xxx-xxxx",
-    "contactType": "customer service"
-  }
-}
-
-// For trip listings, use Product or Event schema
-```
+**Not Implemented:**
+- ❌ Organization schema
+- ❌ Trip/Event schema (for trip listings)
+- ❌ FAQ schema
+- ❌ Review/Rating schema
+- ❌ LocalBusiness schema
 
 ---
 
-### 12. Internationalization (i18n)
+### 13. Sitemap Configuration
+
+**Status:** ✅ Good (with fix needed)
+
+**Current Implementation:** `src/pages/sitemap.xml.ts`
+- Static pages: `/`, `/trips`, `/discover`, `/about`, `/blogs`
+- Dynamic trip pages (up to 500)
+- Proper changefreq and priority values
+
+**Issue:** URL mismatch (see Issue #1)
+
+---
+
+### 14. Internationalization (i18n)
 
 **Status:** ✅ Configured
 
-**Found in astro.config.mjs:78-84:**
-```javascript
-i18n: {
-  defaultLocale: "en",
-  locales: ["en", "ph"],
-  routing: {
-    prefixDefaultLocale: false,
-  },
-},
-```
-
-**Recommendation:** 
-- Ensure hreflang tags are properly implemented for both locales
-- Consider adding `x-default` hreflang
-- Verify `HeadTagAltLanguages.astro` covers all cases
+**Found:**
+- `i18n` routing in astro.config.mjs
+- `hreflang` tags via `HeadTagAltLanguages.astro`
+- Lang attribute on `<html>` tag
 
 ---
 
 ## Performance & Core Web Vitals
 
-### 13. Core Web Vitals Assessment
+### 15. Core Web Vitals
 
 **Status:** Likely Good (Astro provides solid foundation)
 
 **Astro Strengths:**
 - Static generation option (hybrid with SSR)
 - Image optimization via @astrojs/image
-- Prefetching enabled (viewport strategy)
+- Prefetching enabled
+- Minimal JavaScript by default
 
 **Recommendations:**
 1. Run PageSpeed Insights on key pages
 2. Monitor Core Web Vitals in Search Console
-3. Ensure third-party scripts (Mapbox) don't block main thread
+3. Ensure Mapbox doesn't block main thread
 
 ---
 
-### 14. Mobile Readiness
+### 16. Mobile Readiness
 
 **Status:** ✅ Good
 
-**Found in Layout.astro:32:**
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0">
-```
+**Found:**
+- Responsive design throughout
+- Mobile navigation (hamburger menu)
+- Touch-friendly tap targets
+- Bottom navigation for logged-in mobile users
 
 ---
 
@@ -307,15 +291,7 @@ i18n: {
 **Status:** ✅ Handled by Cloudflare
 
 - Cloudflare handles HTTPS
-- Security headers should be configured at Cloudflare level
-
-**Recommendation:** Add these headers at edge:
-```
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: geolocation=(), microphone=()
-```
+- Security headers at edge
 
 ---
 
@@ -323,22 +299,21 @@ Permissions-Policy: geolocation=(), microphone=()
 
 | Priority | Issue | Effort | Impact |
 |----------|-------|--------|--------|
-| 1 | Fix site URL in astro.config.mjs | Low | Critical |
-| 2 | Create robots.txt | Low | High |
-| 3 | Add canonical URLs | Low | High |
-| 4 | Create branded OG images | Medium | Medium |
-| 5 | Add Organization schema | Medium | Medium |
+| 1 | Fix sitemap URL mismatch | Low | High |
+| 2 | Create OG preview image | Medium | Medium |
+| 3 | Add Organization schema | Medium | Medium |
+| 4 | Add unique meta descriptions | Low | Medium |
+| 5 | Add Article schema for blogs | Low | Medium |
 | 6 | Add Trip/Event schema | Medium | Medium |
-| 7 | Document title templates | Low | Medium |
-| 8 | Audit heading structure | Medium | Low |
+| 7 | Audit alt text on images | Medium | Low |
 
 ---
 
 ## Recommended Next Steps
 
-1. **Immediate:** Fix site URL configuration
-2. **This Week:** Add robots.txt, canonical URLs
-3. **This Month:** Schema markup expansion, social images
+1. **Immediate:** Fix sitemap URL mismatch
+2. **This Week:** Create OG preview image
+3. **This Month:** Add Organization schema, unique meta descriptions
 4. **Ongoing:** Monitor Search Console for crawl/index issues
 
 ---
@@ -347,8 +322,11 @@ Permissions-Policy: geolocation=(), microphone=()
 
 - `astro.config.mjs` - Configuration
 - `src/layouts/Layout.astro` - Base HTML structure
+- `src/layouts/PagePlate.astro` - Page wrapper with SEO
 - `src/seo/component/*.astro` - SEO components
 - `src/seo/tagging/schemaTagging.ts` - Schema implementation
+- `public/robots.txt` - Crawler directives
+- `src/pages/sitemap.xml.ts` - Dynamic sitemap
 
 ---
 
@@ -356,5 +334,5 @@ Permissions-Policy: geolocation=(), microphone=()
 
 - **Google Search Console** - Monitor indexing, Core Web Vitals
 - **Google PageSpeed Insights** - Performance testing
-- **Google Rich Results Test** - Schema validation (render JavaScript)
+- **Google Rich Results Test** - Schema validation (renders JavaScript)
 - **Screaming Frog** - Technical audit

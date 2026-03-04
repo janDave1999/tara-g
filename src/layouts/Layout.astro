@@ -30,9 +30,9 @@ const r2Origin = PUBLIC_R2_URL ? new URL(PUBLIC_R2_URL).origin : null;
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 
-		{r2Origin && <link rel="preconnect" href={r2Origin} />}
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="sitemap" href="/sitemap-index.xml" />
+{r2Origin && <link rel="preconnect" href={r2Origin} />}
+		<link rel="icon" type="image/jpeg" href={`${PUBLIC_R2_URL}logo-with-bg.jpg`} />
+		<link rel="sitemap" href="/sitemap.xml" />
 		<meta name="robots" content="index, follow" />
 		<meta name="theme-color" content="#2563EB" />
 		<meta property="fb:app_id" content="827636786529446" />

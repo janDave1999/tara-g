@@ -22,13 +22,9 @@ const [feedResult, discoverResult, profileResult, peopleResult] = await Promise.
     p_limit:     limit,
     p_offset:    offset,
   }),
-  supabaseAdmin.rpc("get_recent_trips", {
+  supabaseAdmin.rpc("get_suggested_trips", {
     p_user_id: user_id,
-    p_search:  null,
-    p_tags:    null,
-    p_region:  null,
     p_limit:   6,
-    p_offset:  0,
   }),
   supabaseAdmin
     .from("users")
@@ -42,7 +38,7 @@ const [feedResult, discoverResult, profileResult, peopleResult] = await Promise.
 ]);
 
 if (feedResult.error)     console.error("[feeds] get_feed_posts",          feedResult.error);
-if (discoverResult.error) console.error("[feeds] get_recent_trips",        discoverResult.error);
+if (discoverResult.error) console.error("[feeds] get_suggested_trips",     discoverResult.error);
 if (peopleResult.error)   console.error("[feeds] get_people_you_may_know", peopleResult.error);
 
 const posts: any[]           = feedResult.data    ?? [];

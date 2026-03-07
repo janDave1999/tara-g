@@ -230,8 +230,9 @@ const TRIP_TAGS = [
                 }`}
               >
                 <option value="">Status</option>
-                <option value="draft" selected={statusFilter === 'draft'}>Draft</option>
+                <option value="planning" selected={statusFilter === 'planning'}>Planning</option>
                 <option value="active" selected={statusFilter === 'active'}>Active</option>
+                <option value="on-going" selected={statusFilter === 'on-going'}>On-going</option>
                 <option value="completed" selected={statusFilter === 'completed'}>Completed</option>
                 <option value="archived" selected={statusFilter === 'archived'}>Archived</option>
                 <option value="cancelled" selected={statusFilter === 'cancelled'}>Cancelled</option>

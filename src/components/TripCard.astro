@@ -30,12 +30,25 @@ const formatDate = (date: string | null) => {
 const getStatusColor = (status: string) => {
   const colors: Record<string, string> = {
     planning: 'bg-yellow-100 text-yellow-800',
-    upcoming: 'bg-blue-100 text-blue-800',
-    ongoing: 'bg-green-100 text-green-800',
+    active: 'bg-blue-100 text-blue-800',
+    'on-going': 'bg-green-100 text-green-800',
     completed: 'bg-gray-100 text-gray-800',
+    archived: 'bg-gray-200 text-gray-600',
     cancelled: 'bg-red-100 text-red-800',
   };
   return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+};
+
+const formatStatus = (status: string) => {
+  const labels: Record<string, string> = {
+    planning: 'Planning',
+    active: 'Active',
+    'on-going': 'On-going',
+    completed: 'Completed',
+    archived: 'Archived',
+    cancelled: 'Cancelled',
+  };
+  return labels[status?.toLowerCase()] || status;
 };
 
 const visibilityMeta: Record<string, { label: string; classes: string }> = {
@@ -105,7 +118,7 @@ const { label: visLabel, classes: visClasses } = visibilityMeta[vis] ?? visibili
       </button>
     )}
     <span class={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trip.status)}`}>
-      {trip.status}
+      {formatStatus(trip.status)}
     </span>
     {type === 'owned' && (joinRequestCount ?? 0) > 0 && (
       <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-sm" title="Pending join requests">

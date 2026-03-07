@@ -137,7 +137,7 @@ function getVapidPublicKey(): string {
 // Save subscription to server
 async function savePushSubscription(subscription: PushSubscription): Promise<void> {
   // Get user from client (since this runs in browser)
-  const supabase = getSupabaseClient({} as any);
+  const supabase = await getSupabaseClient({});
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) return;

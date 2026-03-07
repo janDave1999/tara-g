@@ -109,7 +109,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   };
   cookies.set("sb-access-token", data.session.access_token, {
     ...base,
-    maxAge: 60 * 60 * 4, // 4 hours
+    maxAge: 60 * 30, // 30 minutes - short-lived
   });
   cookies.set("sb-refresh-token", data.session.refresh_token, {
     ...base,

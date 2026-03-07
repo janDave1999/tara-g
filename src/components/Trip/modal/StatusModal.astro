@@ -84,7 +84,7 @@ const options = [
     const selected = form.querySelector('input[name="status"]:checked') as HTMLInputElement;
     if (!selected) return;
 
-    const status = selected.value as 'draft' | 'active' | 'completed' | 'archived' | 'cancelled';
+    const status = selected.value as 'planning' | 'active' | 'on-going' | 'completed' | 'archived' | 'cancelled';
 
     const { error } = await actions.trip.updateTripStatus({ trip_id: tripId, status });
 

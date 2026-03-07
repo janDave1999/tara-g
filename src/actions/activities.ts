@@ -47,7 +47,8 @@ export const activities = {
     }),
     handler: async (input, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const updateData: any = { updated_at: new Date().toISOString() };
       if (input.activity_type) updateData.activity_type = input.activity_type;
@@ -78,7 +79,8 @@ export const activities = {
     }),
     handler: async ({ activityId }, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const { error } = await supabase
         .from('stop_activities')

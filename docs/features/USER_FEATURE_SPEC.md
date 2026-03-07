@@ -285,11 +285,11 @@ Auth state is stored in three cookies (set in `/api/auth/signin` and `/api/auth/
 
 | Cookie | Value | TTL |
 |--------|-------|-----|
-| `sb-access-token` | JWT access token | 7 days |
-| `sb-refresh-token` | Refresh token | 30 days |
-| `sb-session-id` | Session identifier | Session |
+| `sb-access-token` | JWT access token | 30 minutes |
+| `sb-refresh-token` | Refresh token | 30 days (4 hours if not "remember me") |
+| `sb-session-id` | Session identifier | Same as refresh token |
 
-All cookies are: `httpOnly`, `secure` (production), `sameSite: strict`, `path: /`.
+All cookies are: `httpOnly`, `secure` (production), `sameSite: strict`.
 
 **Page-level auth check pattern** (used in all protected pages):
 ```typescript

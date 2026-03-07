@@ -32,7 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Get the authenticated user from the access token
-    const { data: userData, error: userError } = await getSupabaseClient(cookies)
+    const { data: userData, error: userError } = await (await getSupabaseClient(cookies))
       .auth.getUser(accessToken);
 
     if (userError || !userData?.user) {

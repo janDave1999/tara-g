@@ -23,7 +23,7 @@ export const auth = {
       const { user_id } = locals;
       if (!user_id) throw new ActionError({ code: "UNAUTHORIZED", message: "Not authenticated" });
 
-      const userClient = getSupabaseClient(cookies);
+      const userClient = await getSupabaseClient(cookies);
       const { error } = await userClient.auth.updateUser({ email });
       if (error) throw new ActionError({ code: "BAD_REQUEST", message: error.message });
 

@@ -136,19 +136,28 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const { access_token, refresh_token } = data.session;
     const sessionId = v4();
     
-    const maxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 4; // 30 days if remember, else 4 hours
+    const accessTokenMaxAge = 60 * 30; // 30 minutes - short-lived
+    const refreshTokenMaxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 4; // 30 days if remember, else 4 hours
     
-    const cookieOptions = {
+    const baseCookieOptions = {
       path: "/",
       httpOnly: true,
       secure: import.meta.env.PROD,
       sameSite: 'strict' as const,
-      maxAge,
     };
 
-    cookies.set("sb-access-token", access_token, cookieOptions);
-    cookies.set("sb-refresh-token", refresh_token, cookieOptions);
-    cookies.set("sb-session-id", sessionId, cookieOptions);
+    cookies.set("sb-access-token", access_token, {
+      ...baseCookieOptions,
+      maxAge: accessTokenMaxAge,
+    });
+    cookies.set("sb-refresh-token", refresh_token, {
+      ...baseCookieOptions,
+      maxAge: refreshTokenMaxAge,
+    });
+    cookies.set("sb-session-id", sessionId, {
+      ...baseCookieOptions,
+      maxAge: refreshTokenMaxAge,
+    });
     
     return redirect(`${SITE_URL}/feeds`, 302);
     

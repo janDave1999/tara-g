@@ -17,16 +17,12 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  "triggers": {
+    "crons": ["0 9 * * *"]
+  },
   "ai": {
     "binding": "AI"
   },
-  "r2_buckets": [
-    {
-      "binding": "TRIP_HERO",
-      "bucket_name": "staging-tara-g-assets",
-      "remote": true
-    }
-  ],
   "kv_namespaces": [
     {
       "binding": "USER_CACHE",

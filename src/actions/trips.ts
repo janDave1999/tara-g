@@ -116,7 +116,7 @@ export interface Trip {
   owner_id: string;
   title: string;
   description: string;
-  status: 'planning' | 'active' | 'completed' | 'cancelled';
+  status: 'planning' | 'active' | 'on-going' | 'completed' | 'cancelled' | 'archived';
   slug: string;
   is_public: boolean;
   created_at: string;
@@ -1060,7 +1060,7 @@ getNearbyTrips: defineAction({
       message: z.string().max(500).optional(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1152,7 +1152,7 @@ getNearbyTrips: defineAction({
       limit: z.number().min(1).max(50).default(10),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1183,7 +1183,7 @@ getNearbyTrips: defineAction({
       limit: z.number().min(1).max(50).default(10),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1212,7 +1212,7 @@ getNearbyTrips: defineAction({
       invitationId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
 
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1280,7 +1280,7 @@ getNearbyTrips: defineAction({
       invitationId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1344,7 +1344,7 @@ getNearbyTrips: defineAction({
       invitationId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1370,7 +1370,7 @@ getNearbyTrips: defineAction({
   getUserPendingInvitations : defineAction({
     input: z.object({}),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1397,7 +1397,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1427,7 +1427,7 @@ getNearbyTrips: defineAction({
       message: z.string().max(500).optional(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1460,7 +1460,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1488,7 +1488,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1516,7 +1516,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1544,7 +1544,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1572,7 +1572,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
 
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1601,7 +1601,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1672,7 +1672,7 @@ getNearbyTrips: defineAction({
       tripId: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1743,7 +1743,7 @@ getNearbyTrips: defineAction({
     }),
     handler: async (input, context) => {
       console.log('[ACTION] removeTripMember called for member:', input.memberId, 'trip:', input.tripId);
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -1812,7 +1812,7 @@ getNearbyTrips: defineAction({
       trip_id: z.string().uuid(),
     }),
     handler: async (input, context) => {
-      const supabase = getSupabaseClient(context.cookies);
+      const supabase = await getSupabaseClient(context.cookies);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -2011,7 +2011,7 @@ getNearbyTrips: defineAction({
     accept: 'json',
     input: z.object({
       trip_id: z.string().uuid(),
-      status: z.enum(['draft', 'active', 'completed', 'archived', 'cancelled'])
+      status: z.enum(['planning', 'active', 'on-going', 'completed', 'archived', 'cancelled'])
     }),
     handler: async ({ trip_id, status }, context) => {
       const user = context.locals.user_id;
@@ -2209,7 +2209,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async (input, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       // Insert the trip_location
       const { data: stop, error: stopError } = await supabase
@@ -2279,7 +2280,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async (input, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const { stop_id, ...updateData } = input;
       
@@ -2307,7 +2309,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async ({ stopId }, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       // Activities will cascade delete due to FK constraint
       const { error } = await supabase
@@ -2333,7 +2336,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async (input, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const { data, error } = await supabase
         .from('stop_activities')
@@ -2367,7 +2371,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async (input, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const { activity_id, ...updateData } = input;
       
@@ -2395,7 +2400,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async ({ activityId }, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       const { error } = await supabase
         .from('stop_activities')
@@ -2414,7 +2420,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async ({ trip_id }, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       // Fetch trip locations with activities
       const { data: locations, error: locationsError } = await supabase
@@ -2450,7 +2457,8 @@ getNearbyTrips: defineAction({
     }),
     handler: async ({ updates }, context) => {
       const accessToken = context.cookies.get('sb-access-token')?.value;
-      const supabase = getSupabaseClient(accessToken);
+      const refreshToken = context.cookies.get('sb-refresh-token')?.value;
+      const supabase = await getSupabaseClient({ access_token: accessToken, refresh_token: refreshToken });
 
       // Update each stop's order_index
       const promises = updates.map(({ stop_id, order_index }) =>

@@ -2,11 +2,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import TripCard from "@/components/TripCard.astro";
 
-// Fetch 3 newest public active trips (include owner_id for user lookup)
+// Fetch 3 newest public active/on-going trips (include owner_id for user lookup)
 const { data: trips, error: tripsError } = await supabaseAdmin
   .from("trips")
   .select("trip_id, title, status, owner_id, created_at, trip_visibility!inner(visibility)")
-  .eq("status", "active")
+  .in("status", ["active", "on-going"])
   .eq("trip_visibility.visibility", "public")
   .order("created_at", { ascending: false })
   .limit(3);

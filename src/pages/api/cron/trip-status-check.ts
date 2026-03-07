@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { data, error } = await supabaseAdmin.rpc("check_trip_status_and_notify");
-
+    console.log("[cron] Trip status check result:", { data, error });
     if (error) {
       console.error("[cron] Trip status check failed:", error);
       return new Response(JSON.stringify({ error: error.message }), {

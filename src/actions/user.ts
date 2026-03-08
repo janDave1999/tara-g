@@ -71,14 +71,6 @@ export const user = {
         });
       }
 
-      // Check if R2 binding exists
-      if (!locals.runtime?.env?.TRIP_HERO) {
-        throw new ActionError({
-          message: "R2 bucket not configured",
-          code: "INTERNAL_SERVER_ERROR",
-        });
-      }
-
       try {
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -111,13 +103,7 @@ export const user = {
         const keyname = `user/${userId}/profile-pictures/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
         
         // Upload to R2
-        await uploadToR2(
-          buffer, 
-          name, 
-          type, 
-          keyname, 
-          locals.runtime.env.TRIP_HERO
-        );
+        await uploadToR2(buffer, name, type, keyname);
 
         // Save the KEY (not full URL) to database - frontend uses PUBLIC_R2_URL to construct URL
         const { error: updateError } = await supabaseAdmin

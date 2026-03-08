@@ -81,9 +81,6 @@ export const feed = {
     }),
     handler: defineProtectedAction(async ({ files }, context) => {
       const { userId } = context;
-      const r2 = (context as any).locals?.runtime?.env?.TRIP_HERO;
-      if (!r2) throw new ActionError({ code: "INTERNAL_SERVER_ERROR", message: "Storage unavailable" });
-
       const keys: string[] = [];
 
       for (const f of files) {
@@ -101,7 +98,7 @@ export const feed = {
         const ext     = f.name.split(".").pop()?.toLowerCase() ?? "jpg";
         const keyname = `post/${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
-        await uploadToR2(buffer, f.name, f.type, keyname, r2);
+        await uploadToR2(buffer, f.name, f.type, keyname);
         keys.push(keyname);
       }
 

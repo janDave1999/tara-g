@@ -3,7 +3,7 @@ import { supabaseAdmin, getSupabaseClient } from "@/lib/supabase";
 import { type ActionInputSchema, type ActionReturnType, ActionError, defineAction } from "astro:actions";
 import { rollBack } from "@/lib/rollback";
 import { saveLocation, saveTripLoc } from "@/lib/locations";
-import { uploadToR2 } from "@/scripts/R2/upload";
+import { uploadToR2, deleteFromR2 } from "@/scripts/R2/upload";
 import { defineProtectedAction } from "./utils";
 import type { JoinRequest, PendingInvitation, MembersSummary, CompleteMembersData } from "@/types/trip";
 
@@ -821,20 +821,11 @@ export const trip = {
     }),
     
     async handler({ files, trip_id }, { locals }) {
-      // Check if R2 binding exists
-      if (!locals.runtime?.env?.TRIP_HERO) {
-        throw new ActionError({
-          message: "R2 bucket not configured",
-          code: "INTERNAL_SERVER_ERROR",
-        });
-      }
-      
       const uploadedUrls: string[] = [];
       const uploadedKeys: string[] = [];
-      
+
       try {
         for (const f of files) {
-          // Validate file type (optional - adjust allowed types as needed)
           const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
           if (!allowedTypes.includes(f.type)) {
             throw new ActionError({
@@ -842,48 +833,34 @@ export const trip = {
               code: "BAD_REQUEST",
             });
           }
-          
-          // Proper base64 file size check (in bytes)
+
           const base64 = f.file;
           const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
           const sizeInBytes = (base64.length * 3) / 4 - padding;
-          
+
           if (sizeInBytes > 5 * 1024 * 1024) {
             throw new ActionError({
               message: `File "${f.name}" is too large (max 5MB)`,
               code: "BAD_REQUEST",
             });
           }
-          
-          // Decode base64
+
           const buffer = Buffer.from(base64, "base64");
-          
-          // Sanitize filename to prevent path traversal
           const sanitizedName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          
-          // Unique filename with timestamp and UUID
           const keyname = `trip/hero/${trip_id}/${Date.now()}-${crypto.randomUUID()}-${sanitizedName}`;
-          
-          // Upload to R2
-          const url = await uploadToR2(
-            buffer, 
-            f.name, 
-            f.type, 
-            keyname, 
-            locals.runtime.env.TRIP_HERO
-          );
-          
+
+          const url = await uploadToR2(buffer, f.name, f.type, keyname);
+
           if (!url) {
             throw new ActionError({
               message: `Failed to upload "${f.name}"`,
               code: "INTERNAL_SERVER_ERROR",
             });
           }
-          
+
           uploadedUrls.push(url);
           uploadedKeys.push(keyname);
-          
-          // Save record in DB
+
           const { error } = await supabaseAdmin
           .from("trip_images")
           .insert({
@@ -892,35 +869,33 @@ export const trip = {
             is_cover: true,
             type: "hero",
           });
-          
+
           if (error) {
-            
-            // Cleanup: delete uploaded file from R2 since DB insert failed
             try {
-              await locals.runtime.env.TRIP_HERO.delete(keyname);
+              await deleteFromR2(keyname);
             } catch (deleteErr) {
               console.error(`[R2 CLEANUP ERROR] Failed to delete ${keyname}:`, deleteErr);
-             }
-            
+            }
+
             throw new ActionError({
               message: `Database error: ${error.message}`,
               code: "INTERNAL_SERVER_ERROR",
             });
           }
         }
-        
+
         return {
           success: true,
           message: `${files.length} image(s) uploaded successfully!`,
           urls: uploadedUrls,
         };
       } catch (error: any) {
-        
+
         // Cleanup: delete any successfully uploaded files if an error occurred
         if (uploadedKeys.length > 0) {
           for (const key of uploadedKeys) {
             try {
-              await locals.runtime.env.TRIP_HERO.delete(key);
+              await deleteFromR2(key);
             } catch (deleteErr) {
               console.error(`[R2 CLEANUP ERROR] Failed to delete ${key}:`, deleteErr);
             }

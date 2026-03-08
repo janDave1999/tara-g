@@ -10,7 +10,10 @@ const env = loadEnv("", process.cwd(), "");
 // https://astro.build/config
 export default defineConfig({
   adapter: cloudflare({
-    imageService: "compile"
+    imageService: "compile",
+    workerEntryPoint: {
+      path: "src/worker.ts",
+    },
   }),
   session: {
     cookie: ""

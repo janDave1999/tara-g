@@ -32,7 +32,7 @@ const days = Array.from(uniqueDays.entries()).map(([date, dayNum]) => ({
 )}
 
 <script>
-  const filter = document.getElementById('day-filter');
+  const filter = document.getElementById('day-filter') as HTMLSelectElement | null;
   const mapContainer = document.getElementById('itinerary-map');
   
   filter?.addEventListener('change', () => {

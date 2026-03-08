@@ -51,248 +51,240 @@ const ogDescription = {
 ---
 
 <PagePlate title={ogDescription.title} description={ogDescription} noFooter>
-  <div class="max-w-2xl mx-auto py-4">
+  <div class="min-h-screen bg-gray-50">
+    <div class="max-w-2xl mx-auto">
 
-    <!-- Back -->
-    <a
-      href="/feeds"
-      class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      Back to Feed
-    </a>
-
-    <!-- Post card -->
-    <article class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-
-      <!-- Author row -->
-      <div class="flex items-center gap-3">
-        <a href={`/profile/${post.author_username}`} class="flex-shrink-0">
-          {avatarSrc ? (
-            <img
-              src={avatarSrc}
-              alt={post.author_full_name as string}
-              class="w-11 h-11 rounded-full object-cover"
-            />
-          ) : (
-            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold">
-              {(post.author_full_name as string).charAt(0).toUpperCase()}
-            </div>
-          )}
-        </a>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <a href={`/profile/${post.author_username}`} class="font-semibold text-gray-900 text-sm hover:underline">
-              {post.author_full_name}
-            </a>
-            <span class="text-gray-400 text-xs">@{post.author_username}</span>
-            <span class="text-gray-300 text-xs">·</span>
-            <span class="text-gray-400 text-xs">{timeAgo(post.created_at as string)}</span>
-          </div>
-          <span class="inline-block mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-            Trip Post
-          </span>
-        </div>
-      </div>
-
-      <!-- Trip badge -->
-      {post.trip_id && post.trip_title && (
-        <a
-          href={`/trips/${post.trip_id}`}
-          class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full hover:bg-blue-100 transition"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      <!-- Sticky top bar -->
+      <div class="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+        <a href="/feeds" class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          {post.trip_title}
         </a>
-      )}
-
-      <!-- Content -->
-      <div class="space-y-1.5">
-        {post.title && (
-          <h1 class="font-semibold text-gray-900 text-base">{post.title}</h1>
-        )}
-        <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
-
-        {post.location_name && (
-          <p class="flex items-center gap-1 text-gray-400 text-xs">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            </svg>
-            {post.location_name}
-          </p>
-        )}
+        <span class="text-sm font-semibold text-gray-800 truncate">Post</span>
       </div>
 
-      <!-- Photo grid -->
-      {photos.length === 1 && (
-        <div class="rounded-xl overflow-hidden">
-          <img src={photos[0]} alt="post photo" class="w-full max-h-96 object-cover" loading="lazy" />
-        </div>
-      )}
-      {photos.length === 2 && (
-        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-          {photos.map((src) => <img src={src} alt="post photo" class="w-full h-52 object-cover" loading="lazy" />)}
-        </div>
-      )}
-      {photos.length === 3 && (
-        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-          <img src={photos[0]} alt="post photo" class="w-full h-52 object-cover row-span-2" loading="lazy" />
-          <img src={photos[1]} alt="post photo" class="w-full h-[102px] object-cover" loading="lazy" />
-          <img src={photos[2]} alt="post photo" class="w-full h-[102px] object-cover" loading="lazy" />
-        </div>
-      )}
-      {photos.length >= 4 && (
-        <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-          {photos.slice(0, 4).map((src) => <img src={src} alt="post photo" class="w-full h-44 object-cover" loading="lazy" />)}
-        </div>
-      )}
+      <!-- Unified content surface -->
+      <div class="bg-white">
 
-      <!-- Hashtags -->
-      {(post.hashtags as string[])?.length > 0 && (
-        <div class="flex flex-wrap gap-1.5">
-          {(post.hashtags as string[]).map((tag) => (
-            <a href={`/search?q=%23${tag}`} class="text-blue-500 text-xs font-medium hover:underline">
-              #{tag}
-            </a>
-          ))}
-        </div>
-      )}
-
-      <!-- Counts row -->
-      <div class="flex items-center gap-4 text-xs text-gray-400 pt-1">
-        <span id="post-like-count-display">{(post.like_count as number) > 0 ? `${post.like_count} likes` : ""}</span>
-        <span id="post-comment-count-display">{(post.comment_count as number) > 0 ? `${post.comment_count} comments` : ""}</span>
-        <span id="post-share-count-display">{(post.share_count as number) > 0 ? `${post.share_count} shares` : ""}</span>
-      </div>
-
-      <!-- Action bar -->
-      <div class="flex items-center gap-2 pt-1 border-t border-gray-100">
-        <!-- Like -->
-        <button
-          id="post-like-btn"
-          type="button"
-          data-post-id={post.post_id as string}
-          data-liked={post.is_liked_by_viewer ? "true" : "false"}
-          data-like-count={String(post.like_count ?? 0)}
-          data-authed={userId ? "true" : "false"}
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition hover:bg-gray-50"
-          class:list={[post.is_liked_by_viewer ? "text-red-500" : "text-gray-500"]}
-        >
-          <svg id="post-like-icon" class={`w-5 h-5 ${post.is_liked_by_viewer ? "text-red-500" : "text-gray-400"}`}
-            fill={post.is_liked_by_viewer ? "currentColor" : "none"}
-            stroke={post.is_liked_by_viewer ? "none" : "currentColor"}
-            viewBox="0 0 24 24">
-            {post.is_liked_by_viewer ? (
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        <!-- Author row -->
+        <div class="flex items-center gap-3 px-4 pt-5 pb-3">
+          <a href={`/profile/${post.author_username}`} class="flex-shrink-0">
+            {avatarSrc ? (
+              <img src={avatarSrc} alt={post.author_full_name as string} class="w-10 h-10 rounded-full object-cover" />
             ) : (
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
+                {(post.author_full_name as string).charAt(0).toUpperCase()}
+              </div>
             )}
-          </svg>
-          Like
-        </button>
-
-        <!-- Comment (scrolls to comment section) -->
-        <button
-          id="post-comment-btn"
-          type="button"
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Comment
-        </button>
-
-        <!-- Share -->
-        <button
-          id="post-share-btn"
-          type="button"
-          data-post-id={post.post_id as string}
-          data-title={ogDescription.title}
-          data-content={post.content as string}
-          class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
-          Share
-        </button>
-      </div>
-
-      <!-- Sign-in note (unauthenticated only) -->
-      {!userId && (
-        <p id="signin-note" class="text-center text-xs text-gray-500 bg-gray-50 rounded-xl py-2 px-3">
-          <a href={`/signin?from=/post/${post.post_id}`} class="text-blue-600 font-medium hover:underline">Sign in</a>
-          {" "}to like and comment on this post.
-        </p>
-      )}
-    </article>
-
-    <!-- Comments section -->
-    <section class="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-gray-900">Comments <span id="comment-count-label" class="text-gray-400 font-normal text-sm"></span></h2>
-      </div>
-
-      <!-- Reply banner -->
-      <div id="reply-banner" class="hidden items-center gap-2 mb-3 px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700">
-        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-        </svg>
-        <span id="reply-banner-text">Replying to …</span>
-        <button id="reply-cancel" class="ml-auto text-blue-500 hover:text-blue-700 font-medium">Cancel</button>
-      </div>
-
-      <!-- Report picker -->
-      <div id="report-picker" class="hidden flex-col gap-2 mb-3 px-3 py-2 bg-red-50 rounded-xl">
-        <p class="text-xs font-semibold text-red-700">Why are you reporting this?</p>
-        <div class="flex flex-wrap gap-2">
-          {['spam', 'inappropriate', 'harassment', 'misinformation', 'other'].map(r => (
-            <button data-reason={r}
-              class="report-reason-btn px-3 py-1 rounded-full text-xs border border-red-300 text-red-600 hover:bg-red-100 transition capitalize">
-              {r}
-            </button>
-          ))}
-        </div>
-        <button id="report-cancel" class="text-xs text-gray-500 hover:text-gray-700 self-start mt-1">Cancel</button>
-      </div>
-
-      <!-- Comment input (authenticated only) -->
-      {userId && (
-        <div class="flex flex-col gap-1 mb-4">
-          <div class="flex items-end gap-2">
-            <textarea
-              id="page-comment-input"
-              rows="1"
-              maxlength="500"
-              placeholder="Write a comment…"
-              class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
-            ></textarea>
-            <button
-              id="page-comment-send"
-              type="button"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            >
-              Send
-            </button>
+          </a>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <a href={`/profile/${post.author_username}`} class="font-semibold text-gray-900 text-sm hover:underline leading-tight">
+                {post.author_full_name}
+              </a>
+              <span class="text-gray-400 text-xs">@{post.author_username}</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-xs text-gray-400">{timeAgo(post.created_at as string)}</span>
+              {post.trip_id && post.trip_title && (
+                <>
+                  <span class="text-gray-300 text-xs">·</span>
+                  <a href={`/trips/${post.trip_id}`} class="text-xs text-blue-600 font-medium hover:underline truncate max-w-[180px]">
+                    {post.trip_title}
+                  </a>
+                </>
+              )}
+            </div>
           </div>
-          <span id="page-comment-char" class="text-xs text-gray-400 text-right">0 / 500</span>
         </div>
-      )}
 
-      <!-- Comment list -->
-      <div id="page-comment-list" class="space-y-4">
-        <p class="text-center text-gray-400 text-sm py-4">Loading comments…</p>
+        <!-- Content -->
+        <div class="px-4 space-y-2">
+          {post.title && (
+            <h1 class="font-bold text-gray-900 text-lg leading-snug">{post.title}</h1>
+          )}
+          <div class="wysiwyg text-gray-700 text-sm leading-relaxed" set:html={post.content} />
+          {post.location_name && (
+            <p class="flex items-center gap-1 text-gray-400 text-xs pt-0.5">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              </svg>
+              {post.location_name}
+            </p>
+          )}
+        </div>
+
+        <!-- Photo grid -->
+        {photos.length === 1 && (
+          <div class="mt-3">
+            <img src={photos[0]} alt="post photo" class="w-full max-h-[480px] object-cover" loading="lazy" />
+          </div>
+        )}
+        {photos.length === 2 && (
+          <div class="mt-3 grid grid-cols-2 gap-0.5">
+            {photos.map((src) => <img src={src} alt="post photo" class="w-full h-56 object-cover" loading="lazy" />)}
+          </div>
+        )}
+        {photos.length === 3 && (
+          <div class="mt-3 grid grid-cols-2 gap-0.5">
+            <img src={photos[0]} alt="post photo" class="w-full h-56 object-cover row-span-2" loading="lazy" />
+            <img src={photos[1]} alt="post photo" class="w-full h-[111px] object-cover" loading="lazy" />
+            <img src={photos[2]} alt="post photo" class="w-full h-[111px] object-cover" loading="lazy" />
+          </div>
+        )}
+        {photos.length >= 4 && (
+          <div class="mt-3 grid grid-cols-2 gap-0.5">
+            {photos.slice(0, 4).map((src) => <img src={src} alt="post photo" class="w-full h-48 object-cover" loading="lazy" />)}
+          </div>
+        )}
+
+        <!-- Hashtags -->
+        {(post.hashtags as string[])?.length > 0 && (
+          <div class="flex flex-wrap gap-1.5 px-4 mt-3">
+            {(post.hashtags as string[]).map((tag) => (
+              <a href={`/search?q=%23${tag}`} class="text-blue-500 text-xs font-medium hover:underline">
+                #{tag}
+              </a>
+            ))}
+          </div>
+        )}
+
+        <!-- Counts -->
+        <div class="flex items-center gap-4 px-4 mt-3 text-xs text-gray-400">
+          <span id="post-like-count-display">{(post.like_count as number) > 0 ? `${post.like_count} likes` : ""}</span>
+          <span id="post-comment-count-display">{(post.comment_count as number) > 0 ? `${post.comment_count} comments` : ""}</span>
+          <span id="post-share-count-display">{(post.share_count as number) > 0 ? `${post.share_count} reached` : ""}</span>
+        </div>
+
+        <!-- Action bar -->
+        <div class="flex items-center gap-1 px-3 mt-2 border-t border-gray-100">
+          <button
+            id="post-like-btn"
+            type="button"
+            data-post-id={post.post_id as string}
+            data-liked={post.is_liked_by_viewer ? "true" : "false"}
+            data-like-count={String(post.like_count ?? 0)}
+            data-authed={userId ? "true" : "false"}
+            class:list={["flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition rounded-xl hover:bg-gray-50", post.is_liked_by_viewer ? "text-red-500" : "text-gray-500"]}
+          >
+            <svg id="post-like-icon" class={`w-5 h-5 ${post.is_liked_by_viewer ? "text-red-500" : "text-gray-400"}`}
+              fill={post.is_liked_by_viewer ? "currentColor" : "none"}
+              stroke={post.is_liked_by_viewer ? "none" : "currentColor"}
+              viewBox="0 0 24 24">
+              {post.is_liked_by_viewer ? (
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              ) : (
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              )}
+            </svg>
+            Like
+          </button>
+
+          <button
+            id="post-comment-btn"
+            type="button"
+            class="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-xl transition"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Comment
+          </button>
+
+          <button
+            id="post-share-btn"
+            type="button"
+            data-post-id={post.post_id as string}
+            data-title={ogDescription.title}
+            data-content={post.content as string}
+            class="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-xl transition"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            Share
+          </button>
+        </div>
+
+        <!-- Sign-in note -->
+        {!userId && (
+          <div class="mx-4 mb-4 text-center text-xs text-gray-500 bg-gray-50 rounded-xl py-2.5 px-3">
+            <a href={`/signin?from=/post/${post.post_id}`} class="text-blue-600 font-medium hover:underline">Sign in</a>
+            {" "}to like and comment on this post.
+          </div>
+        )}
+
+        <!-- Divider with comments label -->
+        <div class="flex items-center gap-3 px-4 py-3 border-t border-gray-100">
+          <h2 class="text-sm font-semibold text-gray-800">Comments</h2>
+          <span id="comment-count-label" class="text-xs text-gray-400 font-normal"></span>
+        </div>
+
+        <!-- Reply banner -->
+        <div id="reply-banner" class="hidden items-center gap-2 mx-4 mb-2 px-3 py-2 bg-blue-50 rounded-xl text-xs text-blue-700">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+          </svg>
+          <span id="reply-banner-text">Replying to …</span>
+          <button id="reply-cancel" class="ml-auto text-blue-500 hover:text-blue-700 font-medium">Cancel</button>
+        </div>
+
+        <!-- Report picker -->
+        <div id="report-picker" class="hidden flex-col gap-2 mx-4 mb-2 px-3 py-2 bg-red-50 rounded-xl">
+          <p class="text-xs font-semibold text-red-700">Why are you reporting this?</p>
+          <div class="flex flex-wrap gap-2">
+            {['spam', 'inappropriate', 'harassment', 'misinformation', 'other'].map(r => (
+              <button data-reason={r}
+                class="report-reason-btn px-3 py-1 rounded-full text-xs border border-red-300 text-red-600 hover:bg-red-100 transition capitalize">
+                {r}
+              </button>
+            ))}
+          </div>
+          <button id="report-cancel" class="text-xs text-gray-500 hover:text-gray-700 self-start mt-1">Cancel</button>
+        </div>
+
+        <!-- Comment input -->
+        {userId && (
+          <div class="px-4 pb-3 flex flex-col gap-1">
+            <div class="flex items-end gap-2">
+              <textarea
+                id="page-comment-input"
+                rows="1"
+                maxlength="500"
+                placeholder="Write a comment…"
+                class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-28 overflow-y-auto"
+              ></textarea>
+              <button
+                id="page-comment-send"
+                type="button"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                Send
+              </button>
+            </div>
+            <span id="page-comment-char" class="text-xs text-gray-400 text-right">0 / 500</span>
+          </div>
+        )}
+
+        <!-- Comment list -->
+        <div id="page-comment-list" class="px-4 pb-10 space-y-4">
+          <p class="text-center text-gray-400 text-sm py-4">Loading comments…</p>
+        </div>
+
       </div>
-    </section>
-
+    </div>
   </div>
 </PagePlate>
+
+<style>
+  .wysiwyg ul { list-style: disc; padding-left: 1.25rem; margin: 0.25rem 0; }
+  .wysiwyg ol { list-style: decimal; padding-left: 1.25rem; margin: 0.25rem 0; }
+  .wysiwyg li { margin: 0.15rem 0; }
+  .wysiwyg b, .wysiwyg strong { font-weight: 700; }
+  .wysiwyg i, .wysiwyg em { font-style: italic; }
+  .wysiwyg u { text-decoration: underline; }
+</style>
 
 <script
   define:vars={{

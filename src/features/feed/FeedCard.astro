@@ -105,68 +105,60 @@ const liked = post.is_liked_by_viewer ?? false;
     </a>
   )}
 
-  <!-- Post body -->
-  <div class="space-y-1.5">
+  <!-- Content block: title → photos → description (controlled spacing) -->
+  <div class="space-y-2">
+
     {post.title && (
-      <a href={`/post/${post.post_id}`} class="block font-semibold text-gray-900 hover:underline">
+      <a href={`/post/${post.post_id}`} class="block font-semibold text-gray-900 text-sm leading-snug hover:underline">
         {post.title}
       </a>
     )}
 
-    <p
-      class="text-gray-700 text-sm leading-relaxed"
-      data-full={isLong ? post.content : undefined}
-      data-preview={isLong ? preview : undefined}
-    >
-      {preview}
-    </p>
-
-    {isLong && (
-      <button
-        class="text-blue-600 text-xs font-medium hover:underline see-more-btn"
-        type="button"
-      >
-        See more
-      </button>
+    {photos.length === 1 && (
+      <div class="rounded-xl overflow-hidden">
+        <img src={photos[0]} alt="post photo" class="w-full max-h-80 object-cover" loading="lazy" />
+      </div>
+    )}
+    {photos.length === 2 && (
+      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+        {photos.map((src) => (
+          <img src={src} alt="post photo" class="w-full h-48 object-cover" loading="lazy" />
+        ))}
+      </div>
+    )}
+    {photos.length === 3 && (
+      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+        <img src={photos[0]} alt="post photo" class="w-full h-48 object-cover row-span-2" loading="lazy" />
+        <img src={photos[1]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
+        <img src={photos[2]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
+      </div>
+    )}
+    {photos.length >= 4 && (
+      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+        {photos.slice(0, 4).map((src) => (
+          <img src={src} alt="post photo" class="w-full h-40 object-cover" loading="lazy" />
+        ))}
+      </div>
     )}
 
-    {post.location_name && (
-      <p class="flex items-center gap-1 text-gray-400 text-xs">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-        </svg>
-        {post.location_name}
-      </p>
-    )}
+    <div class="space-y-1">
+      <div class="wysiwyg text-gray-700 text-sm leading-relaxed line-clamp-4" set:html={post.content} />
+      {isLong && (
+        <a href={`/post/${post.post_id}`} class="text-blue-600 text-xs font-medium hover:underline">
+          Read more
+        </a>
+      )}
+      {post.location_name && (
+        <p class="flex items-center gap-1 text-gray-400 text-xs pt-0.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          </svg>
+          {post.location_name}
+        </p>
+      )}
+    </div>
+
   </div>
-
-  <!-- Photo grid -->
-  {photos.length === 1 && (
-    <div class="rounded-xl overflow-hidden">
-      <img src={photos[0]} alt="post photo" class="w-full max-h-80 object-cover" loading="lazy" />
-    </div>
-  )}
-  {photos.length === 2 && (
-    <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-      {photos.map((src) => (
-        <img src={src} alt="post photo" class="w-full h-48 object-cover" loading="lazy" />
-      ))}
-    </div>
-  )}
-  {photos.length === 3 && (
-    <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-      <img src={photos[0]} alt="post photo" class="w-full h-48 object-cover row-span-2" loading="lazy" />
-      <img src={photos[1]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
-      <img src={photos[2]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
-    </div>
-  )}
-  {photos.length >= 4 && (
-    <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-      {photos.slice(0, 4).map((src) => (
-        <img src={src} alt="post photo" class="w-full h-40 object-cover" loading="lazy" />
-      ))}
-    </div>
-  )}
 
   <!-- Hashtags -->
   {post.hashtags?.length > 0 && (
@@ -236,25 +228,19 @@ const liked = post.is_liked_by_viewer ?? false;
   </div>
 </article>
 
+<style>
+  /* Rich text content rendered from WYSIWYG */
+  .wysiwyg :global(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.2rem 0; }
+  .wysiwyg :global(ol) { list-style: decimal; padding-left: 1.25rem; margin: 0.2rem 0; }
+  .wysiwyg :global(li) { margin: 0.1rem 0; }
+  .wysiwyg :global(b), .wysiwyg :global(strong) { font-weight: 700; }
+  .wysiwyg :global(i), .wysiwyg :global(em) { font-style: italic; }
+  .wysiwyg :global(u) { text-decoration: underline; }
+</style>
+
 <script>
   import { actions } from "astro:actions";
   import { showToast } from "@/scripts/Toast";
-
-  // --- See more toggle ---
-  document.querySelectorAll<HTMLButtonElement>(".see-more-btn").forEach((btn) => {
-    const p = btn.previousElementSibling as HTMLParagraphElement;
-    if (!p) return;
-    btn.addEventListener("click", () => {
-      if (p.dataset.full) {
-        p.textContent = p.dataset.full;
-        btn.textContent = "See less";
-        delete p.dataset.full;
-      } else {
-        p.textContent = p.dataset.preview ?? "";
-        btn.textContent = "See more";
-      }
-    });
-  });
 
   // --- Like toggle (optimistic) ---
   document.querySelectorAll<HTMLButtonElement>(".like-btn").forEach((btn) => {

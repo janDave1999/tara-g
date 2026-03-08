@@ -109,15 +109,34 @@ const avatarSrc = userAvatar
         </div>
       </div>
 
-      <!-- Content -->
+      <!-- Content / WYSIWYG -->
       <div>
-        <textarea
+        <!-- Toolbar -->
+        <div class="flex items-center gap-0.5 px-2 py-1.5 border border-gray-200 border-b-0 rounded-t-xl bg-gray-50">
+          <button type="button" data-cmd="bold" title="Bold"
+            class="toolbar-btn w-7 h-7 flex items-center justify-center rounded hover:bg-white hover:shadow-sm transition text-sm font-bold text-gray-600 select-none">B</button>
+          <button type="button" data-cmd="italic" title="Italic"
+            class="toolbar-btn w-7 h-7 flex items-center justify-center rounded hover:bg-white hover:shadow-sm transition text-sm italic text-gray-600 select-none">I</button>
+          <button type="button" data-cmd="underline" title="Underline"
+            class="toolbar-btn w-7 h-7 flex items-center justify-center rounded hover:bg-white hover:shadow-sm transition text-sm underline text-gray-600 select-none">U</button>
+          <div class="w-px h-4 bg-gray-300 mx-1"></div>
+          <button type="button" data-cmd="insertUnorderedList" title="Bullet list"
+            class="toolbar-btn w-7 h-7 flex items-center justify-center rounded hover:bg-white hover:shadow-sm transition text-gray-600 select-none">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+          <button type="button" data-cmd="insertOrderedList" title="Numbered list"
+            class="toolbar-btn w-7 h-7 flex items-center justify-center rounded hover:bg-white hover:shadow-sm transition text-gray-600 select-none text-xs font-bold">1.</button>
+        </div>
+        <!-- Editor -->
+        <div
           id="compose-content"
-          rows="4"
-          maxlength="1000"
-          placeholder="Share your experience, story, or tips from this trip…"
-          class="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        ></textarea>
+          contenteditable="true"
+          role="textbox"
+          aria-multiline="true"
+          class="wysiwyg-editor min-h-[120px] max-h-[260px] overflow-y-auto rounded-b-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        ></div>
         <div class="flex justify-end mt-1">
           <span id="compose-char-count" class="text-xs text-gray-400">0 / 1000</span>
         </div>
@@ -176,10 +195,30 @@ const avatarSrc = userAvatar
   </div>
 </dialog>
 
+<style>
+  /* WYSIWYG editor placeholder */
+  .wysiwyg-editor[data-empty="true"]::before {
+    content: "Share your experience, story, or tips from this trip…";
+    color: #9ca3af;
+    pointer-events: none;
+    position: absolute;
+  }
+  .wysiwyg-editor { position: relative; }
+
+  /* Prose content inside the editor */
+  .wysiwyg-editor :global(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.25rem 0; }
+  .wysiwyg-editor :global(ol) { list-style: decimal; padding-left: 1.25rem; margin: 0.25rem 0; }
+  .wysiwyg-editor :global(li) { margin: 0.1rem 0; }
+  .wysiwyg-editor :global(b), .wysiwyg-editor :global(strong) { font-weight: 700; }
+  .wysiwyg-editor :global(i), .wysiwyg-editor :global(em) { font-style: italic; }
+  .wysiwyg-editor :global(u) { text-decoration: underline; }
+</style>
+
 <script>
   import { actions } from "astro:actions";
   import { showToast } from "@/scripts/Toast";
   import { PUBLIC_R2_URL } from "astro:env/client";
+  import { queueUpload } from "@/scripts/uploadQueue";
 
   const trigger     = document.getElementById("composer-trigger")!;
   const modal       = document.getElementById("compose-modal") as HTMLDialogElement;
@@ -194,7 +233,7 @@ const avatarSrc = userAvatar
   const tripsList    = document.getElementById("trips-list")!;
 
   const titleInput    = document.getElementById("compose-title-input") as HTMLInputElement;
-  const textarea      = document.getElementById("compose-content") as HTMLTextAreaElement;
+  const editorEl      = document.getElementById("compose-content") as HTMLDivElement;
   const charCount     = document.getElementById("compose-char-count")!;
   const hashInput     = document.getElementById("hashtag-input") as HTMLInputElement;
   const hashChips     = document.getElementById("hashtag-chips")!;
@@ -291,6 +330,25 @@ const avatarSrc = userAvatar
     }
   }
 
+  // ── Toolbar ───────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>(".toolbar-btn").forEach(btn => {
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // keep focus in editor
+      const cmd = btn.dataset.cmd!;
+      document.execCommand(cmd, false);
+      editorEl.focus();
+    });
+  });
+
+  // Placeholder behaviour
+  function updatePlaceholder() {
+    if (editorEl.textContent!.trim() === "") {
+      editorEl.setAttribute("data-empty", "true");
+    } else {
+      editorEl.removeAttribute("data-empty");
+    }
+  }
+
   // ── Char counters ─────────────────────────────────────────────
   const titleCount = document.getElementById("compose-title-count")!;
   titleInput.addEventListener("input", () => {
@@ -299,10 +357,11 @@ const avatarSrc = userAvatar
     titleCount.className = `text-xs ${len >= 180 ? 'text-red-500' : 'text-gray-400'}`;
   });
 
-  textarea.addEventListener("input", () => {
-    const len = textarea.value.length;
+  editorEl.addEventListener("input", () => {
+    const len = editorEl.textContent!.length;
     charCount.textContent = `${len} / 1000`;
     charCount.className = `text-xs ${len >= 900 ? 'text-red-500' : 'text-gray-400'}`;
+    updatePlaceholder();
   });
 
   // ── Photo selection ───────────────────────────────────────────
@@ -380,63 +439,60 @@ const avatarSrc = userAvatar
   }
 
   // ── Submit ────────────────────────────────────────────────────
-  submitBtn.addEventListener("click", async () => {
-    const content = textarea.value.trim();
-    if (!content) {
+  submitBtn.addEventListener("click", () => {
+    const content = editorEl.innerHTML.trim();
+    if (!content || editorEl.textContent!.trim() === "") {
       errorEl.textContent = "Content is required.";
       errorEl.classList.remove("hidden");
       return;
     }
     errorEl.classList.add("hidden");
-    submitBtn.disabled = true;
-    submitBtn.textContent = selectedPhotos.length > 0 ? "Uploading…" : "Posting…";
 
-    // Upload photos first if any
-    let mediaUrls: string[] = [];
-    if (selectedPhotos.length > 0) {
-      const uploadRes = await actions.feed.uploadPostMedia({
-        files: selectedPhotos.map((p) => ({ file: p.base64, name: p.name, type: p.type })),
-      });
-      if (uploadRes.error) {
-        errorEl.textContent = "Photo upload failed. Please try again.";
-        errorEl.classList.remove("hidden");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Post";
-        return;
-      }
-      mediaUrls = uploadRes.data!.keys;
-    }
-
-    submitBtn.textContent = "Posting…";
-
-    const res = await actions.feed.createPost({
+    // Snapshot all form state before resetting
+    const snapshot = {
       tripId:    selectedTripId,
       content,
       title:     titleInput.value.trim() || undefined,
-      hashtags,
-      mediaUrls,
-    });
+      hashtags:  [...hashtags],
+      photos:    [...selectedPhotos],
+    };
 
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Post";
-
-    if (res.error) {
-      errorEl.textContent = "Failed to post. Please try again.";
-      errorEl.classList.remove("hidden");
-      return;
-    }
-
+    // Close modal and reset immediately so user can navigate freely
     modal.close();
     resetAll();
-    showToast({ message: "Post shared!", type: "success" });
-    document.dispatchEvent(new CustomEvent("feed:new-post", { detail: res.data }));
+
+    // Hand off to background uploader
+    queueUpload(async () => {
+      let mediaUrls: string[] = [];
+
+      if (snapshot.photos.length > 0) {
+        const uploadRes = await actions.feed.uploadPostMedia({
+          files: snapshot.photos.map((p) => ({ file: p.base64, name: p.name, type: p.type })),
+        });
+        if (uploadRes.error) throw new Error("Photo upload failed");
+        mediaUrls = uploadRes.data!.keys;
+      }
+
+      const res = await actions.feed.createPost({
+        tripId:    snapshot.tripId,
+        content:   snapshot.content,
+        title:     snapshot.title,
+        hashtags:  snapshot.hashtags,
+        mediaUrls,
+      });
+
+      if (res.error) throw new Error("Failed to create post");
+
+      document.dispatchEvent(new CustomEvent("feed:new-post", { detail: res.data }));
+    });
   });
 
   // ── Reset ─────────────────────────────────────────────────────
   function resetAll() {
     showStep("trip");
     selectedTripId = "";
-    textarea.value = "";
+    editorEl.innerHTML = "";
+    updatePlaceholder();
     titleInput.value = "";
     charCount.textContent = "0 / 1000";
     charCount.className = "text-xs text-gray-400";

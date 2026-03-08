@@ -8,6 +8,26 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export const feed = {
+  getUserPosts: defineAction({
+    input: z.object({
+      authorId: z.string().uuid(),
+      page:     z.number().default(1),
+      limit:    z.number().default(10),
+    }),
+    handler: async ({ authorId, page, limit }, context) => {
+      const offset = (page - 1) * limit;
+      const { data, error } = await supabaseAdmin.rpc("get_user_posts", {
+        p_author_auth_id: authorId,
+        p_viewer_id:      context.locals.user_id ?? null,
+        p_limit:          limit,
+        p_offset:         offset,
+      });
+      if (error) console.error("[feed.getUserPosts]", error);
+      const rows = (data as any[]) ?? [];
+      return { posts: rows, totalCount: rows[0]?.total_count ?? 0 };
+    },
+  }),
+
   getPosts: defineAction({
     input: z.object({
       postType: z.string().optional(),
@@ -92,7 +112,7 @@ export const feed = {
   createPost: defineAction({
     input: z.object({
       tripId:    z.string().uuid(),
-      content:   z.string().min(1).max(1000),
+      content:   z.string().min(1).max(10000),
       title:     z.string().max(200).optional(),
       hashtags:  z.array(z.string()).default([]),
       location:  z.string().max(200).optional(),
@@ -101,10 +121,17 @@ export const feed = {
     handler: defineProtectedAction(async ({ tripId, content, title, hashtags, location, mediaUrls }, context) => {
       const { userId } = context;
 
+      // Strip dangerous HTML — allow basic formatting tags only
+      const safeContent = content
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+        .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+        .replace(/href\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, "");
+
       const { data, error } = await supabaseAdmin.rpc("create_user_post", {
         p_user_id:  userId,
         p_trip_id:  tripId,
-        p_content:  content,
+        p_content:  safeContent,
         p_title:    title ?? null,
         p_hashtags: hashtags,
         p_location: location ?? null,

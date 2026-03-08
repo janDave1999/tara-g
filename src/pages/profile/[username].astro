@@ -6,6 +6,7 @@ import { PUBLIC_R2_URL } from 'astro:env/client';
 import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
 import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
 import PublicTripGrid     from "@/components/Profile/PublicTripGrid.astro";
+import ProfilePostFeed    from "@/components/Profile/ProfilePostFeed.astro";
 
 const { username } = Astro.params;
 if (!username) return Astro.redirect("/");
@@ -323,7 +324,15 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
 
       <!-- Trip grid — full width below the two-column grid -->
       <PublicTripGrid username={username} />
-      </>
+
+      <!-- Posts feed — full width below trips -->
+      <ProfilePostFeed
+        authorAuthId={profile.auth_id}
+        viewerId={viewer_id ?? null}
+        viewerAvatar={Astro.locals.avatar_url ?? null}
+        viewerUsername={Astro.locals.username ?? null}
+      />
+</>
 
     ) : (
       <!-- Private Profile -->

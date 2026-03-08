@@ -1,0 +1,56 @@
+---
+interface Props {
+  stops: any[];
+}
+
+const { stops } = Astro.props;
+
+// Extract unique days from stops
+const uniqueDays = new Map<string, number>();
+
+stops.forEach((stop) => {
+  if (!stop.scheduled_start) return;
+  const date = new Date(stop.scheduled_start).toDateString();
+  if (!uniqueDays.has(date)) {
+    uniqueDays.set(date, uniqueDays.size + 1);
+  }
+});
+
+const days = Array.from(uniqueDays.entries()).map(([date, dayNum]) => ({
+  date,
+  dayNum,
+}));
+---
+
+{days.length > 0 && (
+  <select id="day-filter" class="select select-xs sm:select-sm border-gray-200 text-xs sm:text-sm min-w-[80px] sm:min-w-[100px]">
+    <option value="all">All</option>
+    {days.map(({ date, dayNum }) => (
+      <option value={date}>D{dayNum}</option>
+    ))}
+  </select>
+)}
+
+<script>
+  const filter = document.getElementById('day-filter');
+  const mapContainer = document.getElementById('itinerary-map');
+  
+  filter?.addEventListener('change', () => {
+    if (!mapContainer) return;
+    
+    const allStops = JSON.parse(mapContainer.dataset.stops || '[]');
+    const selectedDay = (filter as HTMLSelectElement).value;
+    
+    const filtered = selectedDay === 'all' 
+      ? allStops 
+      : allStops.filter((s: any) => new Date(s.scheduled_start).toDateString() === selectedDay);
+    
+    // Store filtered stops and trigger re-render
+    (window as any).filteredStops = filtered;
+    
+    // Trigger map to re-render markers with filtered stops
+    // This will be handled by the map script
+    const event = new CustomEvent('stops-filtered', { detail: filtered });
+    document.dispatchEvent(event);
+  });
+</script>

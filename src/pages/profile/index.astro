@@ -8,6 +8,7 @@ import ProfileAbout      from "@/components/Profile/ProfileAbout.astro";
 import ProfileInterests  from "@/components/Profile/ProfileInterest.astro";
 import ProfileTripGrid   from "@/components/Profile/ProfileGrid.astro";
 import ProfilePreferences from "@/components/Profile/ProfilePreference.astro";
+import ProfilePostFeed    from "@/components/Profile/ProfilePostFeed.astro";
 
 // ── Auth ──────────────────────────────────────────────────────
 const user_id = Astro.locals.user_id;
@@ -81,6 +82,15 @@ const bucketCount = userStats?.bucket_count ?? userStats?.provinces_visited ?? 0
       </div>
 
     </div>
+
+    <!-- Posts feed — full width below the two-column grid, shows all posts including private -->
+    <ProfilePostFeed
+      authorAuthId={user_id}
+      viewerId={user_id}
+      viewerAvatar={Astro.locals.avatar_url ?? null}
+      viewerUsername={Astro.locals.username ?? null}
+    />
+
   </div>
 </div>
 

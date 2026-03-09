@@ -3,6 +3,22 @@ import { refreshSession } from "@/lib/refreshSession";
 import { supabase } from "@/lib/supabase";
 import { setRateLimitKV } from "@/lib/rateLimit";
 
+const COOKIE_OPTS_ACCESS = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "strict" as const,
+  secure: import.meta.env.PROD,
+  maxAge: 60 * 30, // 30 minutes
+} as const;
+
+const COOKIE_OPTS_REFRESH = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "strict" as const,
+  secure: import.meta.env.PROD,
+  maxAge: 60 * 60 * 24 * 30, // 30 days
+} as const;
+
 const decodeJwt = (token: string) => {
   const base64 = token.split(".")[1]
     .replace(/-/g, "+")
@@ -34,55 +50,55 @@ export const auth = defineMiddleware(async (ctx, next) => {
 
   if (accessToken && refreshToken) {
     try {
-      // First, verify the token cryptographically using Supabase
-      const { data: { user }, error: verifyError } = await supabase.auth.getUser(accessToken);
+      const payload = decodeJwt(accessToken);
+      const now = Math.floor(Date.now() / 1000);
+      // Refresh if expired or within 60 s of expiry — skip the getUser() round-trip for known-expired tokens
+      const isExpiredOrNearExpiry = !payload.exp || payload.exp - now < 60;
 
-      if (!verifyError && user) {
-        // Token is valid - set user context from verified Supabase user
-        locals.user_id = user.id;
-        locals.email = user.email ?? undefined;
+      if (!isExpiredOrNearExpiry) {
+        // Token looks valid — verify with Supabase (catches revoked tokens)
+        const { data: { user }, error: verifyError } = await supabase.auth.getUser(accessToken);
 
-        // Extract from user_metadata (set during onboarding or OAuth)
-        if (user.user_metadata?.username) locals.username = user.user_metadata.username;
-        if (user.user_metadata?.avatar_url) locals.avatar_url = user.user_metadata.avatar_url;
-        
-        // Also check JWT payload for backwards compatibility
-        const payload = decodeJwt(accessToken);
-        if (!locals.username && payload.user_metadata?.username) locals.username = payload.user_metadata.username;
-        if (!locals.avatar_url && payload.user_metadata?.avatar_url) locals.avatar_url = payload.user_metadata.avatar_url;
+        if (!verifyError && user) {
+          locals.user_id = user.id;
+          locals.email = user.email ?? undefined;
+          if (user.user_metadata?.username) locals.username = user.user_metadata.username;
+          if (user.user_metadata?.avatar_url) locals.avatar_url = user.user_metadata.avatar_url;
+          // Fallback to JWT payload for metadata
+          if (!locals.username && payload.user_metadata?.username) locals.username = payload.user_metadata.username;
+          if (!locals.avatar_url && payload.user_metadata?.avatar_url) locals.avatar_url = payload.user_metadata.avatar_url;
+        } else {
+          // Verification failed despite not being expired (revoked?) — refresh
+          const refreshed = await refreshSession(refreshToken);
+          if (refreshed) {
+            locals.user_id = refreshed.user_id;
+            locals.email = refreshed.email;
+            if (refreshed.username) locals.username = refreshed.username;
+            if (refreshed.avatar_url) locals.avatar_url = refreshed.avatar_url;
+            cookies.set("sb-access-token", refreshed.access_token, COOKIE_OPTS_ACCESS);
+            cookies.set("sb-refresh-token", refreshed.refresh_token, COOKIE_OPTS_REFRESH);
+          } else {
+            cookies.delete("sb-access-token", { path: "/" });
+            cookies.delete("sb-refresh-token", { path: "/" });
+          }
+        }
       } else {
-        // Token verification failed - try to refresh
-        const refreshed = await refreshSession(accessToken, refreshToken);
-
+        // Token expired — exchange refresh token for a new pair
+        const refreshed = await refreshSession(refreshToken);
         if (refreshed) {
           locals.user_id = refreshed.user_id;
           locals.email = refreshed.email;
-          
           if (refreshed.username) locals.username = refreshed.username;
           if (refreshed.avatar_url) locals.avatar_url = refreshed.avatar_url;
-
-          cookies.set("sb-access-token", refreshed.access_token, {
-            path: "/",
-            httpOnly: true,
-            sameSite: "strict",
-            secure: import.meta.env.PROD,
-            maxAge: 60 * 30, // 30 minutes - short-lived
-          });
-
-          cookies.set("sb-refresh-token", refreshed.refresh_token, {
-            path: "/",
-            httpOnly: true,
-            sameSite: "strict",
-            secure: import.meta.env.PROD,
-            maxAge: 60 * 60 * 24 * 30,
-          });
+          cookies.set("sb-access-token", refreshed.access_token, COOKIE_OPTS_ACCESS);
+          cookies.set("sb-refresh-token", refreshed.refresh_token, COOKIE_OPTS_REFRESH);
         } else {
           cookies.delete("sb-access-token", { path: "/" });
           cookies.delete("sb-refresh-token", { path: "/" });
         }
       }
     } catch (error) {
-      console.error('[AUTH_MIDDLEWARE] Token verification error:', error);
+      console.error('[AUTH_MIDDLEWARE] Token error:', error);
       cookies.delete("sb-access-token", { path: "/" });
       cookies.delete("sb-refresh-token", { path: "/" });
     }

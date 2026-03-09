@@ -10,15 +10,13 @@ export interface RefreshedSession {
 }
 
 /**
- * Attempts to refresh an expired Supabase session.
- * Returns the refreshed session data, or null if refresh fails.
+ * Exchanges a refresh token for a new access + refresh token pair.
+ * Uses the dedicated refreshSession API (not setSession which doesn't reliably refresh).
  */
 export async function refreshSession(
-  accessToken: string,
   refreshToken: string
 ): Promise<RefreshedSession | null> {
-  const { data, error } = await supabaseAdmin.auth.setSession({
-    access_token: accessToken,
+  const { data, error } = await supabaseAdmin.auth.refreshSession({
     refresh_token: refreshToken,
   });
 

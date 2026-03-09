@@ -6,6 +6,7 @@ import Header from "@/features/navbar/Header.astro";
 import SeoHead from "@/seo/component/SeoHead.astro";
 import CookiesConsent from "@/components/CookiesConsent.astro";
 import LoadModal from "@/components/LoadModal.astro";
+import MediaLightbox from "@/components/MediaLightbox.astro";
 import BottomNav from "@/features/navbar/BottomNav.astro";
 import { PUBLIC_R2_URL } from 'astro:env/client';
 
@@ -96,63 +97,68 @@ if(description && !description.title){
      user_id ? <BottomNav currentPath={Astro.url.pathname} /> : ""
     }
 
-    <!-- ── Upload banner ─────────────────────────────────────────── -->
+    <MediaLightbox />
+
+    <!-- ── Upload progress bar (Instagram-style, below header) ─── -->
     <div
-      id="upload-banner"
+      id="upload-bar-wrap"
       role="status"
       aria-live="polite"
-      class="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-[400]
-             pointer-events-none opacity-0 translate-y-3
-             transition-all duration-300 ease-out"
+      class="fixed top-14 sm:top-16 left-0 right-0 z-[400]
+             pointer-events-none opacity-0 transition-opacity duration-300"
     >
-      <div class="flex items-center gap-2.5 px-4 py-3 bg-gray-900 text-white
-                  rounded-2xl shadow-2xl text-sm font-medium whitespace-nowrap">
-        <span id="upload-banner-icon" class="flex-shrink-0 w-4 h-4"></span>
-        <span id="upload-banner-text"></span>
+      <!-- The filling bar -->
+      <div id="upload-bar"
+        class="h-1 bg-blue-500 transition-[width] duration-150 ease-out"
+        style="width:0%">
+      </div>
+      <!-- Small status label centered below the bar -->
+      <div class="flex justify-center mt-1">
+        <span id="upload-label-text"
+          class="text-[10px] font-semibold text-blue-700 bg-white/90 backdrop-blur-sm
+                 px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap opacity-80">
+        </span>
       </div>
     </div>
 
     <script>
-      const banner     = document.getElementById("upload-banner")!;
-      const bannerIcon = document.getElementById("upload-banner-icon")!;
-      const bannerText = document.getElementById("upload-banner-text")!;
+      const barWrap  = document.getElementById("upload-bar-wrap")!;
+      const bar      = document.getElementById("upload-bar")!;
+      const labelTxt = document.getElementById("upload-label-text")!;
       let hideTimer: ReturnType<typeof setTimeout>;
 
-      const SPINNER = `<svg class="animate-spin w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-      </svg>`;
-      const CHECK = `<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-      </svg>`;
-      const CROSS = `<svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-      </svg>`;
-
-      function show() {
+      function showBar() {
         clearTimeout(hideTimer);
-        banner.classList.remove("opacity-0", "pointer-events-none", "translate-y-3");
+        barWrap.classList.remove("opacity-0");
       }
-      function hide(delayMs = 0) {
+      function hideAll(delayMs: number) {
         hideTimer = setTimeout(() => {
-          banner.classList.add("opacity-0", "pointer-events-none", "translate-y-3");
+          barWrap.classList.add("opacity-0");
+          setTimeout(() => { bar.style.width = "0%"; }, 350);
         }, delayMs);
       }
 
       document.addEventListener("upload:start", () => {
-        bannerIcon.innerHTML = SPINNER;
-        bannerText.textContent = "Uploading… Please don't close the app.";
-        show();
+        bar.className = "h-1 bg-blue-500 transition-[width] duration-150 ease-out";
+        bar.style.width = "0%";
+        labelTxt.textContent = "Uploading…";
+        showBar();
+      });
+      document.addEventListener("upload:progress", (e: Event) => {
+        const pct = (e as CustomEvent<number>).detail;
+        bar.style.width = `${pct}%`;
+        labelTxt.textContent = `Uploading… ${pct}%`;
       });
       document.addEventListener("upload:done", () => {
-        bannerIcon.innerHTML = CHECK;
-        bannerText.textContent = "Post shared!";
-        hide(3000);
+        bar.style.width = "100%";
+        labelTxt.textContent = "Post shared!";
+        hideAll(1800);
       });
       document.addEventListener("upload:error", () => {
-        bannerIcon.innerHTML = CROSS;
-        bannerText.textContent = "Upload failed. Please try again.";
-        hide(5000);
+        bar.className = "h-1 bg-red-500 transition-[width] duration-150 ease-out";
+        bar.style.width = "100%";
+        labelTxt.textContent = "Upload failed. Try again.";
+        hideAll(3500);
       });
     </script>
     {clean?"": <>

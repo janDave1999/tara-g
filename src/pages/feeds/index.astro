@@ -3,6 +3,7 @@ import PagePlate from "@/layouts/PagePlate.astro";
 import { supabaseAdmin } from "@/lib/supabase";
 import FeedCard from "@/features/feed/FeedCard.astro";
 import FeedComposer from "@/features/feed/FeedComposer.astro";
+import PostEditor from "@/features/feed/PostEditor.astro";
 import CommentSheet from "@/features/feed/CommentSheet.astro";
 import TripCard from "@/components/TripCard.astro";
 import { PUBLIC_R2_URL } from "astro:env/client";
@@ -113,7 +114,7 @@ function relationLabel(reason: string, count: number): string {
       <div id="feed-list" class="space-y-4">
         {posts.map((post: any, i: number) => (
           <>
-            <FeedCard post={post} />
+            <FeedCard post={post} viewerAuthId={user_id} />
 
             {/* After 3rd post: People You May Know */}
             {i === PEOPLE_INJECT_AFTER && suggestedPeople.length > 0 && (
@@ -225,4 +226,6 @@ function relationLabel(reason: string, count: number): string {
 
   <!-- Global comment sheet (one instance for whole page) -->
   <CommentSheet userAvatar={viewerAvatar} username={viewerUsername} />
+  <!-- Global post editor / delete confirm -->
+  <PostEditor />
 </PagePlate>

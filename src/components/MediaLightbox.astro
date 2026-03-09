@@ -1,0 +1,126 @@
+---
+// Global media lightbox.
+// Open via: document.dispatchEvent(new CustomEvent("media:open", { detail: { all: string[], idx: number } }))
+---
+
+<div
+  id="media-lightbox"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Media viewer"
+  class="fixed inset-0 z-[600] hidden items-center justify-center bg-black/90 backdrop-blur-sm"
+>
+  <!-- Close -->
+  <button id="lb-close" aria-label="Close"
+    class="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+
+  <!-- Counter -->
+  <div id="lb-counter" class="absolute top-4 left-4 text-white/70 text-xs font-medium"></div>
+
+  <!-- Prev -->
+  <button id="lb-prev" aria-label="Previous"
+    class="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    </svg>
+  </button>
+
+  <!-- Media -->
+  <div id="lb-media" class="flex items-center justify-center px-14"></div>
+
+  <!-- Next -->
+  <button id="lb-next" aria-label="Next"
+    class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+  </button>
+
+  <!-- Dot indicators -->
+  <div id="lb-dots" class="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5 items-center"></div>
+</div>
+
+<script>
+  const lightbox   = document.getElementById("media-lightbox")!;
+  const mediaEl    = document.getElementById("lb-media")!;
+  const dotsEl     = document.getElementById("lb-dots")!;
+  const counterEl  = document.getElementById("lb-counter")!;
+  const closeBtn   = document.getElementById("lb-close")!;
+  const prevBtn    = document.getElementById("lb-prev")!;
+  const nextBtn    = document.getElementById("lb-next")!;
+
+  let lbAll: string[] = [];
+  let lbIdx = 0;
+
+  function isVideo(src: string) {
+    return /\.(mp4|webm|mov|avi)(\?|$)/i.test(src);
+  }
+
+  function render() {
+    const src = lbAll[lbIdx];
+    if (isVideo(src)) {
+      mediaEl.innerHTML = `<video src="${src}"
+        class="max-w-[calc(100vw-7rem)] max-h-[88vh] rounded-lg"
+        controls autoplay playsinline></video>`;
+    } else {
+      mediaEl.innerHTML = `<img src="${src}"
+        alt="Media ${lbIdx + 1} of ${lbAll.length}"
+        class="max-w-[calc(100vw-7rem)] max-h-[88vh] rounded-lg object-contain select-none"
+        draggable="false" />`;
+    }
+
+    // Counter
+    counterEl.textContent = lbAll.length > 1 ? `${lbIdx + 1} / ${lbAll.length}` : "";
+
+    // Dots — pill for active, circle for rest
+    dotsEl.innerHTML = lbAll.length > 1
+      ? lbAll.map((_, i) =>
+          `<div class="rounded-full transition-all duration-200 ${
+            i === lbIdx ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"
+          }"></div>`
+        ).join("")
+      : "";
+
+    prevBtn.classList.toggle("invisible", lbIdx === 0);
+    nextBtn.classList.toggle("invisible", lbIdx === lbAll.length - 1);
+  }
+
+  function open(all: string[], idx: number) {
+    lbAll = all;
+    lbIdx = Math.min(idx, all.length - 1);
+    render();
+    lightbox.classList.remove("hidden");
+    lightbox.classList.add("flex");
+    document.body.style.overflow = "hidden";
+  }
+
+  function close() {
+    mediaEl.innerHTML = ""; // stop video / free memory
+    lightbox.classList.add("hidden");
+    lightbox.classList.remove("flex");
+    document.body.style.overflow = "";
+  }
+
+  // External trigger
+  document.addEventListener("media:open", (e: Event) => {
+    const { all, idx } = (e as CustomEvent<{ all: string[]; idx: number }>).detail;
+    open(all, idx);
+  });
+
+  closeBtn.addEventListener("click", close);
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) close(); });
+
+  prevBtn.addEventListener("click", () => { if (lbIdx > 0) { lbIdx--; render(); } });
+  nextBtn.addEventListener("click", () => { if (lbIdx < lbAll.length - 1) { lbIdx++; render(); } });
+
+  document.addEventListener("keydown", (e) => {
+    if (lightbox.classList.contains("hidden")) return;
+    if (e.key === "Escape") close();
+    if (e.key === "ArrowLeft"  && lbIdx > 0)               { lbIdx--; render(); }
+    if (e.key === "ArrowRight" && lbIdx < lbAll.length - 1) { lbIdx++; render(); }
+  });
+</script>

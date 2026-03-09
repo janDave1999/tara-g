@@ -24,9 +24,11 @@ interface FeedPost {
 
 interface Props {
   post: FeedPost;
+  viewerAuthId?: string;
 }
 
-const { post } = Astro.props;
+const { post, viewerAuthId } = Astro.props;
+const isOwner = !!viewerAuthId && viewerAuthId === post.author_auth_id;
 
 const avatarSrc = post.author_avatar
   ? post.author_avatar.startsWith("http")
@@ -37,6 +39,26 @@ const avatarSrc = post.author_avatar
 const photos = (post.media_urls ?? []).map((key: string) =>
   key.startsWith("http") ? key : `${PUBLIC_R2_URL}${key}`
 );
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|avi)(\?|$)/i.test(url);
+}
+
+// Render a single media tile (button wrapping img or video)
+function tile(src: string, idx: number, cls: string) {
+  const vid = isVideoUrl(src);
+  return `<button type="button" class="media-thumb block relative overflow-hidden ${cls}" data-idx="${idx}">
+    ${vid
+      ? `<video src="${src}" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>
+         <div class="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+           <div class="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+             <svg class="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+           </div>
+         </div>`
+      : `<img src="${src}" alt="post media ${idx + 1}" class="w-full h-full object-cover" loading="lazy" />`
+    }
+  </button>`;
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -58,11 +80,35 @@ const liked = post.is_liked_by_viewer ?? false;
 ---
 
 <article
-  class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3"
+  class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 relative"
   data-post-id={post.post_id}
+  data-media-all={JSON.stringify(photos)}
 >
   <!-- Author row -->
   <div class="flex items-center gap-3">
+    {isOwner && (
+      <div class="absolute top-3 right-3">
+        <button
+          type="button"
+          class="post-menu-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+          data-post-id={post.post_id}
+          data-title={post.title ?? ""}
+          data-content={JSON.stringify(post.content)}
+          data-hashtags={JSON.stringify(post.hashtags)}
+          data-media-keys={JSON.stringify(post.media_urls)}
+          aria-label="Post options"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+          </svg>
+        </button>
+        <!-- Dropdown -->
+        <div class="post-menu-dropdown hidden absolute right-0 top-8 w-36 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 text-sm">
+          <button type="button" class="post-edit-btn w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 transition">Edit post</button>
+          <button type="button" class="post-delete-btn w-full text-left px-3 py-2 hover:bg-red-50 text-red-500 transition">Delete post</button>
+        </div>
+      </div>
+    )}
     <a href={`/profile/${post.author_username}`} class="flex-shrink-0">
       {avatarSrc ? (
         <img
@@ -115,29 +161,37 @@ const liked = post.is_liked_by_viewer ?? false;
     )}
 
     {photos.length === 1 && (
-      <div class="rounded-xl overflow-hidden">
-        <img src={photos[0]} alt="post photo" class="w-full max-h-80 object-cover" loading="lazy" />
-      </div>
+      <div class="rounded-xl overflow-hidden" set:html={tile(photos[0], 0, "w-full")} />
     )}
+
     {photos.length === 2 && (
-      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-        {photos.map((src) => (
-          <img src={src} alt="post photo" class="w-full h-48 object-cover" loading="lazy" />
-        ))}
+      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden [&_.media-thumb]:h-48">
+        <Fragment set:html={tile(photos[0], 0, "")} />
+        <Fragment set:html={tile(photos[1], 1, "")} />
       </div>
     )}
+
     {photos.length === 3 && (
       <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-        <img src={photos[0]} alt="post photo" class="w-full h-48 object-cover row-span-2" loading="lazy" />
-        <img src={photos[1]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
-        <img src={photos[2]} alt="post photo" class="w-full h-[93px] object-cover" loading="lazy" />
+        <Fragment set:html={tile(photos[0], 0, "row-span-2 h-[190px]")} />
+        <Fragment set:html={tile(photos[1], 1, "h-[93px]")} />
+        <Fragment set:html={tile(photos[2], 2, "h-[93px]")} />
       </div>
     )}
+
     {photos.length >= 4 && (
-      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
-        {photos.slice(0, 4).map((src) => (
-          <img src={src} alt="post photo" class="w-full h-40 object-cover" loading="lazy" />
-        ))}
+      <div class="grid grid-cols-2 gap-1 rounded-xl overflow-hidden [&_.media-thumb]:h-40">
+        <Fragment set:html={tile(photos[0], 0, "")} />
+        <Fragment set:html={tile(photos[1], 1, "")} />
+        <Fragment set:html={tile(photos[2], 2, "")} />
+        <button type="button" class="media-thumb relative block overflow-hidden h-40" data-idx="3">
+          <img src={photos[3]} alt="post media 4" class="w-full h-full object-cover" loading="lazy" />
+          {photos.length > 4 && (
+            <div class="absolute inset-0 bg-black/55 flex items-center justify-center">
+              <span class="text-white font-bold text-2xl">+{photos.length - 4}</span>
+            </div>
+          )}
+        </button>
       </div>
     )}
 
@@ -344,6 +398,69 @@ const liked = post.is_liked_by_viewer ?? false;
       }
       // share_count increments when recipients open the link, not here
     });
+  });
+
+  // --- 3-dot post menu (owner only) ---
+  document.querySelectorAll<HTMLButtonElement>(".post-menu-btn").forEach((btn) => {
+    const dropdown = btn.nextElementSibling as HTMLElement;
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = !dropdown.classList.contains("hidden");
+      // Close all other dropdowns first
+      document.querySelectorAll(".post-menu-dropdown").forEach((d) => d.classList.add("hidden"));
+      if (!isOpen) dropdown.classList.remove("hidden");
+    });
+
+    dropdown.querySelector<HTMLButtonElement>(".post-edit-btn")!.addEventListener("click", () => {
+      dropdown.classList.add("hidden");
+      document.dispatchEvent(new CustomEvent("post:edit", {
+        detail: {
+          postId:    btn.dataset.postId,
+          title:     btn.dataset.title,
+          content:   JSON.parse(btn.dataset.content ?? '""'),
+          hashtags:  JSON.parse(btn.dataset.hashtags ?? "[]"),
+          mediaKeys: JSON.parse(btn.dataset.mediaKeys ?? "[]"),
+        },
+      }));
+    });
+
+    dropdown.querySelector<HTMLButtonElement>(".post-delete-btn")!.addEventListener("click", () => {
+      dropdown.classList.add("hidden");
+      // Set currentPostId in PostEditor and open delete confirm directly
+      document.dispatchEvent(new CustomEvent("post:edit", {
+        detail: {
+          postId: btn.dataset.postId,
+          title: btn.dataset.title,
+          content: JSON.parse(btn.dataset.content ?? '""'),
+          hashtags: JSON.parse(btn.dataset.hashtags ?? "[]"),
+          mediaKeys: JSON.parse(btn.dataset.mediaKeys ?? "[]"),
+          openDelete: true,
+        },
+      }));
+    });
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".post-menu-dropdown").forEach((d) => d.classList.add("hidden"));
+  });
+
+  // --- Media thumbnails → open lightbox ---
+  document.querySelectorAll<HTMLButtonElement>(".media-thumb").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const article = btn.closest<HTMLElement>("[data-media-all]")!;
+      const all = JSON.parse(article.dataset.mediaAll ?? "[]") as string[];
+      const idx = parseInt(btn.dataset.idx ?? "0", 10);
+      document.dispatchEvent(new CustomEvent("media:open", { detail: { all, idx } }));
+    });
+  });
+
+  // Remove card from feed when post:deleted fires
+  document.addEventListener("post:deleted", (e: Event) => {
+    const { postId } = (e as CustomEvent).detail;
+    const article = document.querySelector<HTMLElement>(`article[data-post-id="${postId}"]`);
+    article?.remove();
   });
 
   // --- comment:posted → increment count on the card ---

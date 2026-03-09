@@ -144,7 +144,7 @@ const avatarSrc = userAvatar
 
       <!-- Photo upload -->
       <div>
-        <p class="text-xs font-medium text-gray-600 mb-2">Photos <span class="text-gray-400 font-normal">(up to 4)</span></p>
+        <p class="text-xs font-medium text-gray-600 mb-2">Photos & Videos <span class="text-gray-400 font-normal">(up to 20)</span></p>
 
         <!-- Photo previews grid -->
         <div id="photo-previews" class="grid grid-cols-4 gap-2 mb-2 empty:hidden"></div>
@@ -161,7 +161,7 @@ const avatarSrc = userAvatar
           <input
             id="photo-file-input"
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
             multiple
             class="sr-only"
           />
@@ -216,7 +216,6 @@ const avatarSrc = userAvatar
 
 <script>
   import { actions } from "astro:actions";
-  import { showToast } from "@/scripts/Toast";
   import { PUBLIC_R2_URL } from "astro:env/client";
   import { queueUpload } from "@/scripts/uploadQueue";
 
@@ -245,13 +244,65 @@ const avatarSrc = userAvatar
   const photoLabel    = document.getElementById("photo-upload-label")!;
   const photoHint     = document.getElementById("photo-upload-hint")!;
 
-  const MAX_PHOTOS = 4;
+  const MAX_FILES     = 20;
+  const MAX_IMAGE_MB  = 10;
+  const MAX_IMAGE_B   = MAX_IMAGE_MB * 1024 * 1024;
+  const MAX_VIDEO_MB  = 500;
+  const MAX_VIDEO_B   = MAX_VIDEO_MB * 1024 * 1024;
+  const MAX_DIMENSION = 8000; // px
+  const MIN_DIMENSION = 10;   // px
+
   let selectedTripId = "";
   let hashtags: string[] = [];
   let tripsLoaded = false;
 
-  // selectedPhotos: { dataUrl (preview), base64, name, type }[]
-  let selectedPhotos: { dataUrl: string; base64: string; name: string; type: string }[] = [];
+  async function validateMediaFile(file: File): Promise<string | null> {
+    const isVideo = file.type.startsWith("video/");
+    if (file.size === 0) return `"${file.name}" is empty.`;
+    if (isVideo) {
+      if (file.size > MAX_VIDEO_B)
+        return `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(0)} MB — max is ${MAX_VIDEO_MB} MB.`;
+      return null; // skip magic-byte / decode checks for video
+    }
+    if (file.size > MAX_IMAGE_B)
+      return `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB — max is ${MAX_IMAGE_MB} MB.`;
+
+    // Magic bytes — first 12 bytes
+    const buf  = await file.slice(0, 12).arrayBuffer();
+    const b    = new Uint8Array(buf);
+    const ok   =
+      (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) ||
+      (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47 &&
+       b[4] === 0x0D && b[5] === 0x0A && b[6] === 0x1A && b[7] === 0x0A) ||
+      (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) ||
+      (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+       b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50);
+    if (!ok) return `"${file.name}" is not a valid image (JPEG, PNG, WebP, or GIF required).`;
+
+    // Decodability + dimensions
+    const objUrl = URL.createObjectURL(file);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth < MIN_DIMENSION || img.naturalHeight < MIN_DIMENSION)
+            reject(new Error(`"${file.name}" is too small (min ${MIN_DIMENSION}×${MIN_DIMENSION}px).`));
+          else if (img.naturalWidth > MAX_DIMENSION || img.naturalHeight > MAX_DIMENSION)
+            reject(new Error(`"${file.name}" exceeds ${MAX_DIMENSION}px on one side.`));
+          else resolve();
+        };
+        img.onerror = () => reject(new Error(`"${file.name}" could not be decoded.`));
+        img.src = objUrl;
+      });
+    } catch (err: any) {
+      return err.message as string;
+    } finally {
+      URL.revokeObjectURL(objUrl);
+    }
+    return null;
+  }
+
+  let selectedPhotos: { previewUrl: string; file: File; name: string; type: string; isVideo: boolean }[] = [];
 
   function esc(s: string) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -364,50 +415,58 @@ const avatarSrc = userAvatar
     updatePlaceholder();
   });
 
-  // ── Photo selection ───────────────────────────────────────────
-  photoInput.addEventListener("change", () => {
-    const files = Array.from(photoInput.files ?? []);
-    const remaining = MAX_PHOTOS - selectedPhotos.length;
-    const toAdd = files.slice(0, remaining);
+  // ── Media selection ───────────────────────────────────────────
+  photoInput.addEventListener("change", async () => {
+    const files     = Array.from(photoInput.files ?? []);
+    const remaining = MAX_FILES - selectedPhotos.length;
+    const errors: string[] = [];
 
-    toAdd.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target!.result as string;
-        const base64  = dataUrl.split(",")[1];
-        selectedPhotos.push({ dataUrl, base64, name: file.name, type: file.type });
-        renderPhotoPreviews();
-      };
-      reader.readAsDataURL(file);
-    });
+    for (const file of files.slice(0, remaining)) {
+      const err = await validateMediaFile(file);
+      if (err) { errors.push(err); continue; }
+      const previewUrl = URL.createObjectURL(file);
+      selectedPhotos.push({ previewUrl, file, name: file.name, type: file.type, isVideo: file.type.startsWith("video/") });
+      renderPhotoPreviews();
+    }
 
+    if (errors.length) {
+      errorEl.textContent = errors.join(" ");
+      errorEl.classList.remove("hidden");
+      setTimeout(() => errorEl.classList.add("hidden"), 6000);
+    }
     photoInput.value = "";
   });
 
   function renderPhotoPreviews() {
     photoPreviews.innerHTML = selectedPhotos.map((p, i) => `
       <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-        <img src="${p.dataUrl}" alt="photo ${i + 1}" class="w-full h-full object-cover" />
+        ${p.isVideo
+          ? `<video src="${p.previewUrl}" class="w-full h-full object-cover" muted preload="metadata" playsinline></video>
+             <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+               <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+             </div>`
+          : `<img src="${p.previewUrl}" alt="photo ${i + 1}" class="w-full h-full object-cover" />`
+        }
         <button type="button" data-idx="${i}"
-          class="remove-photo absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/80 transition">
-          ×
-        </button>
+          class="remove-photo absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/80 transition">×</button>
       </div>
     `).join("");
 
     photoPreviews.querySelectorAll<HTMLButtonElement>(".remove-photo").forEach((btn) => {
       btn.addEventListener("click", () => {
-        selectedPhotos.splice(Number(btn.dataset.idx), 1);
+        const idx = Number(btn.dataset.idx);
+        URL.revokeObjectURL(selectedPhotos[idx].previewUrl);
+        selectedPhotos.splice(idx, 1);
         renderPhotoPreviews();
       });
     });
 
     const count = selectedPhotos.length;
-    if (count >= MAX_PHOTOS) {
+    if (count >= MAX_FILES) {
       photoLabel.classList.add("hidden");
     } else {
       photoLabel.classList.remove("hidden");
-      photoHint.textContent = count > 0 ? `Add more (${count}/${MAX_PHOTOS})` : "Add photos";
+      photoHint.textContent = count > 0 ? `Add more (${count}/${MAX_FILES})` : "Add photos & videos";
     }
   }
 
@@ -462,16 +521,50 @@ const avatarSrc = userAvatar
     resetAll();
 
     // Hand off to background uploader
-    queueUpload(async () => {
+    queueUpload(async (onProgress) => {
       let mediaUrls: string[] = [];
 
       if (snapshot.photos.length > 0) {
-        const uploadRes = await actions.feed.uploadPostMedia({
-          files: snapshot.photos.map((p) => ({ file: p.base64, name: p.name, type: p.type })),
+        // 1. Get presigned PUT URLs from the server
+        const urlRes = await actions.feed.getUploadUrls({
+          files: snapshot.photos.map((p) => ({ name: p.name, type: p.type, size: p.file.size })),
         });
-        if (uploadRes.error) throw new Error("Photo upload failed");
-        mediaUrls = uploadRes.data!.keys;
+        if (urlRes.error) throw new Error("Could not get upload URLs");
+
+        // 2. Upload each file directly to R2 via XHR for progress tracking
+        const totalBytes = snapshot.photos.reduce((sum, p) => sum + p.file.size, 0);
+        let uploadedBytes = 0;
+
+        for (let i = 0; i < urlRes.data!.files.length; i++) {
+          const { key, uploadUrl } = urlRes.data!.files[i];
+          const photo = snapshot.photos[i];
+          let prevLoaded = 0;
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", uploadUrl);
+            xhr.setRequestHeader("Content-Type", photo.type);
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                uploadedBytes += e.loaded - prevLoaded;
+                prevLoaded = e.loaded;
+                // Reserve last 10% for createPost
+                onProgress(Math.round((uploadedBytes / totalBytes) * 90));
+              }
+            };
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) resolve();
+              else reject(new Error(`Upload failed for ${photo.name} (HTTP ${xhr.status})`));
+            };
+            xhr.onerror = () => reject(new Error(`Network error uploading ${photo.name}`));
+            xhr.send(photo.file);
+          });
+
+          mediaUrls.push(key);
+        }
       }
+
+      onProgress(95); // createPost in flight
 
       const res = await actions.feed.createPost({
         tripId:    snapshot.tripId,
@@ -500,11 +593,12 @@ const avatarSrc = userAvatar
     titleCount.className = "text-xs text-gray-400";
     hashInput.value = "";
     hashtags = [];
+    selectedPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
     selectedPhotos = [];
     hashChips.innerHTML = "";
     photoPreviews.innerHTML = "";
     photoLabel.classList.remove("hidden");
-    photoHint.textContent = "Add photos";
+    photoHint.textContent = "Add photos & videos";
     errorEl.classList.add("hidden");
     errorEl.textContent = "";
   }

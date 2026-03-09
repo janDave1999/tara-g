@@ -1,0 +1,388 @@
+---
+// PostEditor — global edit/delete modal.
+// Triggered by: document.dispatchEvent(new CustomEvent("post:edit", { detail: postData }))
+// postData = { postId, title, content, hashtags, mediaKeys, mediaCdnUrls }
+---
+
+<!-- Edit modal -->
+<dialog id="post-editor-modal" class="m-auto w-full max-w-lg rounded-2xl shadow-2xl bg-white p-0 backdrop:bg-black/40">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <h2 class="text-sm font-semibold text-gray-900">Edit Post</h2>
+    <button id="editor-close" type="button" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="px-4 py-4 space-y-4 max-h-[80vh] overflow-y-auto">
+    <!-- Title -->
+    <div>
+      <input
+        id="editor-title"
+        type="text"
+        maxlength="200"
+        placeholder="Title (optional)"
+        class="w-full text-sm font-semibold border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
+      />
+    </div>
+
+    <!-- WYSIWYG toolbar + editor -->
+    <div>
+      <div class="flex items-center gap-0.5 px-2 py-1.5 border border-gray-200 border-b-0 rounded-t-xl bg-gray-50">
+        <button type="button" data-cmd="bold"    class="editor-toolbar-btn w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200 transition"><b>B</b></button>
+        <button type="button" data-cmd="italic"  class="editor-toolbar-btn w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200 transition"><i>I</i></button>
+        <button type="button" data-cmd="underline" class="editor-toolbar-btn w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200 transition"><u>U</u></button>
+        <div class="w-px h-4 bg-gray-300 mx-1"></div>
+        <button type="button" data-cmd="insertUnorderedList" class="editor-toolbar-btn w-7 h-7 flex items-center justify-center rounded-lg text-xs text-gray-600 hover:bg-gray-200 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        </button>
+        <button type="button" data-cmd="insertOrderedList" class="editor-toolbar-btn w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200 transition">1.</button>
+      </div>
+      <div
+        id="editor-content"
+        contenteditable="true"
+        role="textbox"
+        class="min-h-[120px] max-h-[240px] overflow-y-auto rounded-b-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      ></div>
+    </div>
+
+    <!-- Existing photos -->
+    <div id="editor-existing-photos" class="grid grid-cols-4 gap-2"></div>
+
+    <!-- New photos preview -->
+    <div id="editor-new-photos" class="grid grid-cols-4 gap-2"></div>
+
+    <!-- Add photos button -->
+    <label id="editor-photo-label" class="flex items-center gap-2 cursor-pointer text-sm text-blue-600 hover:text-blue-700 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add photos & videos
+      <input id="editor-photo-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple class="hidden" />
+    </label>
+
+    <!-- Error -->
+    <p id="editor-error" class="hidden text-sm text-red-500"></p>
+  </div>
+
+  <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+    <button id="editor-delete-btn" type="button" class="text-sm text-red-500 hover:text-red-600 font-medium transition">
+      Delete post
+    </button>
+    <div class="flex gap-2">
+      <button id="editor-cancel" type="button" class="px-4 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition">Cancel</button>
+      <button id="editor-save" type="button" class="px-4 py-1.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Delete confirm modal -->
+<dialog id="post-delete-modal" class="m-auto w-full max-w-sm rounded-2xl shadow-2xl bg-white p-6 backdrop:bg-black/40">
+  <h2 class="text-base font-semibold text-gray-900 mb-1">Delete post?</h2>
+  <p class="text-sm text-gray-500 mb-5">This can't be undone. Your post and all its photos will be permanently removed.</p>
+  <div class="flex gap-3 justify-end">
+    <button id="delete-cancel" type="button" class="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+    <button id="delete-confirm" type="button" class="px-4 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition">Delete</button>
+  </div>
+</dialog>
+
+<style>
+  #editor-content :global(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.25rem 0; }
+  #editor-content :global(ol) { list-style: decimal; padding-left: 1.25rem; margin: 0.25rem 0; }
+  #editor-content :global(li) { margin: 0.1rem 0; }
+  #editor-content :global(b), #editor-content :global(strong) { font-weight: 700; }
+  #editor-content :global(i), #editor-content :global(em) { font-style: italic; }
+  #editor-content :global(u) { text-decoration: underline; }
+</style>
+
+<script>
+  import { actions } from "astro:actions";
+  import { queueUpload } from "@/scripts/uploadQueue";
+  import { PUBLIC_R2_URL } from "astro:env/client";
+
+  const modal       = document.getElementById("post-editor-modal") as HTMLDialogElement;
+  const deleteModal = document.getElementById("post-delete-modal") as HTMLDialogElement;
+  const titleEl     = document.getElementById("editor-title") as HTMLInputElement;
+  const contentEl   = document.getElementById("editor-content") as HTMLDivElement;
+  const existingEl  = document.getElementById("editor-existing-photos")!;
+  const newPhotosEl = document.getElementById("editor-new-photos")!;
+  const photoInput  = document.getElementById("editor-photo-input") as HTMLInputElement;
+  const photoLabel  = document.getElementById("editor-photo-label")!;
+  const errorEl     = document.getElementById("editor-error")!;
+  const saveBtn     = document.getElementById("editor-save") as HTMLButtonElement;
+
+  const MAX_FILES      = 20;
+  const MAX_IMAGE_MB   = 10;
+  const MAX_IMAGE_B    = MAX_IMAGE_MB * 1024 * 1024;
+  const MAX_VIDEO_MB   = 500;
+  const MAX_VIDEO_B    = MAX_VIDEO_MB * 1024 * 1024;
+  const MAX_DIMENSION  = 8000;
+  const MIN_DIMENSION  = 10;
+
+  let currentPostId   = "";
+  let keepMediaKeys:  string[]                                                                      = [];
+  let newPhotos:      { previewUrl: string; file: File; name: string; type: string; isVideo: boolean }[] = [];
+
+  // ── Toolbar ────────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>(".editor-toolbar-btn").forEach((btn) => {
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      document.execCommand(btn.dataset.cmd!, false);
+      contentEl.focus();
+    });
+  });
+
+  // ── Validation ─────────────────────────────────────────────────
+  async function validateMediaFile(file: File): Promise<string | null> {
+    const isVideo = file.type.startsWith("video/");
+    if (file.size === 0) return `"${file.name}" is empty.`;
+    if (isVideo) {
+      if (file.size > MAX_VIDEO_B)
+        return `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(0)} MB — max is ${MAX_VIDEO_MB} MB.`;
+      return null;
+    }
+    if (file.size > MAX_IMAGE_B)
+      return `"${file.name}" exceeds ${MAX_IMAGE_MB} MB.`;
+
+    const buf  = await file.slice(0, 12).arrayBuffer();
+    const b    = new Uint8Array(buf);
+    const ok   =
+      (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) ||
+      (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) ||
+      (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) ||
+      (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+       b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50);
+    if (!ok) return `"${file.name}" is not a valid image.`;
+
+    const url = URL.createObjectURL(file);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth < MIN_DIMENSION || img.naturalHeight < MIN_DIMENSION)
+            reject(new Error(`"${file.name}" is too small.`));
+          else if (img.naturalWidth > MAX_DIMENSION || img.naturalHeight > MAX_DIMENSION)
+            reject(new Error(`"${file.name}" exceeds ${MAX_DIMENSION}px.`));
+          else resolve();
+        };
+        img.onerror = () => reject(new Error(`"${file.name}" could not be decoded.`));
+        img.src = url;
+      });
+    } catch (e: any) { return e.message; }
+    finally { URL.revokeObjectURL(url); }
+
+    return null;
+  }
+
+  // ── Photo renders ──────────────────────────────────────────────
+  function renderExisting() {
+    existingEl.innerHTML = keepMediaKeys.map((key, i) => {
+      const src = key.startsWith("http") ? key : `${PUBLIC_R2_URL}${key}`;
+      return `<div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+        <img src="${src}" class="w-full h-full object-cover" />
+        <button type="button" data-idx="${i}"
+          class="remove-existing absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/80">×</button>
+      </div>`;
+    }).join("");
+
+    existingEl.querySelectorAll<HTMLButtonElement>(".remove-existing").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        keepMediaKeys.splice(Number(btn.dataset.idx), 1);
+        renderExisting();
+        updatePhotoLabel();
+      });
+    });
+  }
+
+  function renderNewPhotos() {
+    newPhotosEl.innerHTML = newPhotos.map((p, i) => `
+      <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+        ${p.isVideo
+          ? `<video src="${p.previewUrl}" class="w-full h-full object-cover" muted preload="metadata" playsinline></video>
+             <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+               <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+             </div>`
+          : `<img src="${p.previewUrl}" class="w-full h-full object-cover" />`
+        }
+        <button type="button" data-idx="${i}"
+          class="remove-new absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/80">×</button>
+      </div>`).join("");
+
+    newPhotosEl.querySelectorAll<HTMLButtonElement>(".remove-new").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.idx);
+        URL.revokeObjectURL(newPhotos[idx].previewUrl);
+        newPhotos.splice(idx, 1);
+        renderNewPhotos();
+        updatePhotoLabel();
+      });
+    });
+  }
+
+  function updatePhotoLabel() {
+    const total = keepMediaKeys.length + newPhotos.length;
+    photoLabel.style.display = total >= MAX_FILES ? "none" : "";
+  }
+
+  // ── Add new media ──────────────────────────────────────────────
+  photoInput.addEventListener("change", async () => {
+    const files     = Array.from(photoInput.files ?? []);
+    const remaining = MAX_FILES - keepMediaKeys.length - newPhotos.length;
+    const errors: string[] = [];
+
+    for (const file of files.slice(0, remaining)) {
+      const err = await validateMediaFile(file);
+      if (err) { errors.push(err); continue; }
+      const previewUrl = URL.createObjectURL(file);
+      newPhotos.push({ previewUrl, file, name: file.name, type: file.type, isVideo: file.type.startsWith("video/") });
+      renderNewPhotos();
+      updatePhotoLabel();
+    }
+
+    if (errors.length) {
+      errorEl.textContent = errors.join(" ");
+      errorEl.classList.remove("hidden");
+      setTimeout(() => errorEl.classList.add("hidden"), 5000);
+    }
+    photoInput.value = "";
+  });
+
+  // ── Open with post data ────────────────────────────────────────
+  document.addEventListener("post:edit", (e: Event) => {
+    const { postId, title, content, hashtags, mediaKeys, openDelete } = (e as CustomEvent).detail;
+
+    currentPostId  = postId;
+    keepMediaKeys  = [...(mediaKeys ?? [])];
+    newPhotos      = [];
+
+    titleEl.value        = title ?? "";
+    contentEl.innerHTML  = content ?? "";
+
+    renderExisting();
+    renderNewPhotos();
+    updatePhotoLabel();
+    errorEl.classList.add("hidden");
+
+    if (openDelete) {
+      deleteModal.showModal();
+    } else {
+      modal.showModal();
+      contentEl.focus();
+    }
+  });
+
+  // ── Close / cancel ─────────────────────────────────────────────
+  function closeEditor() {
+    newPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+    newPhotos = [];
+    modal.close();
+  }
+  document.getElementById("editor-close")!.addEventListener("click", closeEditor);
+  document.getElementById("editor-cancel")!.addEventListener("click", closeEditor);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeEditor(); });
+
+  // ── Save ───────────────────────────────────────────────────────
+  saveBtn.addEventListener("click", () => {
+    const content = contentEl.innerHTML.trim();
+    if (!content || contentEl.textContent!.trim() === "") {
+      errorEl.textContent = "Content is required.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    errorEl.classList.add("hidden");
+
+    const snapshot = {
+      postId:        currentPostId,
+      title:         titleEl.value.trim() || undefined,
+      content,
+      keepMediaKeys: [...keepMediaKeys],
+      newPhotos:     [...newPhotos],
+    };
+
+    closeEditor();
+
+    queueUpload(async (onProgress) => {
+      let newMediaKeys: string[] = [];
+
+      if (snapshot.newPhotos.length > 0) {
+        const urlRes = await actions.feed.getUploadUrls({
+          files: snapshot.newPhotos.map((p) => ({ name: p.name, type: p.type, size: p.file.size })),
+        });
+        if (urlRes.error) throw new Error("Could not get upload URLs");
+
+        const totalBytes = snapshot.newPhotos.reduce((sum, p) => sum + p.file.size, 0);
+        let uploadedBytes = 0;
+
+        for (let i = 0; i < urlRes.data!.files.length; i++) {
+          const { key, uploadUrl } = urlRes.data!.files[i];
+          const photo = snapshot.newPhotos[i];
+          let prevLoaded = 0;
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", uploadUrl);
+            xhr.setRequestHeader("Content-Type", photo.type);
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                uploadedBytes += e.loaded - prevLoaded;
+                prevLoaded = e.loaded;
+                onProgress(Math.round((uploadedBytes / totalBytes) * 90));
+              }
+            };
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) resolve();
+              else reject(new Error(`Upload failed for ${photo.name} (HTTP ${xhr.status})`));
+            };
+            xhr.onerror = () => reject(new Error(`Network error uploading ${photo.name}`));
+            xhr.send(photo.file);
+          });
+
+          newMediaKeys.push(key);
+        }
+      }
+
+      onProgress(95);
+
+      const res = await actions.feed.updatePost({
+        postId:        snapshot.postId,
+        title:         snapshot.title,
+        content:       snapshot.content,
+        hashtags:      [],
+        keepMediaKeys: snapshot.keepMediaKeys,
+        newMediaKeys,
+      });
+
+      if (res.error) throw new Error("Failed to update post");
+
+      document.dispatchEvent(new CustomEvent("post:updated", { detail: { postId: snapshot.postId } }));
+    });
+  });
+
+  // ── Delete ─────────────────────────────────────────────────────
+  document.getElementById("editor-delete-btn")!.addEventListener("click", () => {
+    closeEditor();
+    deleteModal.showModal();
+  });
+
+  document.getElementById("delete-cancel")!.addEventListener("click", () => deleteModal.close());
+  deleteModal.addEventListener("click", (e) => { if (e.target === deleteModal) deleteModal.close(); });
+
+  document.getElementById("delete-confirm")!.addEventListener("click", async () => {
+    const postId = currentPostId;
+    deleteModal.close();
+
+    const res = await actions.feed.deletePost({ postId });
+    if (res.error) {
+      document.dispatchEvent(new CustomEvent("upload:error"));
+      return;
+    }
+
+    document.dispatchEvent(new CustomEvent("post:deleted", { detail: { postId } }));
+
+    // If on the post detail page, go back to feeds
+    if (location.pathname.startsWith("/post/")) {
+      location.href = "/feeds";
+    }
+  });
+</script>

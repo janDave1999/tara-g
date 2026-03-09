@@ -2,10 +2,39 @@ import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro:content";
 import { supabaseAdmin } from "@/lib/supabase";
 import { defineProtectedAction } from "./utils";
-import { uploadToR2 } from "@/scripts/R2/upload";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { deleteFromR2 } from "@/scripts/R2/upload";
+import {
+  CLOUDFLARE_ACCESS_KEY_ID,
+  CLOUDFLARE_SECRET_ACCESS_KEY,
+  CLOUDFLARE_SPECIFIC_BUCKET_S3_URL,
+} from "astro:env/server";
+
+function sanitizeContent(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+    .replace(/href\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, "");
+}
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;  // 10 MB
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
+const BUCKET_NAME  = "staging-tara-g-assets";
+
+function getS3Client() {
+  return new S3Client({
+    endpoint: CLOUDFLARE_SPECIFIC_BUCKET_S3_URL,
+    region: "auto",
+    credentials: {
+      accessKeyId: CLOUDFLARE_ACCESS_KEY_ID,
+      secretAccessKey: CLOUDFLARE_SECRET_ACCESS_KEY,
+    },
+  });
+}
 
 export const feed = {
   getUserPosts: defineAction({
@@ -70,39 +99,50 @@ export const feed = {
     }),
   }),
 
-  uploadPostMedia: defineAction({
+  // Returns short-lived presigned PUT URLs — client uploads directly to R2
+  getUploadUrls: defineAction({
     accept: "json",
     input: z.object({
       files: z.array(z.object({
-        file: z.string(), // base64
-        name: z.string(),
+        name: z.string().max(255),
         type: z.string(),
-      })).min(1).max(4),
+        size: z.number().int().positive(),
+      })).min(1).max(20),
     }),
     handler: defineProtectedAction(async ({ files }, context) => {
       const { userId } = context;
-      const keys: string[] = [];
+      const s3 = getS3Client();
 
-      for (const f of files) {
-        if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+      const results = await Promise.all(files.map(async (f) => {
+        const isImage = ALLOWED_IMAGE_TYPES.includes(f.type);
+        const isVideo = ALLOWED_VIDEO_TYPES.includes(f.type);
+        if (!isImage && !isVideo) {
           throw new ActionError({ code: "BAD_REQUEST", message: `Invalid file type: ${f.type}` });
         }
-
-        const buffer = Buffer.from(f.file, "base64");
-        const padding = f.file.endsWith("==") ? 2 : f.file.endsWith("=") ? 1 : 0;
-        const sizeInBytes = (f.file.length * 3) / 4 - padding;
-        if (sizeInBytes > MAX_FILE_SIZE) {
-          throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 5MB limit" });
+        const maxSize  = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+        const maxLabel = isVideo ? "500 MB" : "10 MB";
+        if (f.size > maxSize) {
+          throw new ActionError({ code: "BAD_REQUEST", message: `"${f.name}" exceeds ${maxLabel}` });
         }
 
-        const ext     = f.name.split(".").pop()?.toLowerCase() ?? "jpg";
-        const keyname = `post/${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const ext = f.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const key = `post/${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
-        await uploadToR2(buffer, f.name, f.type, keyname);
-        keys.push(keyname);
-      }
+        const uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+            ContentType: f.type,
+            ContentLength: f.size,
+          }),
+          { expiresIn: 600 }, // 10 minutes
+        );
 
-      return { keys };
+        return { key, uploadUrl };
+      }));
+
+      return { files: results };
     }),
   }),
 
@@ -118,12 +158,7 @@ export const feed = {
     handler: defineProtectedAction(async ({ tripId, content, title, hashtags, location, mediaUrls }, context) => {
       const { userId } = context;
 
-      // Strip dangerous HTML — allow basic formatting tags only
-      const safeContent = content
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-        .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-        .replace(/href\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, "");
+      const safeContent = sanitizeContent(content);
 
       const { data, error } = await supabaseAdmin.rpc("create_user_post", {
         p_user_id:  userId,
@@ -318,6 +353,88 @@ export const feed = {
       }
 
       return { alreadyReported: data?.[0]?.already_reported ?? false };
+    }),
+  }),
+
+  updatePost: defineAction({
+    accept: "json",
+    input: z.object({
+      postId:        z.string().uuid(),
+      title:         z.string().max(200).optional(),
+      content:       z.string().min(1).max(10000),
+      hashtags:      z.array(z.string()).max(10).default([]),
+      keepMediaKeys: z.array(z.string()).default([]),
+      newMediaKeys:  z.array(z.string()).default([]),
+    }),
+    handler: defineProtectedAction(async ({ postId, title, content, hashtags, keepMediaKeys, newMediaKeys }, context) => {
+      const { userId } = context;
+      const safeContent = sanitizeContent(content);
+
+      // Resolve internal user id
+      const { data: userRow } = await supabaseAdmin
+        .from("users").select("user_id").eq("auth_id", userId).single();
+      if (!userRow) throw new ActionError({ code: "UNAUTHORIZED", message: "User not found" });
+
+      // Ownership check
+      const { data: owned } = await supabaseAdmin
+        .from("user_posts").select("post_id")
+        .eq("post_id", postId).eq("user_id", userRow.user_id).single();
+      if (!owned) throw new ActionError({ code: "FORBIDDEN", message: "Not authorized" });
+
+      // Update post text
+      const { error: updateErr } = await supabaseAdmin
+        .from("user_posts")
+        .update({ title: title || null, content: safeContent, hashtags })
+        .eq("post_id", postId);
+      if (updateErr) throw new ActionError({ code: "INTERNAL_SERVER_ERROR", message: updateErr.message });
+
+      // Remove deleted media from post_media + R2
+      const { data: existing } = await supabaseAdmin
+        .from("post_media").select("url").eq("post_id", postId);
+      const toDelete = (existing ?? []).filter((m) => !keepMediaKeys.includes(m.url));
+      if (toDelete.length) {
+        await Promise.allSettled(toDelete.map((m) => deleteFromR2(m.url)));
+        await supabaseAdmin.from("post_media").delete()
+          .eq("post_id", postId).in("url", toDelete.map((m) => m.url));
+      }
+
+      // Insert newly added media
+      if (newMediaKeys.length) {
+        await supabaseAdmin.from("post_media").insert(
+          newMediaKeys.map((url, i) => ({
+            post_id: postId, url, display_order: keepMediaKeys.length + i,
+          }))
+        );
+      }
+
+      return { postId };
+    }),
+  }),
+
+  deletePost: defineAction({
+    accept: "json",
+    input: z.object({ postId: z.string().uuid() }),
+    handler: defineProtectedAction(async ({ postId }, context) => {
+      const { userId } = context;
+
+      const { data: userRow } = await supabaseAdmin
+        .from("users").select("user_id").eq("auth_id", userId).single();
+      if (!userRow) throw new ActionError({ code: "UNAUTHORIZED", message: "User not found" });
+
+      // Fetch media keys before deletion for R2 cleanup
+      const { data: media } = await supabaseAdmin
+        .from("post_media").select("url").eq("post_id", postId);
+
+      const { error } = await supabaseAdmin
+        .from("user_posts").delete()
+        .eq("post_id", postId).eq("user_id", userRow.user_id);
+      if (error) throw new ActionError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+
+      if (media?.length) {
+        await Promise.allSettled(media.map((m) => deleteFromR2(m.url)));
+      }
+
+      return { deleted: true };
     }),
   }),
 };

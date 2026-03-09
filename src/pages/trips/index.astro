@@ -179,6 +179,17 @@ const TRIP_TAGS = [
             ))}
           </div>
 
+          <!-- Create Trip button -->
+          <a
+            href="/trips/create"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create Trip
+          </a>
+
           <!-- Search input -->
           <form method="GET" class="flex-1 sm:max-w-xs" id="search-form">
             <input type="hidden" name="tab" value={currentTab} />

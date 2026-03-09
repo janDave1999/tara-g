@@ -47,7 +47,7 @@ const {
 const isVisitor = user_role === 'visitor';
 const isPublicTrip = trip_visibility?.visibility === 'public';
 
-if (isVisitor && !isPublicTrip) {
+if (isVisitor && !isPublicTrip && !shareCode) {
   return Astro.redirect('/404');
 }
 

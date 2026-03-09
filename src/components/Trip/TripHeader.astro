@@ -37,6 +37,8 @@ if (Array.isArray(tags)) {
 
 const isOwner = userRole === 'owner';
 const isFull = (currentPax ?? 0) >= (maxPax ?? 1);
+// Visitor via share-link gets role 'invited' (no personal invitee_id) — treat as requestable visitor
+const canRequestJoin = (userRole === 'visitor' || (userRole === 'invited' && !isInvited)) && isAuthenticated && !isFull && (tripStatus === 'active' || tripStatus === 'planning');
 
 const pendingRequestsCount = Array.isArray(pendingRequests) ? pendingRequests.length : 0;
 const pendingInvitationsCount = Array.isArray(pendingInvitations) ? pendingInvitations.length : 0;
@@ -133,7 +135,7 @@ const statusBadgeClass: Record<string, string> = {
     <!-- Right: Share button (mobile) + Action buttons (desktop) -->
     <div class="flex items-center gap-2 shrink-0 pt-0.5">
       <!-- Desktop: Action buttons next to share -->
-      {userRole === 'visitor' && isAuthenticated && !isInvited && !isFull && tripStatus === 'active' && (
+      {canRequestJoin && (
         <button
           id="join-btn-desktop"
           class="join-btn hidden md:block px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
@@ -142,7 +144,7 @@ const statusBadgeClass: Record<string, string> = {
         </button>
       )}
 
-      {userRole === 'visitor' && !isInvited && isFull && (
+      {(userRole === 'visitor' || (userRole === 'invited' && !isInvited)) && isAuthenticated && isFull && (
         <span class="hidden md:block px-5 py-2 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed select-none">
           Trip Full
         </span>
@@ -256,7 +258,7 @@ const statusBadgeClass: Record<string, string> = {
   )}
   
   <div class="flex items-center gap-2 justify-center">
-    {userRole === 'visitor' && isAuthenticated && !isInvited && !isFull && tripStatus === 'active' && (
+    {canRequestJoin && (
       <button
         id="join-btn-mobile"
         class="join-btn flex-1 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-500/20 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
@@ -265,7 +267,7 @@ const statusBadgeClass: Record<string, string> = {
       </button>
     )}
 
-    {userRole === 'visitor' && !isInvited && isFull && (
+    {(userRole === 'visitor' || (userRole === 'invited' && !isInvited)) && isAuthenticated && isFull && (
       <span class="flex-1 px-5 py-3 rounded-xl bg-gray-100 text-gray-400 text-sm font-medium text-center cursor-not-allowed select-none">
         Trip Full
       </span>

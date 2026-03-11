@@ -205,11 +205,12 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
     ],
   }}
 >
-  <section class="max-w-5xl mx-auto mt-6 px-4 space-y-5 md:mb-20 pb-24 md:pb-20">
+  <div class="bg-white min-h-screen">
+  <section class="max-w-5xl mx-auto pb-24 md:pb-16">
 
     <!-- Invitation Banner (only shown to invited users) -->
     {isInvited && pendingInvitationId && (
-      <div class="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
         <div class="flex items-center gap-3 flex-1 min-w-0">
           <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
             <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,31 +241,45 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
       </div>
     )}
 
-    <!-- Card 1: Hero image + Trip title/meta -->
-    <div class="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-      <Hero server:defer userRole={trip.user_role} trip_images={trip_images} />
+    <!-- Hero image + Trip title/meta -->
+    <div>
+      <Hero userRole={trip.user_role} trip_images={trip_images} tripId={trip_id} />
       <TripHeader {...tripProps} isAuthenticated={!!user} />
     </div>
 
-    <!-- Card 2: Trip details (destination, dates, members, preferences, budget, description) -->
-    <div class="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+    <!-- Section separator -->
+    <div class="h-2 bg-gray-100"></div>
+
+    <!-- Trip details (destination, dates, members, preferences, budget, description) -->
+    <div>
       <TripDetails {...tripProps} isVisitor={isVisitor} />
     </div>
 
-    <!-- Organizer card -->
+    <!-- Section separator -->
+    <div class="h-2 bg-gray-100"></div>
+
+    <!-- Organizer -->
     {trip.owner && (
-      <TripOrganizer
-        owner={trip.owner}
-        info={organizerInfo}
-        prefs={organizerPrefs}
-        stats={organizerStats}
-      />
+      <>
+        <TripOrganizer
+          owner={trip.owner}
+          info={organizerInfo}
+          prefs={organizerPrefs}
+          stats={organizerStats}
+        />
+        <div class="h-2 bg-gray-100"></div>
+      </>
     )}
 
-    {(user_role === 'owner' || user_role === 'member') && <Member tripId={trip_id} />}
-    
+    {(user_role === 'owner' || user_role === 'member') && (
+      <>
+        <Member tripId={trip_id} />
+        <div class="h-2 bg-gray-100"></div>
+      </>
+    )}
+
     {isVisitor && isPublicTrip && !user && (
-      <div class="rounded-2xl border border-gray-200 shadow-sm bg-white p-6 text-center">
+      <div class="p-5 text-center">
         <p class="text-gray-600 mb-4">Join this trip to see the full itinerary and connect with travelers!</p>
         <a
           href={`/signin?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`}
@@ -282,10 +297,13 @@ const seoDescription = (rawDesc + destinationSuffix).slice(0, 155) || `Plan a tr
         tripId={trip.trip_id}
         destination={destination}
         itineraryPublic={trip_visibility?.itinerary_public ?? false}
+        tripStart={trip_details?.start_date}
+        tripEnd={trip_details?.end_date}
       />
     )}
 
   </section>
+  </div>
 </Layout>
 
 <script>

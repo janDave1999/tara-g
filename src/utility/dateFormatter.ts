@@ -63,6 +63,16 @@ export const formatDateTimeLocal = (isoString: string): string => {
   );
 };
 
+/**
+ * Convert a datetime-local string ("YYYY-MM-DDTHH:mm", browser-local time) to a
+ * UTC ISO string before sending to Supabase, so the correct absolute timestamp is stored.
+ */
+export const toUTCISO = (v: string | undefined | null): string | undefined => {
+  if (!v) return undefined;
+  const d = new Date(v); // naive string → interpreted as local time by the browser
+  return isNaN(d.getTime()) ? undefined : d.toISOString();
+};
+
 /** Human-readable duration between two ISO strings. */
 export const getDuration = (start: string, end: string): string => {
   const diff = parseISO(end).getTime() - parseISO(start).getTime();

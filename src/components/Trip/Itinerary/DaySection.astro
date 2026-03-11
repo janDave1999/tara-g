@@ -28,10 +28,10 @@ const formatDayDate = (iso: string | null | undefined): string => {
 const dayDate = formatDayDate(firstStop?.scheduled_start) || formatDayDate(firstStop?.scheduled_end);
 ---
 
-<div class="day-section mb-6" data-day-index={dayIndex}>
+<div class="day-section mb-4" data-day-index={dayIndex}>
 
   <!-- Day Header -->
-  <div class="day-header flex items-center gap-3 py-2.5 cursor-pointer select-none group mb-4">
+  <div class="day-header flex items-center gap-3 py-2 cursor-pointer select-none group mb-2">
     <div class="w-7 h-7 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
       {dayIndex + 1}
     </div>
@@ -59,9 +59,9 @@ const dayDate = formatDayDate(firstStop?.scheduled_start) || formatDayDate(first
   </div>
 
   <!-- Timeline Container -->
-  <div class="timeline-container relative ml-5" data-day={dayIndex}>
+  <div class="timeline-container relative ml-4" data-day={dayIndex}>
     <!-- Vertical line -->
-    <div class="absolute left-0 top-0 bottom-0 w-px bg-gray-200"></div>
+    <div class="absolute left-0 top-0 bottom-0 w-px bg-gray-100"></div>
 
     {stops.map((completeStops) => (
       <StopCard

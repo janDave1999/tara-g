@@ -8,18 +8,19 @@ interface Props {
   isOwner: boolean;
   destination?: string;
   itineraryPublic?: boolean;
+  tripStart?: string | null;
+  tripEnd?: string | null;
 }
 
-const { tripId, initialData, isOwner, destination, itineraryPublic = false } = Astro.props;
+const { tripId, initialData, isOwner, destination, itineraryPublic = false, tripStart, tripEnd } = Astro.props;
 function groupStopsByDay(stops: any[]) {
   const stopsByDay: any[][] = [];
   let currentDay: any[] = [];
   let currentDate = '';
 
   stops.forEach((completeStop, index) => {
-    const stopDate = completeStop.scheduled_start
-      ? new Date(completeStop.scheduled_start).toDateString()
-      : '';
+    const rawDate = completeStop.scheduled_start || completeStop.scheduled_end;
+    const stopDate = rawDate ? new Date(rawDate).toDateString() : '';
     if (index === 0) {
       currentDate = stopDate;
       currentDay.push(completeStop);
@@ -42,12 +43,14 @@ function groupStopsByDay(stops: any[]) {
 let groupedStops = groupStopsByDay(initialData || []);
 ---
 
-<div class="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+<div>
   <div
     id="itinerary-root"
-    class="p-6 md:p-8"
+    class="px-3 py-4 md:px-4 md:py-5"
     data-trip-id={tripId}
     data-is-owner={isOwner}
+    data-trip-start={tripStart ?? ''}
+    data-trip-end={tripEnd ?? ''}
   >
     <ItineraryHeader
       isOwner={isOwner}
@@ -92,4 +95,6 @@ let groupedStops = groupStopsByDay(initialData || []);
   </div>
 </div>
 
-<script src="../../../scripts/Itinerary/Itinerary.ts"></script>
+<script>
+  import '@/scripts/Itinerary/Itinerary';
+</script>

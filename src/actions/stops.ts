@@ -146,6 +146,28 @@ export const stops = {
     },
   }),
 
+  // Bulk reorder stops by updating order_index for each
+  reorderStops: defineAction({
+    input: z.object({
+      tripId: z.string().uuid(),
+      order: z.array(z.object({
+        id: z.string().uuid(),
+        orderIndex: z.number().int().min(1),
+      })),
+    }),
+    handler: async ({ tripId, order }) => {
+      for (const item of order) {
+        const { error } = await supabaseAdmin
+          .from('trip_location')
+          .update({ order_index: item.orderIndex })
+          .eq('id', item.id)
+          .eq('trip_id', tripId);
+        if (error) throw new Error(`Reorder failed for ${item.id}: ${error.message}`);
+      }
+      return { success: true };
+    },
+  }),
+
   // Delete a stop
   deleteStop: defineAction({
     input: z.object({

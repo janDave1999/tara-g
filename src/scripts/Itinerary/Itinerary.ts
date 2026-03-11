@@ -8,25 +8,38 @@ function initItinerary() {
   const root = document.getElementById('itinerary-root');
   if (!root) return;
 
-  const tripId = root.dataset.tripId!;
-  const isOwner = root.dataset.isOwner === 'true';
-  
+  // Guard against double-initialisation (e.g. direct call + astro:page-load both firing)
+  if (root.dataset.itineraryInit === '1') return;
+  root.dataset.itineraryInit = '1';
+
+  const tripId    = root.dataset.tripId!;
+  const isOwner   = root.dataset.isOwner === 'true';
+  const tripStart = root.dataset.tripStart || '';
+  const tripEnd   = root.dataset.tripEnd   || '';
+
   if (!isOwner) return;
 
-  const toggleBtn = document.getElementById('toggle-mode-btn');
+  const toggleBtn = document.getElementById('toggle-mode-btn') as HTMLButtonElement | null;
+  const originalBtnClass = toggleBtn?.className ?? '';
   let isEditing = false;
 
   // Toggle Edit Mode
   toggleBtn?.addEventListener('click', () => {
     isEditing = !isEditing;
     toggleBtn.textContent = isEditing ? '✓ Finish Editing' : 'Edit Itinerary';
-    toggleBtn.className = isEditing 
-      ? 'px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-amber-500/30 focus:ring-2 focus:ring-amber-500 focus:outline-none'
-      : 'px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-500/30 focus:ring-2 focus:ring-emerald-500 focus:outline-none';
-    
+    toggleBtn.className = isEditing
+      ? 'px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors focus:ring-2 focus:ring-amber-500 focus:outline-none'
+      : originalBtnClass;
+
     // Show/hide all edit controls
     document.querySelectorAll<HTMLElement>('.edit-controls, .activity-controls, .add-stop-btn, .add-activity-btn').forEach(el => {
-      el.style.display = isEditing ? 'flex' : 'none';
+      if (isEditing) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      } else {
+        el.classList.remove('flex');
+        el.classList.add('hidden');
+      }
     });
   });
 
@@ -46,12 +59,16 @@ function initItinerary() {
   });
 
   // Initialize stop editor functionality
-  initStopEditor(root, tripId);
+  initStopEditor(root, tripId, tripStart, tripEnd);
 
   // Initialize activity editor functionality
   initActivityEditor(root, tripId);
 }
 
-// Initialize on page load
+// Initialize on load; astro:page-load covers View Transitions navigation
 initItinerary();
-document.addEventListener('astro:page-load', initItinerary);
+document.addEventListener('astro:page-load', () => {
+  // Clear the guard so re-init runs after navigation rebuilds the DOM
+  document.getElementById('itinerary-root')?.removeAttribute('data-itinerary-init');
+  initItinerary();
+});

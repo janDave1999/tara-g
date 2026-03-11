@@ -6,6 +6,27 @@ import { saveLocation, saveTripLoc } from "@/lib/locations";
 import { uploadToR2, deleteFromR2 } from "@/scripts/R2/upload";
 import { defineProtectedAction } from "./utils";
 import type { JoinRequest, PendingInvitation, MembersSummary, CompleteMembersData } from "@/types/trip";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  CLOUDFLARE_ACCESS_KEY_ID,
+  CLOUDFLARE_SECRET_ACCESS_KEY,
+  CLOUDFLARE_SPECIFIC_BUCKET_S3_URL,
+} from "astro:env/server";
+
+const HERO_BUCKET = "staging-tara-g-assets";
+const ALLOWED_HERO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+function getHeroS3Client() {
+  return new S3Client({
+    endpoint: CLOUDFLARE_SPECIFIC_BUCKET_S3_URL,
+    region: "auto",
+    credentials: {
+      accessKeyId: CLOUDFLARE_ACCESS_KEY_ID,
+      secretAccessKey: CLOUDFLARE_SECRET_ACCESS_KEY,
+    },
+  });
+}
 
 // Helper function to send notification
 async function sendNotification(
@@ -915,6 +936,73 @@ export const trip = {
     },
   }),
   
+  // Returns presigned PUT URLs so client can upload hero images directly to R2
+  getHeroUploadUrls: defineAction({
+    accept: "json",
+    input: z.object({
+      tripId: z.string().uuid(),
+      files: z.array(z.object({
+        name: z.string().max(255),
+        type: z.string(),
+        size: z.number().int().positive(),
+      })).min(1).max(10),
+    }),
+    handler: defineProtectedAction(async ({ tripId, files }) => {
+      const s3 = getHeroS3Client();
+      const results = await Promise.all(files.map(async (f) => {
+        if (!ALLOWED_HERO_TYPES.includes(f.type)) {
+          throw new ActionError({ code: "BAD_REQUEST", message: `Invalid file type: ${f.type}` });
+        }
+        if (f.size > 10 * 1024 * 1024) {
+          throw new ActionError({ code: "BAD_REQUEST", message: `"${f.name}" exceeds 10 MB` });
+        }
+        const ext = f.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const key = `trip/hero/${tripId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const uploadUrl = await getSignedUrl(
+          s3,
+          new PutObjectCommand({ Bucket: HERO_BUCKET, Key: key, ContentType: f.type, ContentLength: f.size }),
+          { expiresIn: 600 },
+        );
+        return { key, uploadUrl };
+      }));
+      return { files: results };
+    }),
+  }),
+
+  // Saves uploaded keys to trip_images table after client-side R2 upload
+  confirmHeroUpload: defineAction({
+    accept: "json",
+    input: z.object({
+      tripId: z.string().uuid(),
+      keys: z.array(z.string().min(1)).min(1).max(10),
+    }),
+    handler: defineProtectedAction(async ({ tripId, keys }) => {
+      const rows = keys.map(key => ({ trip_id: tripId, image_url: key, is_cover: true, type: "hero" }));
+      const { error } = await supabaseAdmin.from("trip_images").insert(rows);
+      if (error) throw new ActionError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      return { success: true };
+    }),
+  }),
+
+  // Removes a single hero image from R2 + trip_images table
+  deleteHeroImage: defineAction({
+    accept: "json",
+    input: z.object({
+      tripId: z.string().uuid(),
+      imageKey: z.string().min(1),
+    }),
+    handler: defineProtectedAction(async ({ tripId, imageKey }) => {
+      const { error } = await supabaseAdmin
+        .from("trip_images")
+        .delete()
+        .eq("trip_id", tripId)
+        .eq("image_url", imageKey);
+      if (error) throw new ActionError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      try { await deleteFromR2(imageKey); } catch (e) { console.error("[deleteHeroImage]", e); }
+      return { success: true };
+    }),
+  }),
+
   leaveTrip: defineAction({
     input: z.object({
       trip_id: z.string().uuid(),

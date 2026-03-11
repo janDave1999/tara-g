@@ -1,6 +1,5 @@
 ---
 import { PUBLIC_R2_URL } from "astro:env/client";
-import UploadImages from "./UploadImages.astro";
 
 interface TripImage {
   key_name: string;
@@ -14,25 +13,25 @@ interface TripImage {
 interface Props {
   trip_images?: TripImage[];
   userRole?: string;
+  tripId?: string;
 }
 
-const { trip_images = [], userRole }: Props = Astro.props;
+const { trip_images = [], userRole, tripId }: Props = Astro.props;
 
 const isOwner = userRole === 'owner';
 const heroImages = trip_images?.filter((img) => img.type === "hero");
-const totalSlides = isOwner ? heroImages?.length + 1 : heroImages?.length;
+const totalSlides = heroImages?.length;
 
 const getPrevSlide = (n: number) => n - 1 <= 0 ? totalSlides : n - 1;
 const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
 ---
 
-<div role="region" aria-label="Image carousel" aria-live="polite" class="w-full">
+<div role="region" aria-label="Image carousel" aria-live="polite" class="w-full relative">
 
   <!-- ── Slides track ── -->
   <div class="hero-carousel w-full overflow-hidden bg-gray-900">
 
-    <!-- Image slides -->
-    {heroImages?.map((image, index) => {
+    {heroImages?.length > 0 ? heroImages.map((image, index) => {
       const slideNum = index + 1;
       const src = `${PUBLIC_R2_URL}${image.image_url}`;
       const caption = image.location || image.description || '';
@@ -58,7 +57,6 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
           >
             <img src={src} alt={image.alt || "Trip photo"} width="1200" height="675" fetchpriority="high"
               class="max-w-full max-h-full object-contain transition duration-200 group-hover:scale-[1.03] drop-shadow-lg" />
-            <!-- Hover expand hint -->
             <span class="absolute top-2 left-2 flex items-center gap-1 text-white text-xs bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5m7-9h4v4m0-4l-5 5M4 16v4h4m-4 0l5-5m7 9h4v-4m0 4l-5-5"/>
@@ -94,51 +92,20 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
           )}
         </div>
       );
-    })}
-
-    <!-- Upload slide (owner only) -->
-    {isOwner && (() => {
-      const slideNum = heroImages?.length + 1;
-      return (
-        <div
-          id={`slide${slideNum}`}
-          class="carousel-item relative w-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-950"
-          style="height: 260px"
-        >
-          <div class="border-2 border-dashed border-blue-500/40 bg-slate-800/80 rounded-2xl px-8 py-6 max-w-xs mx-4 shadow-2xl text-center space-y-3">
-            <div class="w-12 h-12 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
-              <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-            </div>
-            <div>
-              <p class="text-white font-semibold text-sm">Add Hero Photo</p>
-              <p class="text-blue-200/50 text-xs mt-0.5">Upload photos of your adventure</p>
-            </div>
-            <UploadImages />
-          </div>
-
-          {totalSlides > 1 && (
-            <span class="absolute top-2.5 right-2.5 z-20 text-xs font-medium text-white bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
-              {slideNum} / {totalSlides}
-            </span>
-          )}
-          {totalSlides > 1 && (
-            <div class="absolute inset-x-2 top-1/2 -translate-y-1/2 z-20 flex justify-between pointer-events-none">
-              <a href={`#slide${getPrevSlide(slideNum)}`}
-                class="pointer-events-auto w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600/70 text-blue-300 text-sm font-bold transition"
-                aria-label="Previous">❮</a>
-              <a href={`#slide${getNextSlide(slideNum)}`}
-                class="pointer-events-auto w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600/70 text-blue-300 text-sm font-bold transition"
-                aria-label="Next">❯</a>
-            </div>
-          )}
+    }) : (
+      <!-- Empty state placeholder -->
+      <div class="w-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900" style="height: 200px">
+        <div class="text-center">
+          <svg class="w-10 h-10 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p class="text-gray-500 text-sm">{isOwner ? 'Add photos to your trip' : 'No photos yet'}</p>
         </div>
-      );
-    })()}
+      </div>
+    )}
   </div>
 
-  <!-- Dot indicators — outside the image frame -->
+  <!-- Dot indicators -->
   {totalSlides > 1 && (
     <div class="flex justify-center items-center gap-1.5 py-2.5 bg-white" role="tablist">
       {Array.from({ length: totalSlides }).map((_, i) => (
@@ -148,7 +115,112 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
       ))}
     </div>
   )}
+
+  <!-- Data for client script -->
+  <div
+    id="hero-data"
+    data-trip-id={tripId ?? ''}
+    data-is-owner={isOwner ? 'true' : ''}
+    data-total-slides={totalSlides}
+    class="hidden"
+  ></div>
+
+  <!-- Camera button (owner only) -->
+  {isOwner && (
+    <button
+      id="hero-photos-btn"
+      type="button"
+      aria-label="Manage photos"
+      class="absolute bottom-10 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white text-xs font-semibold backdrop-blur-sm transition"
+    >
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      Photos
+    </button>
+  )}
 </div>
+
+<!-- ── Photo management bottom sheet (owner only) ── -->
+{isOwner && (
+  <div
+    id="hero-photo-sheet"
+    class="fixed inset-0 z-[9998] hidden"
+    aria-modal="true"
+    role="dialog"
+    aria-label="Manage trip photos"
+  >
+    <!-- Backdrop -->
+    <div id="hero-sheet-backdrop" class="absolute inset-0 bg-black/50"></div>
+
+    <!-- Sheet panel -->
+    <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl max-h-[85vh] flex flex-col">
+
+      <!-- Handle + header -->
+      <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
+        <div class="w-8 h-1 bg-gray-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2"></div>
+        <h2 class="text-base font-semibold text-gray-900">Trip Photos</h2>
+        <button id="hero-sheet-close" type="button" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+
+        <!-- Add photos button -->
+        <label class="flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 text-sm font-semibold cursor-pointer hover:bg-blue-100 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Photos
+          <input id="hero-file-input" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="sr-only" />
+        </label>
+
+        <!-- Photo grid (existing + new previews) -->
+        <div id="hero-photo-grid" class="grid grid-cols-3 gap-2">
+          <!-- Existing photos (injected by server data via JS) -->
+          {heroImages.map((image) => {
+            const src = `${PUBLIC_R2_URL}${image.image_url}`;
+            return (
+              <div class="relative aspect-square rounded-xl overflow-hidden bg-gray-100" data-existing-key={image.image_url}>
+                <img src={src} alt="" class="w-full h-full object-cover" loading="lazy" />
+                <button
+                  type="button"
+                  class="hero-remove-existing absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-600 transition"
+                  data-key={image.image_url}
+                  aria-label="Remove photo"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <!-- Upload count hint -->
+        <p id="hero-upload-hint" class="text-xs text-gray-400 text-center hidden"></p>
+      </div>
+
+      <!-- Footer: Upload button -->
+      <div class="shrink-0 px-4 py-4 border-t border-gray-100">
+        <button
+          id="hero-upload-btn"
+          type="button"
+          disabled
+          class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition"
+        >
+          Upload Photos
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 <!-- ── Lightbox overlay ── -->
 <div
@@ -159,7 +231,6 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
   aria-modal="true"
   aria-label="Photo viewer"
 >
-  <!-- Top bar -->
   <div class="absolute top-0 inset-x-0 flex items-center justify-between px-4 py-3 z-10">
     <span id="lb-counter" class="text-sm font-medium text-white/70"></span>
     <button id="lb-close" type="button" aria-label="Close"
@@ -169,143 +240,262 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
       </svg>
     </button>
   </div>
-
-  <!-- Prev -->
   <button id="lb-prev" type="button" aria-label="Previous photo"
-    class="absolute left-2 md:left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-base font-bold transition">
-    ❮
-  </button>
-
-  <!-- Photo — centred, fills screen, never cropped -->
+    class="absolute left-2 md:left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-base font-bold transition">❮</button>
   <div class="w-full h-full flex items-center justify-center px-14 py-16">
     <img id="lb-img" src="" alt="" class="max-w-full max-h-full object-contain rounded-md shadow-2xl select-none" />
   </div>
-
-  <!-- Next -->
   <button id="lb-next" type="button" aria-label="Next photo"
-    class="absolute right-2 md:right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-base font-bold transition">
-    ❯
-  </button>
-
-  <!-- Caption -->
+    class="absolute right-2 md:right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-base font-bold transition">❯</button>
   <p id="lb-caption" class="absolute bottom-4 inset-x-0 text-center text-white/60 text-sm px-8 pointer-events-none"></p>
 </div>
 
-<script define:vars={{ totalSlides }}>
-(function () {
-  function init() {
-    /* ── Carousel indicators ── */
-    const indicators = document.querySelectorAll('.indicator-dot');
+<script>
+import { actions } from 'astro:actions';
+import { queueUpload } from '@/scripts/uploadQueue';
+import { showToast } from '@/scripts/Toast';
 
-    function setActiveSlide(num) {
-      indicators.forEach(dot => {
-        const n = parseInt(dot.getAttribute('data-slide') || '0');
-        if (n === num) {
-          dot.classList.add('bg-blue-500', 'scale-125');
-          dot.classList.remove('bg-gray-300');
-        } else {
-          dot.classList.remove('bg-blue-500', 'scale-125');
-          dot.classList.add('bg-gray-300');
-        }
-      });
-    }
+interface StagedFile { file: File; blobUrl: string }
 
-    function currentSlideFromHash() {
-      const m = window.location.hash.match(/slide(\d+)/);
-      return m ? parseInt(m[1]) : 1;
-    }
+function init() {
+  const heroData    = document.getElementById('hero-data');
+  const totalSlides = parseInt(heroData?.dataset.totalSlides ?? '0');
+  const tripId      = heroData?.dataset.tripId ?? '';
+  const isOwner     = heroData?.dataset.isOwner === 'true';
 
+  /* ── Carousel indicators ── */
+  const indicators = document.querySelectorAll<HTMLElement>('.indicator-dot');
+
+  function setActiveSlide(num: number) {
+    indicators.forEach(dot => {
+      const n = parseInt(dot.getAttribute('data-slide') ?? '0');
+      if (n === num) { dot.classList.add('bg-blue-500', 'scale-125'); dot.classList.remove('bg-gray-300'); }
+      else { dot.classList.remove('bg-blue-500', 'scale-125'); dot.classList.add('bg-gray-300'); }
+    });
+  }
+
+  function currentSlideFromHash() {
+    const m = window.location.hash.match(/slide(\d+)/);
+    return m ? parseInt(m[1]) : 1;
+  }
+
+  if (totalSlides > 0) {
     if (!window.location.hash) window.location.hash = 'slide1';
     setActiveSlide(currentSlideFromHash());
     window.addEventListener('hashchange', () => setActiveSlide(currentSlideFromHash()));
     indicators.forEach(d => d.addEventListener('click', () => setTimeout(() => setActiveSlide(currentSlideFromHash()), 50)));
+  }
 
-    /* ── Carousel swipe ── */
-    const track = document.querySelector('.hero-carousel');
-    if (track) {
-      let tx = 0;
-      track.addEventListener('touchstart', e => { tx = e.changedTouches[0].screenX; }, { passive: true });
-      track.addEventListener('touchend', e => {
-        const diff = tx - e.changedTouches[0].screenX;
-        if (Math.abs(diff) < 50) return;
-        const cur = currentSlideFromHash();
-        const next = diff > 0
-          ? (cur + 1 > totalSlides ? 1 : cur + 1)
-          : (cur - 1 <= 0 ? totalSlides : cur - 1);
-        window.location.hash = `slide${next}`;
-      }, { passive: true });
-    }
+  /* ── Carousel swipe ── */
+  const track = document.querySelector('.hero-carousel');
+  if (track && totalSlides > 1) {
+    let tx = 0;
+    track.addEventListener('touchstart', e => { tx = (e as TouchEvent).changedTouches[0].screenX; }, { passive: true });
+    track.addEventListener('touchend', e => {
+      const diff = tx - (e as TouchEvent).changedTouches[0].screenX;
+      if (Math.abs(diff) < 50) return;
+      const cur = currentSlideFromHash();
+      const next = diff > 0 ? (cur + 1 > totalSlides ? 1 : cur + 1) : (cur - 1 <= 0 ? totalSlides : cur - 1);
+      window.location.hash = `slide${next}`;
+    }, { passive: true });
+  }
 
-    /* ── Lightbox ── */
-    const lb       = document.getElementById('hero-lightbox');
-    const lbImg    = document.getElementById('lb-img');
-    const lbCaption = document.getElementById('lb-caption');
-    const lbCounter = document.getElementById('lb-counter');
-    const lbClose  = document.getElementById('lb-close');
-    const lbPrev   = document.getElementById('lb-prev');
-    const lbNext   = document.getElementById('lb-next');
+  /* ── Lightbox ── */
+  const lb        = document.getElementById('hero-lightbox');
+  const lbImg     = document.getElementById('lb-img') as HTMLImageElement | null;
+  const lbCaption = document.getElementById('lb-caption');
+  const lbCounter = document.getElementById('lb-counter');
+  const lbClose   = document.getElementById('lb-close');
+  const lbPrev    = document.getElementById('lb-prev');
+  const lbNext    = document.getElementById('lb-next');
 
-    if (!lb || !lbImg) return;
-
-    // Collect all trigger buttons at init time
-    const triggers = Array.from(document.querySelectorAll('.lightbox-btn'));
+  if (lb && lbImg) {
+    const triggers = Array.from(document.querySelectorAll<HTMLElement>('.lightbox-btn'));
     let current = 0;
 
-    function showLb(idx) {
+    function showLb(idx: number) {
       current = ((idx % triggers.length) + triggers.length) % triggers.length;
       const btn = triggers[current];
-      const src = btn.getAttribute('data-src') || '';
-      const cap = btn.getAttribute('data-caption') || '';
-      lbImg.setAttribute('src', src);
-      lbImg.setAttribute('alt', cap || 'Trip photo');
+      const src = btn.getAttribute('data-src') ?? '';
+      const cap = btn.getAttribute('data-caption') ?? '';
+      lbImg!.src = src;
+      lbImg!.alt = cap || 'Trip photo';
       if (lbCaption) lbCaption.textContent = cap;
       if (lbCounter) lbCounter.textContent = triggers.length > 1 ? `${current + 1} / ${triggers.length}` : '';
     }
 
-    function openLb(idx) {
-      showLb(idx);
-      lb.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeLb() {
-      lb.style.display = 'none';
-      document.body.style.overflow = '';
-    }
+    function openLb(idx: number) { showLb(idx); (lb as HTMLElement).style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    function closeLb() { (lb as HTMLElement).style.display = 'none'; document.body.style.overflow = ''; }
 
     triggers.forEach((btn, i) => btn.addEventListener('click', () => openLb(i)));
-    lbClose.addEventListener('click', closeLb);
-    lbPrev.addEventListener('click', () => showLb(current - 1));
-    lbNext.addEventListener('click', () => showLb(current + 1));
+    lbClose?.addEventListener('click', closeLb);
+    lbPrev?.addEventListener('click', () => showLb(current - 1));
+    lbNext?.addEventListener('click', () => showLb(current + 1));
     lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
-
     document.addEventListener('keydown', e => {
-      if (lb.style.display === 'none') return;
-      if (e.key === 'Escape')     closeLb();
-      if (e.key === 'ArrowLeft')  showLb(current - 1);
+      if ((lb as HTMLElement).style.display === 'none') return;
+      if (e.key === 'Escape') closeLb();
+      if (e.key === 'ArrowLeft') showLb(current - 1);
       if (e.key === 'ArrowRight') showLb(current + 1);
     });
-
     let lbTx = 0;
-    lb.addEventListener('touchstart', e => { lbTx = e.changedTouches[0].screenX; }, { passive: true });
+    lb.addEventListener('touchstart', e => { lbTx = (e as TouchEvent).changedTouches[0].screenX; }, { passive: true });
     lb.addEventListener('touchend', e => {
-      const diff = lbTx - e.changedTouches[0].screenX;
+      const diff = lbTx - (e as TouchEvent).changedTouches[0].screenX;
       if (Math.abs(diff) < 50) return;
       diff > 0 ? showLb(current + 1) : showLb(current - 1);
     }, { passive: true });
   }
 
-  document.addEventListener('DOMContentLoaded', init);
-  document.addEventListener('astro:page-load', init);
-})();
+  /* ── Photo management sheet (owner only) ── */
+  if (!isOwner || !tripId) return;
+
+  const sheet      = document.getElementById('hero-photo-sheet');
+  const backdrop   = document.getElementById('hero-sheet-backdrop');
+  const closeBtn   = document.getElementById('hero-sheet-close');
+  const openBtn    = document.getElementById('hero-photos-btn');
+  const fileInput  = document.getElementById('hero-file-input') as HTMLInputElement | null;
+  const grid       = document.getElementById('hero-photo-grid');
+  const uploadBtn  = document.getElementById('hero-upload-btn') as HTMLButtonElement | null;
+  const uploadHint = document.getElementById('hero-upload-hint');
+
+  if (!sheet || !openBtn || !fileInput || !grid || !uploadBtn) return;
+
+  const stagedFiles: (StagedFile | null)[] = [];
+
+  function openSheet() { sheet!.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+  function closeSheet() { sheet!.classList.add('hidden'); document.body.style.overflow = ''; }
+
+  openBtn.addEventListener('click', openSheet);
+  closeBtn?.addEventListener('click', closeSheet);
+  backdrop?.addEventListener('click', closeSheet);
+
+  function updateUploadBtn() {
+    const count = stagedFiles.filter(Boolean).length;
+    uploadBtn!.disabled = count === 0;
+    uploadBtn!.textContent = count > 0 ? `Upload ${count} Photo${count > 1 ? 's' : ''}` : 'Upload Photos';
+    if (uploadHint) {
+      uploadHint.textContent = count > 0 ? `${count} photo(s) ready to upload` : '';
+      uploadHint.classList.toggle('hidden', count === 0);
+    }
+  }
+
+  /* Add new photos */
+  fileInput.addEventListener('change', () => {
+    const files = Array.from(fileInput.files ?? []);
+    fileInput.value = '';
+    files.forEach(file => {
+      if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)) return;
+      if (file.size > 10 * 1024 * 1024) return;
+      const blobUrl = URL.createObjectURL(file);
+      const idx = stagedFiles.length;
+      stagedFiles.push({ file, blobUrl });
+      const cell = document.createElement('div');
+      cell.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100';
+      cell.dataset.newIdx = String(idx);
+      cell.innerHTML = `
+        <img src="${blobUrl}" alt="" class="w-full h-full object-cover" />
+        <button type="button"
+          class="hero-remove-new absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-600 transition"
+          data-idx="${idx}" aria-label="Remove">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>`;
+      grid!.appendChild(cell);
+      updateUploadBtn();
+    });
+  });
+
+  /* Remove staged preview */
+  grid.addEventListener('click', e => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('.hero-remove-new');
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx);
+    const staged = stagedFiles[idx];
+    if (staged) { URL.revokeObjectURL(staged.blobUrl); stagedFiles[idx] = null; }
+    btn.closest<HTMLElement>('[data-new-idx]')?.remove();
+    updateUploadBtn();
+  });
+
+  /* Remove existing photo */
+  grid.addEventListener('click', async e => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.hero-remove-existing');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    if (!key) return;
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>';
+    const res = await actions.trip.deleteHeroImage({ tripId, imageKey: key });
+    if (res.error) {
+      btn.disabled = false;
+      btn.innerHTML = '✕';
+      showToast({ message: 'Failed to delete photo', type: 'error' });
+    } else {
+      btn.closest<HTMLElement>('[data-existing-key]')?.remove();
+      showToast({ message: 'Photo removed', type: 'success' });
+    }
+  });
+
+  /* Upload staged photos */
+  uploadBtn.addEventListener('click', async () => {
+    const filesToUpload = stagedFiles.filter((f): f is StagedFile => f !== null);
+    if (filesToUpload.length === 0) return;
+    closeSheet();
+
+    queueUpload(async (onProgress) => {
+      const urlRes = await actions.trip.getHeroUploadUrls({
+        tripId,
+        files: filesToUpload.map(p => ({ name: p.file.name, type: p.file.type, size: p.file.size })),
+      });
+      if (urlRes.error) throw new Error(urlRes.error.message);
+
+      const uploadedKeys: string[] = [];
+      const total = filesToUpload.reduce((s, p) => s + p.file.size, 0);
+      let done = 0;
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const { key, uploadUrl } = urlRes.data.files[i];
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          let prev = 0;
+          xhr.open('PUT', uploadUrl);
+          xhr.setRequestHeader('Content-Type', filesToUpload[i].file.type);
+          xhr.upload.onprogress = ev => {
+            done += ev.loaded - prev; prev = ev.loaded;
+            onProgress(Math.round((done / total) * 90));
+          };
+          xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+          xhr.onerror = () => reject(new Error('Network error'));
+          xhr.send(filesToUpload[i].file);
+        });
+        uploadedKeys.push(key);
+        URL.revokeObjectURL(filesToUpload[i].blobUrl);
+      }
+
+      onProgress(95);
+      const confirmRes = await actions.trip.confirmHeroUpload({ tripId, keys: uploadedKeys });
+      if (confirmRes.error) throw new Error(confirmRes.error.message);
+
+      onProgress(100);
+      showToast({ message: `${uploadedKeys.length} photo(s) uploaded!`, type: 'success' });
+      setTimeout(() => window.location.reload(), 800);
+    });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}
 </script>
 
 <style>
   .hero-carousel { scroll-behavior: smooth; }
   .indicator-dot { transition: all 0.2s ease; }
 
-  /* Hide all slides, show only the one matching hash or first slide */
-  .carousel-item { 
+  .carousel-item {
     height: 260px;
     display: none;
   }
@@ -313,24 +503,15 @@ const getNextSlide = (n: number) => n + 1 > totalSlides ? 1 : n + 1;
   .hero-carousel:not(:has(:target)) .carousel-item:first-child {
     display: flex;
   }
-  /* Fallback for browsers without :has */
   @supports not selector(:has(*)) {
     .carousel-item:first-child { display: flex; }
   }
 
-  @media (min-width: 640px) {
-    .carousel-item { height: 360px; }
-  }
-  @media (min-width: 1024px) {
-    .carousel-item { height: 440px; }
-  }
+  @media (min-width: 640px) { .carousel-item { height: 360px; } }
+  @media (min-width: 1024px) { .carousel-item { height: 440px; } }
 
-  /* Lightbox fade in */
-  #hero-lightbox[style*="flex"] {
-    animation: lb-fade 0.18s ease;
-  }
-  @keyframes lb-fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
+  #hero-lightbox[style*="flex"] { animation: lb-fade 0.18s ease; }
+  @keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  #hero-photo-sheet:not(.hidden) { display: block; }
 </style>

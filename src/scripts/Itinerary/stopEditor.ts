@@ -6,6 +6,150 @@ import { createMapboxSearchBox } from '@/scripts/mapBoxSearch';
 const MAX_PICKUP = 20;
 const MAX_DROPOFF = 20;
 
+// --- DOM-update helpers (avoid page reload) ---
+
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const STOP_COLORS: Record<string, { text: string; dot: string }> = {
+  pickup:        { text: 'text-blue-700',    dot: 'bg-blue-500' },
+  dropoff:       { text: 'text-purple-700',  dot: 'bg-purple-500' },
+  destination:   { text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  activity:      { text: 'text-orange-700',  dot: 'bg-orange-500' },
+  meal_break:    { text: 'text-amber-700',   dot: 'bg-amber-500' },
+  rest_stop:     { text: 'text-cyan-700',    dot: 'bg-cyan-500' },
+  transit:       { text: 'text-slate-700',   dot: 'bg-slate-500' },
+  checkpoint:    { text: 'text-pink-700',    dot: 'bg-pink-500' },
+  accommodation: { text: 'text-indigo-700',  dot: 'bg-indigo-500' },
+  boat:          { text: 'text-teal-700',    dot: 'bg-teal-500' },
+};
+const getStopTextColor = (t: string) => (STOP_COLORS[t] ?? STOP_COLORS.activity).text;
+const getStopDotColor  = (t: string) => (STOP_COLORS[t] ?? STOP_COLORS.activity).dot;
+
+const formatTimeISO = (iso: string): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' });
+};
+
+const computeStopTime = (start: string, end: string): string => {
+  const sl = formatTimeISO(start);
+  const el = formatTimeISO(end);
+  return sl && el && sl !== el ? `${sl} – ${el}` : sl || el;
+};
+
+/** True if the user is currently in edit mode (controls are visible). */
+const isEditModeActive = () => document.querySelector('.edit-controls.flex') !== null;
+
+const EDIT_BTN_SVG = `<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>`;
+const DELETE_BTN_SVG = `<svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+const ADD_ACTIVITY_SVG = `<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
+
+/** Update the view-mode portion of a stop card after an edit (without touching ActivityList). */
+const updateStopViewMode = (stopCard: HTMLElement, data: {
+  locationType: string; locationName: string;
+  scheduledStart: string; scheduledEnd: string; notes: string;
+}) => {
+  const viewMode = stopCard.querySelector<HTMLElement>('.view-mode')!;
+  const flex1 = viewMode.querySelector<HTMLElement>('.flex-1');
+  const shrink0 = viewMode.querySelector<HTMLElement>('.shrink-0');
+
+  // Type label
+  const typeSpan = flex1?.querySelector('span');
+  if (typeSpan) {
+    [...typeSpan.classList].filter(c => c.startsWith('text-')).forEach(c => typeSpan.classList.remove(c));
+    typeSpan.classList.add(getStopTextColor(data.locationType));
+    typeSpan.textContent = data.locationType.replace(/_/g, ' ');
+  }
+
+  // Location name
+  let nameEl = flex1?.querySelector('p');
+  if (data.locationName) {
+    if (!nameEl) {
+      nameEl = document.createElement('p');
+      nameEl.className = 'font-semibold text-gray-900 text-base leading-snug mt-0.5';
+      flex1?.appendChild(nameEl);
+    }
+    nameEl.textContent = data.locationName;
+  } else if (nameEl) {
+    nameEl.remove();
+  }
+
+  // Time
+  let timeEl = shrink0?.querySelector<HTMLElement>('.tabular-nums');
+  const stopTime = computeStopTime(data.scheduledStart, data.scheduledEnd);
+  if (stopTime) {
+    if (!timeEl) {
+      timeEl = document.createElement('span');
+      timeEl.className = 'text-sm font-medium text-gray-400 tabular-nums';
+      shrink0?.insertBefore(timeEl, shrink0.firstChild);
+    }
+    timeEl.textContent = stopTime;
+  } else if (timeEl) {
+    timeEl.remove();
+  }
+
+  // Notes
+  let notesEl = viewMode.querySelector<HTMLElement>('p.italic');
+  if (data.notes) {
+    if (!notesEl) {
+      notesEl = document.createElement('p');
+      notesEl.className = 'text-xs text-gray-400 italic mt-2 leading-relaxed';
+      viewMode.querySelector('.flex.items-start')?.insertAdjacentElement('afterend', notesEl);
+    }
+    notesEl.textContent = data.notes;
+  } else if (notesEl) {
+    notesEl.remove();
+  }
+};
+
+/** Build HTML for a freshly-created stop card (owner view). */
+const renderNewStopCard = (stopId: string, data: {
+  locationType: string; locationName: string;
+  scheduledStart: string; scheduledEnd: string; notes: string;
+}) => {
+  const dotColor  = getStopDotColor(data.locationType);
+  const textColor = getStopTextColor(data.locationType);
+  const stopTime  = computeStopTime(data.scheduledStart, data.scheduledEnd);
+  const ctrlCls   = isEditModeActive() ? 'flex' : 'hidden';
+  return `
+    <div class="timeline-item relative group pl-9 border-b border-gray-100 last:border-b-0"
+      data-stop-id="${stopId}"
+      data-stop-name="${esc(data.locationName)}"
+      data-stop-type="${esc(data.locationType)}"
+      data-location-name="${esc(data.locationName)}"
+      data-scheduled-start="${esc(data.scheduledStart)}"
+      data-scheduled-end="${esc(data.scheduledEnd)}"
+      data-notes="${esc(data.notes)}"
+    >
+      <div class="absolute left-[-5px] top-4 w-2 h-2 ${dotColor} rounded-full border-2 border-white z-10"></div>
+      <div class="stop-card py-3.5">
+        <div class="view-mode">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-semibold ${textColor} uppercase tracking-wide">${esc(data.locationType.replace(/_/g, ' '))}</span>
+              ${data.locationName ? `<p class="font-semibold text-gray-900 text-base leading-snug mt-0.5">${esc(data.locationName)}</p>` : ''}
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${stopTime ? `<span class="text-sm font-medium text-gray-400 tabular-nums">${stopTime}</span>` : ''}
+              <div class="edit-controls ${ctrlCls} gap-0.5">
+                <button class="edit-stop-btn p-1.5 hover:bg-gray-100 rounded-lg transition-colors" title="Edit stop">${EDIT_BTN_SVG}</button>
+                <button class="delete-stop-btn p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete stop">${DELETE_BTN_SVG}</button>
+              </div>
+            </div>
+          </div>
+          ${data.notes ? `<p class="text-xs text-gray-400 italic mt-2 leading-relaxed">${esc(data.notes)}</p>` : ''}
+          <button class="add-activity-btn mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 items-center gap-1 ${ctrlCls}" data-stop-id="${stopId}">
+            ${ADD_ACTIVITY_SVG} Add Activity
+          </button>
+        </div>
+        <div class="edit-mode hidden"></div>
+      </div>
+    </div>
+  `;
+};
+
 /**
  * Convert a UTC ISO string from the DB into "YYYY-MM-DDTHH:mm" using local time parts,
  * so <input type="datetime-local"> shows the correct local time.
@@ -58,6 +202,56 @@ const showFormError = (form: Element, message: string) => {
 
 const clearFormError = (form: Element) => {
   form.querySelector<HTMLElement>('.form-error')?.classList.add('hidden');
+};
+
+// --- Trip date-range validation ---
+
+/**
+ * Returns an error string if scheduledStart or scheduledEnd fall outside [tripStart, tripEnd].
+ * tripStart / tripEnd are plain date strings ("YYYY-MM-DD"). Comparison is done by calendar date only.
+ */
+const validateTripDateRange = (
+  scheduledStart: string,
+  scheduledEnd: string | undefined,
+  tripStart: string,
+  tripEnd: string,
+): string | null => {
+  if (!tripStart && !tripEnd) return null; // no trip dates set — skip
+
+  const toDate = (iso: string) => {
+    // Accept both full ISO and plain date
+    const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const tripS = tripStart ? toDate(tripStart) : null;
+  const tripE = tripEnd   ? toDate(tripEnd)   : null;
+
+  const check = (iso: string, label: string): string | null => {
+    const d = toDate(iso);
+    if (!d) return null;
+    // Compare by date only (strip time)
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (tripS) {
+      const ts = new Date(tripS.getFullYear(), tripS.getMonth(), tripS.getDate());
+      if (day < ts) return `${label} must be on or after the trip start date (${tripStart}).`;
+    }
+    if (tripE) {
+      const te = new Date(tripE.getFullYear(), tripE.getMonth(), tripE.getDate());
+      if (day > te) return `${label} must be on or before the trip end date (${tripEnd}).`;
+    }
+    return null;
+  };
+
+  if (scheduledStart) {
+    const err = check(scheduledStart, 'Start time');
+    if (err) return err;
+  }
+  if (scheduledEnd) {
+    const err = check(scheduledEnd, 'End time');
+    if (err) return err;
+  }
+  return null;
 };
 
 // --- US18a: Pickup / Dropoff count limit ---
@@ -163,7 +357,7 @@ const createStopEditor = (stopCard: HTMLElement, stopData: any) => {
   const inputId = `edit-stop-location-${Date.now()}`;
 
   editMode.innerHTML = `
-    <div class="space-y-3 bg-white/90 p-4 rounded-lg border-2 border-blue-300">
+    <form class="edit-stop-form space-y-3 bg-white/90 p-4 rounded-lg border-2 border-blue-300">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">Location Name *</label>
@@ -201,10 +395,10 @@ const createStopEditor = (stopCard: HTMLElement, stopData: any) => {
       </div>
       ${ERROR_DIV}
       <div class="flex justify-end gap-2 pt-2 border-t">
-        <button class="cancel-edit-btn px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-semibold">Cancel</button>
-        <button class="save-stop-btn px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">Save Changes</button>
+        <button type="button" class="cancel-edit-btn px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-semibold">Cancel</button>
+        <button type="button" class="save-stop-btn px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">Save Changes</button>
       </div>
-    </div>
+    </form>
   `;
 
   const viewMode = stopCard.querySelector('.view-mode') as HTMLElement;
@@ -322,7 +516,7 @@ const createAddStopForm = (timelineContainer: HTMLElement, dayIndex: number) => 
 
 // --- Main event handler ---
 
-export function initStopEditor(root: HTMLElement, tripId: string) {
+export function initStopEditor(root: HTMLElement, tripId: string, tripStart = '', tripEnd = '') {
   root.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
     const btn = target.closest('button');
@@ -357,7 +551,7 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
     if (btn.classList.contains('save-stop-btn')) {
       const stopItem = btn.closest('.timeline-item')! as HTMLElement;
       const stopId = stopItem.dataset.stopId!;
-      const form = btn.closest('.edit-mode')!;
+      const form = btn.closest('form')!;
 
       clearFormError(form);
 
@@ -372,6 +566,10 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
         const typeError = validateTypeLimit(locationType);
         if (typeError) { showFormError(form, typeError); return; }
       }
+
+      // Trip date-range check
+      const rangeError = validateTripDateRange(scheduledStart, scheduledEnd, tripStart, tripEnd);
+      if (rangeError) { showFormError(form, rangeError); return; }
 
       // US18b: time overlap check (exclude self)
       const overlapError = validateTimeOverlap(scheduledStart, scheduledEnd, stopId);
@@ -392,7 +590,38 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
 
       try {
         await actions.stops.updateStop(updateData);
-        window.location.reload();
+
+        // Update data attributes
+        stopItem.dataset.stopType      = locationType;
+        stopItem.dataset.locationName  = formData.get('location_name') as string || '';
+        stopItem.dataset.scheduledStart = updateData.scheduled_start ?? '';
+        stopItem.dataset.scheduledEnd   = updateData.scheduled_end   ?? '';
+        stopItem.dataset.notes          = formData.get('notes') as string || '';
+
+        // Update timeline dot colour
+        const dot = stopItem.querySelector<HTMLElement>('.rounded-full');
+        if (dot) {
+          [...dot.classList].filter(c => c.startsWith('bg-')).forEach(c => dot.classList.remove(c));
+          dot.classList.add(getStopDotColor(locationType));
+        }
+
+        // Update view-mode text
+        const stopCard = stopItem.querySelector<HTMLElement>('.stop-card')!;
+        updateStopViewMode(stopCard, {
+          locationType,
+          locationName:   formData.get('location_name') as string || '',
+          scheduledStart: updateData.scheduled_start ?? '',
+          scheduledEnd:   updateData.scheduled_end   ?? '',
+          notes:          formData.get('notes') as string || '',
+        });
+
+        // Close edit mode
+        const editMode = stopCard.querySelector<HTMLElement>('.edit-mode')!;
+        const viewMode = stopCard.querySelector<HTMLElement>('.view-mode')!;
+        editMode.innerHTML = '';
+        editMode.style.display = 'none';
+        viewMode.style.display = '';
+        showToast({ message: 'Stop updated', type: 'success' });
       } catch (error) {
         console.error('Failed to update stop:', error);
         showToast({ message: 'Failed to update stop', type: 'error' });
@@ -464,6 +693,10 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
       const typeError = validateTypeLimit(locationType);
       if (typeError) { showFormError(form, typeError); return; }
 
+      // Trip date-range check
+      const rangeError = validateTripDateRange(scheduledStart, scheduledEnd, tripStart, tripEnd);
+      if (rangeError) { showFormError(form, rangeError); return; }
+
       // US18b: time overlap check
       const overlapError = validateTimeOverlap(scheduledStart, scheduledEnd);
       if (overlapError) { showFormError(form, overlapError); return; }
@@ -482,8 +715,29 @@ export function initStopEditor(root: HTMLElement, tripId: string) {
       const originalText = showLoading(btn as HTMLButtonElement, 'Creating...');
 
       try {
-        await actions.stops.createStop(newStopData);
-        window.location.reload();
+        const res = await actions.stops.createStop(newStopData);
+        const stopId = res.data?.stopId;
+
+        // If we can't get the new stop id, or it's the very first stop
+        // (empty-state path, no .day-section), fall back to a reload.
+        const daySection = form.parentElement?.closest('.day-section');
+        if (!stopId || !daySection) {
+          window.location.reload();
+          return;
+        }
+
+        const newHTML = renderNewStopCard(stopId, {
+          locationType,
+          locationName,
+          scheduledStart: newStopData.scheduled_start,
+          scheduledEnd:   newStopData.scheduled_end ?? '',
+          notes:          formData.get('notes') as string || '',
+        });
+
+        form.insertAdjacentHTML('beforebegin', newHTML);
+        form.remove();
+        document.getElementById('empty-itinerary')?.remove();
+        showToast({ message: 'Stop added', type: 'success' });
       } catch (error) {
         console.error('Failed to create stop:', error);
         showToast({ message: 'Failed to create stop', type: 'error' });

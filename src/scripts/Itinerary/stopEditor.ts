@@ -46,10 +46,12 @@ const EDIT_BTN_SVG = `<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke=
 const DELETE_BTN_SVG = `<svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
 const ADD_ACTIVITY_SVG = `<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
 
+const CLOCK_SVG = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
 /** Update the view-mode portion of a stop card after an edit (without touching ActivityList). */
 const updateStopViewMode = (stopCard: HTMLElement, data: {
   locationType: string; locationName: string;
-  scheduledStart: string; scheduledEnd: string; notes: string;
+  scheduledStart: string; scheduledEnd: string; waitingTime: number; notes: string;
 }) => {
   const viewMode = stopCard.querySelector<HTMLElement>('.view-mode')!;
   const flex1 = viewMode.querySelector<HTMLElement>('.flex-1');
@@ -90,6 +92,19 @@ const updateStopViewMode = (stopCard: HTMLElement, data: {
     timeEl.remove();
   }
 
+  // Waiting time
+  let waitEl = flex1?.querySelector<HTMLElement>('span.inline-flex');
+  if (data.waitingTime > 0) {
+    if (!waitEl) {
+      waitEl = document.createElement('span');
+      waitEl.className = 'inline-flex items-center gap-1 mt-1 text-xs font-medium text-gray-400';
+      flex1?.appendChild(waitEl);
+    }
+    waitEl.innerHTML = `${CLOCK_SVG}${data.waitingTime} min`;
+  } else if (waitEl) {
+    waitEl.remove();
+  }
+
   // Notes
   let notesEl = viewMode.querySelector<HTMLElement>('p.italic');
   if (data.notes) {
@@ -107,7 +122,7 @@ const updateStopViewMode = (stopCard: HTMLElement, data: {
 /** Build HTML for a freshly-created stop card (owner view). */
 const renderNewStopCard = (stopId: string, data: {
   locationType: string; locationName: string;
-  scheduledStart: string; scheduledEnd: string; notes: string;
+  scheduledStart: string; scheduledEnd: string; waitingTime: number; notes: string;
 }) => {
   const dotColor  = getStopDotColor(data.locationType);
   const textColor = getStopTextColor(data.locationType);
@@ -121,6 +136,7 @@ const renderNewStopCard = (stopId: string, data: {
       data-location-name="${esc(data.locationName)}"
       data-scheduled-start="${esc(data.scheduledStart)}"
       data-scheduled-end="${esc(data.scheduledEnd)}"
+      data-waiting-time="${data.waitingTime}"
       data-notes="${esc(data.notes)}"
     >
       <div class="absolute left-[-5px] top-4 w-2 h-2 ${dotColor} rounded-full border-2 border-white z-10"></div>
@@ -130,6 +146,7 @@ const renderNewStopCard = (stopId: string, data: {
             <div class="flex-1 min-w-0">
               <span class="text-xs font-semibold ${textColor} uppercase tracking-wide">${esc(data.locationType.replace(/_/g, ' '))}</span>
               ${data.locationName ? `<p class="font-semibold text-gray-900 text-base leading-snug mt-0.5">${esc(data.locationName)}</p>` : ''}
+              ${data.waitingTime > 0 ? `<span class="inline-flex items-center gap-1 mt-1 text-xs font-medium text-gray-400">${CLOCK_SVG}${data.waitingTime} min</span>` : ''}
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
               ${stopTime ? `<span class="text-sm font-medium text-gray-400 tabular-nums">${stopTime}</span>` : ''}
@@ -389,9 +406,15 @@ const createStopEditor = (stopCard: HTMLElement, stopData: any) => {
           <input type="datetime-local" name="scheduled_end" value="${stopData.scheduled_end ? formatDateTimeLocal(stopData.scheduled_end) : ''}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
-      <div>
-        <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
-        <textarea name="notes" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" rows="2">${stopData.notes || ''}</textarea>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Duration (minutes)</label>
+          <input type="number" name="waiting_time" min="0" value="${stopData.waiting_time ?? 0}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
+          <textarea name="notes" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" rows="2">${stopData.notes || ''}</textarea>
+        </div>
       </div>
       ${ERROR_DIV}
       <div class="flex justify-end gap-2 pt-2 border-t">
@@ -483,9 +506,15 @@ const createAddStopForm = (timelineContainer: HTMLElement, dayIndex: number) => 
               <input type="datetime-local" name="scheduled_end" value="${formatDateTimeLocal(new Date(new Date(defaultStart).getTime() + 3600000).toISOString())}" class="w-full px-3 py-2 bg-white border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" />
             </div>
           </div>
-          <div>
-            <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
-            <textarea name="notes" class="w-full px-3 py-2 bg-white border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" rows="2"></textarea>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Duration (minutes)</label>
+              <input type="number" name="waiting_time" min="0" value="0" class="w-full px-3 py-2 bg-white border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
+              <textarea name="notes" class="w-full px-3 py-2 bg-white border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" rows="2"></textarea>
+            </div>
           </div>
           ${ERROR_DIV}
           <div class="flex justify-end gap-2 pt-2">
@@ -532,6 +561,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
         location_name: stopItem.dataset.locationName || '',
         scheduled_start: stopItem.dataset.scheduledStart || '',
         scheduled_end: stopItem.dataset.scheduledEnd || '',
+        waiting_time: parseInt(stopItem.dataset.waitingTime || '0') || 0,
         notes: stopItem.dataset.notes || '',
       };
 
@@ -575,6 +605,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
       const overlapError = validateTimeOverlap(scheduledStart, scheduledEnd, stopId);
       if (overlapError) { showFormError(form, overlapError); return; }
 
+      const waitingTime = parseInt(formData.get('waiting_time') as string) || 0;
       const updateData = {
         stop_id: stopId,
         location_type: locationType as any,
@@ -583,6 +614,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
         longitude: parseCoord(formData.get('longitude') as string),
         scheduled_start: toUTCISO(scheduledStart),
         scheduled_end: toUTCISO(scheduledEnd),
+        waiting_time: waitingTime,
         notes: formData.get('notes') as string || undefined,
       };
 
@@ -596,6 +628,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
         stopItem.dataset.locationName  = formData.get('location_name') as string || '';
         stopItem.dataset.scheduledStart = updateData.scheduled_start ?? '';
         stopItem.dataset.scheduledEnd   = updateData.scheduled_end   ?? '';
+        stopItem.dataset.waitingTime    = String(waitingTime);
         stopItem.dataset.notes          = formData.get('notes') as string || '';
 
         // Update timeline dot colour
@@ -612,6 +645,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
           locationName:   formData.get('location_name') as string || '',
           scheduledStart: updateData.scheduled_start ?? '',
           scheduledEnd:   updateData.scheduled_end   ?? '',
+          waitingTime,
           notes:          formData.get('notes') as string || '',
         });
 
@@ -701,6 +735,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
       const overlapError = validateTimeOverlap(scheduledStart, scheduledEnd);
       if (overlapError) { showFormError(form, overlapError); return; }
 
+      const newWaitingTime = parseInt(formData.get('waiting_time') as string) || 0;
       const newStopData = {
         trip_id: tripId,
         location_type: locationType as any,
@@ -709,6 +744,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
         longitude: parseCoord(formData.get('longitude') as string),
         scheduled_start: toUTCISO(scheduledStart) ?? scheduledStart,
         scheduled_end: toUTCISO(scheduledEnd),
+        waiting_time: newWaitingTime,
         notes: formData.get('notes') as string || undefined,
       };
 
@@ -731,6 +767,7 @@ export function initStopEditor(root: HTMLElement, tripId: string, tripStart = ''
           locationName,
           scheduledStart: newStopData.scheduled_start,
           scheduledEnd:   newStopData.scheduled_end ?? '',
+          waitingTime:    newWaitingTime,
           notes:          formData.get('notes') as string || '',
         });
 

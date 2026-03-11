@@ -30,6 +30,7 @@ export const stops = {
       longitude: z.number().optional(),
       scheduled_start: z.string(),
       scheduled_end: z.string().optional(),
+      waiting_time: z.number().int().min(0).optional(),
       notes: z.string().optional(),
       order_index: z.number().optional(),
     }),
@@ -68,6 +69,7 @@ export const stops = {
           location_type: input.location_type,
           scheduled_start: input.scheduled_start,
           scheduled_end: input.scheduled_end ?? null,
+          waiting_time: input.waiting_time ?? null,
           notes: input.notes ?? null,
           order_index: orderIndex,
         })
@@ -93,6 +95,7 @@ export const stops = {
       longitude: z.number().optional(),
       scheduled_start: z.string().optional(),
       scheduled_end: z.string().optional(),
+      waiting_time: z.number().int().min(0).optional(),
       notes: z.string().optional(),
     }),
     handler: async (input) => {
@@ -129,6 +132,7 @@ export const stops = {
       if (input.location_type !== undefined) stopUpdate.location_type = input.location_type;
       if (input.scheduled_start !== undefined) stopUpdate.scheduled_start = input.scheduled_start;
       if (input.scheduled_end !== undefined) stopUpdate.scheduled_end = input.scheduled_end;
+      if (input.waiting_time !== undefined) stopUpdate.waiting_time = input.waiting_time;
       if (input.notes !== undefined) stopUpdate.notes = input.notes;
 
       if (Object.keys(stopUpdate).length > 0) {

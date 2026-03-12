@@ -6,15 +6,15 @@ import { setRateLimitKV } from "@/lib/rateLimit";
 const COOKIE_OPTS_ACCESS = {
   path: "/",
   httpOnly: true,
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   secure: import.meta.env.PROD,
-  maxAge: 60 * 30, // 30 minutes
+  maxAge: 60 * 60, // 1 hour — matches Supabase JWT lifetime
 } as const;
 
 const COOKIE_OPTS_REFRESH = {
   path: "/",
   httpOnly: true,
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   secure: import.meta.env.PROD,
   maxAge: 60 * 60 * 24 * 30, // 30 days
 } as const;
@@ -100,6 +100,24 @@ export const auth = defineMiddleware(async (ctx, next) => {
     } catch (error) {
       console.error('[AUTH_MIDDLEWARE] Token error:', error);
       cookies.delete("sb-access-token", { path: "/" });
+      cookies.delete("sb-refresh-token", { path: "/" });
+    }
+  } else if (!accessToken && refreshToken) {
+    // Access token cookie expired but refresh token still alive — silently restore the session
+    try {
+      const refreshed = await refreshSession(refreshToken);
+      if (refreshed) {
+        locals.user_id = refreshed.user_id;
+        locals.email = refreshed.email;
+        if (refreshed.username) locals.username = refreshed.username;
+        if (refreshed.avatar_url) locals.avatar_url = refreshed.avatar_url;
+        cookies.set("sb-access-token", refreshed.access_token, COOKIE_OPTS_ACCESS);
+        cookies.set("sb-refresh-token", refreshed.refresh_token, COOKIE_OPTS_REFRESH);
+      } else {
+        cookies.delete("sb-refresh-token", { path: "/" });
+      }
+    } catch (error) {
+      console.error('[AUTH_MIDDLEWARE] Refresh-only restore error:', error);
       cookies.delete("sb-refresh-token", { path: "/" });
     }
   }

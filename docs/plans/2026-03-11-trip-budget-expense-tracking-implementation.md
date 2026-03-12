@@ -1164,4 +1164,29 @@ This implementation plan covers:
 | 8 | Integration | P0 |
 | 9 | Tests | P1 |
 
-**Estimated complexity:** ~3-4 hours for core P0 features, ~2 hours for P1 enhancements
+---
+
+## As-Built Summary (2026-03-12)
+
+All P0 tasks completed. Implementation diverged from original plan with these additions:
+
+| Migration | Addition |
+|-----------|---------|
+| 075 | `is_shared` flag on expenses; rewrote `add_trip_expense` |
+| 076 | Fixed `get_member_balances` net balance formula |
+| 077 | Fixed `organizer_shoulders_all` silent fallthrough bug |
+| 078 | Auto-create pool_contributions trigger on member join |
+| 079 | New methods: `event_fee`, `budget_pool` |
+| 080 | Partial pool payment support (`pending → partial → paid`) |
+| 081 | Exclude owner from event_fee auto-contributions |
+| 082 | `p_recipient_ids UUID[]` for selective expense splitting |
+
+UI additions beyond original plan:
+- Member checkboxes with Select All/None for selective splitting
+- Live per-person calculator on expense form
+- Payment Source toggle for `budget_pool` (Personal vs From Pool)
+- Fee Collection tab for `event_fee` trips
+- Pool Contributions tab for `budget_pool` trips
+- All modals consolidated in single `BudgetTab.astro` (no separate modal files)
+
+See [BUDGET_EXPENSE_SPEC.md](../features/BUDGET_EXPENSE_SPEC.md) for current feature spec.

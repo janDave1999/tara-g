@@ -1,8 +1,10 @@
 # Trip Budget & Expense Tracking — Design Document
 
-> **Date:** March 11, 2026  
-> **Status:** Design Approved  
+> **Date:** March 11, 2026
+> **Status:** Implemented — see [BUDGET_EXPENSE_SPEC.md](../features/BUDGET_EXPENSE_SPEC.md) for current state
 > **Feature:** Trip Budget & Expense Tracking
+
+> **Note:** The final implementation diverged from this design. Key additions: `event_fee` and `budget_pool` cost sharing methods (079), partial pool payments (080), owner exclusion from event_fee (081), selective expense splitting via `p_recipient_ids` (082), Payment Source toggle for budget_pool, member checkboxes with live per-person calculator.
 
 ---
 

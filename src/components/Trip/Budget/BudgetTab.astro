@@ -1222,7 +1222,7 @@ const costSharingOptions = [
 
   document.getElementById('budget-settings-btn')?.addEventListener('click', () => {
     // Reset method select and warnings to current state before opening
-    const select = document.getElementById('settings-method-select') as HTMLElement as HTMLSelectElement;
+    const select = document.getElementById('settings-method-select') as HTMLSelectElement | null; 
     if (select) select.value = costSharing;
     const warningBox = document.getElementById('method-change-warnings');
     if (warningBox) { warningBox.innerHTML = ''; warningBox.classList.add('hidden'); }
@@ -1393,7 +1393,7 @@ const costSharingOptions = [
     const perPersonHint      = document.getElementById('per-person-hint');
 
     poolPerPersonInput?.addEventListener('input', () => {
-      const methodSelect = document.getElementById('settings-method-select') as HTMLSelectElement;
+      const methodSelect = document.getElementById('settings-method-select') as HTMLSelectElement | null;
       const currentMethod = methodSelect?.value || costSharing;
       if (!isPoolMethod(currentMethod) || currentMethod !== costSharing) return;
 

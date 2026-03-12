@@ -192,6 +192,8 @@ import Tags from "@/components/Trip/Tags.astro";
               <option value="organizer_shoulders_cost">Organizer Shoulders All Costs</option>
               <option value="pay_own_expenses">Everyone Pays Own Expenses</option>
               <option value="custom_split">Custom Split (decide later)</option>
+              <option value="event_fee">Event Fee (fixed fee per person)</option>
+              <option value="budget_pool">Budget Pool (shared fund)</option>
             </select>
             <p class="text-xs text-slate-500 mt-1" id="costSharingHelper">Choose how expenses will be handled</p>
           </div>
@@ -1324,6 +1326,20 @@ declare global {
         helper: 'Total trip cost before splitting (you can finalize the split later)',
         placeholder: 'e.g. 40000 total',
         show: true
+      },
+      'event_fee': {
+        label: 'Fee Per Person',
+        context: '(required)',
+        helper: 'Fixed amount each participant must pay to join this trip',
+        placeholder: 'e.g. 1500 per person',
+        show: true
+      },
+      'budget_pool': {
+        label: 'Target Pool Per Person',
+        context: '(optional)',
+        helper: 'How much each member contributes to the shared fund',
+        placeholder: 'e.g. 2000 per person',
+        show: true
       }
     };
 
@@ -1347,6 +1363,10 @@ declare global {
               costSharingHelper.textContent = 'You\'ll cover all trip expenses';
             } else if (method === 'pay_own_expenses') {
               costSharingHelper.textContent = 'Each person pays for their own meals, activities, etc.';
+            } else if (method === 'event_fee') {
+              costSharingHelper.textContent = 'Members pay a fixed fee to participate — you collect and manage the funds';
+            } else if (method === 'budget_pool') {
+              costSharingHelper.textContent = 'Members contribute to a shared fund; expenses are drawn from the pool';
             } else {
               costSharingHelper.textContent = 'You\'ll decide the split arrangement later';
             }
@@ -1508,7 +1528,9 @@ declare global {
         'split_evenly': 'Split Evenly',
         'organizer_shoulders_cost': 'Organizer Shoulders All Costs',
         'pay_own_expenses': 'Everyone Pays Own Expenses',
-        'custom_split': 'Custom Split'
+        'custom_split': 'Custom Split',
+        'event_fee': 'Event Fee',
+        'budget_pool': 'Budget Pool'
       };
       if (confirmCostSharing) confirmCostSharing.textContent = costSharingLabels[costSharing] || '-';
 
@@ -1837,7 +1859,7 @@ declare global {
             // Settings
             max_pax: parseInt(formData.get("max_pax") as string) || 2,
             gender_preference: formData.get("gender_preference") as 'any' | 'male' | 'female',
-            cost_sharing: formData.get("cost_sharing") as 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split',
+            cost_sharing: formData.get("cost_sharing") as 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split' | 'event_fee' | 'budget_pool',
             estimated_budget: formData.get("estimated_budget") ? parseFloat(formData.get("estimated_budget") as string) : null,
             tags: tagsArray,
             

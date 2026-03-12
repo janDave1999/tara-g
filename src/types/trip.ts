@@ -15,7 +15,7 @@ export type TripFormData = {
   pickup_dates: string;
   dropoff_dates: string;
   waiting_time: number;
-  cost_sharing: 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split';
+  cost_sharing: 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split' | 'event_fee' | 'budget_pool';
   slug: string;
   max_pax: number;
   estimated_budget: number | null;

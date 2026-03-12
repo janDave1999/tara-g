@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 export type TripCreationStep = 'schedule' | 'details' | 'budget' | 'logistics';
 export type GenderPreference = 'any' | 'male' | 'female';
-export type CostSharingMethod = 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split';
+export type CostSharingMethod = 'split_evenly' | 'organizer_shoulders_cost' | 'pay_own_expenses' | 'custom_split' | 'event_fee' | 'budget_pool';
 export type LocationType = 'destination' | 'pickup' | 'dropoff';
 
 // =====================================================

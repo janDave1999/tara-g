@@ -289,10 +289,12 @@ const createTripSchema = z.object({
   }),
   
   cost_sharing: z.enum([
-    'split_evenly', 
-    'organizer_shoulders_cost', 
-    'pay_own_expenses', 
-    'custom_split'
+    'split_evenly',
+    'organizer_shoulders_cost',
+    'pay_own_expenses',
+    'custom_split',
+    'event_fee',
+    'budget_pool'
   ], {
     errorMap: (issue) => ({ message: 'Invalid cost sharing method' })
   }),
@@ -617,6 +619,19 @@ export const trip = {
             success: false,
             error: { message: result?.message || 'Failed to create trip' }
           };
+        }
+
+        // Auto-create budget settings for event_fee / budget_pool so the
+        // pool trigger fires correctly when members join.
+        if (input.cost_sharing === 'event_fee' || input.cost_sharing === 'budget_pool') {
+          await supabaseAdmin.rpc('upsert_trip_budget_settings', {
+            p_trip_id: result.trip_id,
+            p_cost_sharing_method: input.cost_sharing,
+            p_budget_estimate: null,
+            p_pool_enabled: true,
+            p_pool_per_person: input.estimated_budget ?? null,
+            p_allow_members_to_log: true,
+          });
         }
 
         return {

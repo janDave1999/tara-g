@@ -1,0 +1,1138 @@
+---
+interface Props {
+  tripId: string;
+  isOwner: boolean;
+  userId?: string;
+  costSharingMethod?: string;
+  budgetEstimate?: number;
+  poolPerPerson?: number;
+  allowMembersToLog?: boolean;
+}
+
+const {
+  tripId,
+  isOwner,
+  userId,
+  costSharingMethod = 'split_evenly',
+  budgetEstimate,
+  poolPerPerson,
+  allowMembersToLog = true,
+} = Astro.props;
+
+const canAddExpense = isOwner || (allowMembersToLog && costSharingMethod !== 'organizer_shoulders_all');
+
+// Adaptive section flags (server-side)
+const showBudgetBar    = budgetEstimate && costSharingMethod !== 'event_fee' && costSharingMethod !== 'budget_pool';
+const showFeeSection   = costSharingMethod === 'event_fee';
+const showPoolSection  = costSharingMethod === 'budget_pool';
+const showMemberBal    = ['split_evenly', 'custom_split', 'event_fee', 'budget_pool'].includes(costSharingMethod);
+
+const costSharingLabels: Record<string, string> = {
+  split_evenly:            'Split Evenly',
+  organizer_shoulders_all: 'Organizer Shoulders All',
+  everyone_pays_own:       'Everyone Pays Own',
+  custom_split:            'Custom Split',
+  event_fee:               'Event Fee',
+  budget_pool:             'Budget Pool',
+};
+
+const costSharingIcons: Record<string, string> = {
+  split_evenly:            '⚖️',
+  organizer_shoulders_all: '🤝',
+  everyone_pays_own:       '👤',
+  custom_split:            '✏️',
+  event_fee:               '🎟️',
+  budget_pool:             '🏦',
+};
+
+const costSharingOptions = [
+  { value: 'split_evenly',            label: 'Split Evenly' },
+  { value: 'organizer_shoulders_all', label: 'Organizer Shoulders All' },
+  { value: 'everyone_pays_own',       label: 'Everyone Pays Own' },
+  { value: 'custom_split',            label: 'Custom Split' },
+  { value: 'event_fee',               label: 'Event Fee (fixed fee per person)' },
+  { value: 'budget_pool',             label: 'Budget Pool (shared fund)' },
+];
+---
+
+<div
+  class="budget-container"
+  data-trip-id={tripId}
+  data-is-owner={isOwner}
+  data-user-id={userId}
+  data-cost-sharing={costSharingMethod}
+>
+
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-3 mb-5 px-1">
+    <div>
+      <h2 class="text-lg font-bold text-gray-900">Budget & Expenses</h2>
+      <span class="text-xs text-gray-400 font-medium">
+        {costSharingIcons[costSharingMethod]} {costSharingLabels[costSharingMethod] || costSharingMethod}
+      </span>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      {isOwner && (
+        <button id="budget-settings-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 text-sm font-medium transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Settings
+        </button>
+      )}
+      {canAddExpense && (
+        <button id="add-expense-btn" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Expense
+        </button>
+      )}
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-3 gap-2 mb-4">
+    <div class="bg-white rounded-xl p-3 border border-gray-100">
+      <p class="text-xs text-gray-400 mb-1">
+        {showFeeSection ? 'Fees Collected' : showPoolSection ? 'Pool Collected' : 'Total Spent'}
+      </p>
+      <p class="text-xl font-bold text-gray-900 tabular-nums" id="total-spent">₱0</p>
+    </div>
+    <div class="bg-white rounded-xl p-3 border border-gray-100">
+      <p class="text-xs text-gray-400 mb-1" id="card-label-expected">
+        {showFeeSection ? 'Total Expected' : showPoolSection ? 'Total Expected' : 'Budget'}
+      </p>
+      <p class="text-xl font-bold text-gray-900 tabular-nums" id="budget-estimate">
+        {showFeeSection || showPoolSection ? '—' : (budgetEstimate ? `₱${budgetEstimate.toLocaleString()}` : '—')}
+      </p>
+    </div>
+    <div class="bg-white rounded-xl p-3 border border-gray-100">
+      <p class="text-xs text-gray-400 mb-1">
+        {showFeeSection || showPoolSection ? 'Still Pending' : 'Remaining'}
+      </p>
+      <p class="text-xl font-bold tabular-nums" id="budget-difference">—</p>
+    </div>
+  </div>
+
+  <!-- Budget Progress Bar (split_evenly, custom_split, organizer_shoulders_all, everyone_pays_own) -->
+  {showBudgetBar && (
+    <div class="mb-5 bg-white rounded-xl p-3 border border-gray-100">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-medium text-gray-500">Budget used</span>
+        <span class="text-xs font-bold text-gray-700" id="budget-progress-text">0%</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+        <div id="budget-progress-bar" class="h-1.5 rounded-full bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+      </div>
+    </div>
+  )}
+
+  <!-- Fee Collection Section (event_fee only) -->
+  {showFeeSection && (
+    <div class="mb-4 bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-50">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold text-gray-800">Fee Collection</h3>
+          <span id="fee-summary-badge" class="text-xs font-semibold text-gray-400"></span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div id="fee-collection-bar" class="h-1.5 rounded-full bg-blue-500 transition-all duration-500" style="width:0%"></div>
+        </div>
+        <p id="fee-collection-status" class="text-xs text-gray-400 mt-1.5"></p>
+      </div>
+      <div id="fee-collection-body">
+        <div class="px-4 py-6 text-center text-sm text-gray-400">Loading...</div>
+      </div>
+    </div>
+  )}
+
+  <!-- Pool Contributions Section (budget_pool only) -->
+  {showPoolSection && (
+    <div class="mb-4 bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-50">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold text-gray-800">Pool Contributions</h3>
+          <span id="pool-summary-badge" class="text-xs font-semibold text-gray-400"></span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div id="pool-collection-bar" class="h-1.5 rounded-full bg-blue-500 transition-all duration-500" style="width:0%"></div>
+        </div>
+        <p id="pool-collection-status" class="text-xs text-gray-400 mt-1.5"></p>
+      </div>
+      <div id="pool-contributions-body">
+        <div class="px-4 py-6 text-center text-sm text-gray-400">Loading...</div>
+      </div>
+    </div>
+  )}
+
+  <!-- Member Balances (split_evenly, custom_split, event_fee, budget_pool) -->
+  {showMemberBal && (
+    <div class="mb-4 bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-gray-800">
+          {showFeeSection || showPoolSection ? 'Expense Balances' : 'Member Balances'}
+        </h3>
+        {!showFeeSection && !showPoolSection && (
+          <span class="text-xs text-gray-400">tap owes to settle</span>
+        )}
+      </div>
+      <div id="member-balances-body">
+        <div class="px-4 py-6 text-center text-sm text-gray-400">Loading...</div>
+      </div>
+    </div>
+  )}
+
+  <!-- Expenses List (always) -->
+  <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-50">
+      <h3 class="text-sm font-bold text-gray-800">Expenses</h3>
+    </div>
+    <div id="expenses-body">
+      <div class="px-4 py-6 text-center text-sm text-gray-400">No expenses yet</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Expense Modal -->
+<dialog id="expense-modal" class="modal">
+  <div class="modal-box max-w-sm rounded-2xl p-0 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="font-bold text-base text-gray-900">Add Expense</h3>
+    </div>
+    <form id="expense-form" class="p-5 space-y-3">
+      <input type="hidden" name="tripId" value={tripId} />
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (₱) *</label>
+        <input type="number" name="amount" step="0.01" min="0.01" required placeholder="0.00"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Description *</label>
+        <input type="text" name="description" required placeholder="What was this for?"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Category *</label>
+          <select name="category" required
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+            <option value="accommodation">🏨 Accommodation</option>
+            <option value="food">🍜 Food</option>
+            <option value="transport">🚌 Transport</option>
+            <option value="activities">🎡 Activities</option>
+            <option value="misc">📦 Miscellaneous</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Date *</label>
+          <input type="date" name="date" required
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+      </div>
+
+      <div id="payer-select-group">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Who Paid? *</label>
+        <select name="payerId" id="payer-select"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+          <option value="">Select who paid</option>
+        </select>
+      </div>
+
+      <!-- Payment Source (budget_pool only) -->
+      <div id="payment-source-group" class="hidden">
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Payment Source</label>
+        <div class="flex gap-2">
+          <label id="ps-personal-label" class="flex-1 flex items-center gap-2 p-2.5 border-2 border-blue-500 bg-blue-50 rounded-lg cursor-pointer transition-colors">
+            <input type="radio" name="paymentSource" value="personal" class="accent-blue-600" checked />
+            <div>
+              <p class="text-xs font-semibold text-gray-700">Personal</p>
+              <p class="text-[10px] text-gray-400">Someone paid out of pocket</p>
+            </div>
+          </label>
+          <label id="ps-pool-label" class="flex-1 flex items-center gap-2 p-2.5 border-2 border-gray-200 rounded-lg cursor-pointer transition-colors">
+            <input type="radio" name="paymentSource" value="pool" class="accent-blue-600" />
+            <div>
+              <p class="text-xs font-semibold text-gray-700">From Pool</p>
+              <p class="text-[10px] text-gray-400">Paid from shared funds</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Covered members picker -->
+      <div id="covered-members-section">
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs font-semibold text-gray-600">Covered Members *</label>
+          <div class="flex items-center gap-2">
+            <span id="per-person-calc" class="text-xs text-blue-600 font-semibold"></span>
+            <button type="button" id="select-all-members" class="text-xs text-gray-400 hover:text-blue-600 font-medium transition-colors">All</button>
+            <span class="text-gray-200">|</span>
+            <button type="button" id="unselect-all-members" class="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors">None</button>
+          </div>
+        </div>
+        <div id="member-checkboxes" class="space-y-1 max-h-36 overflow-y-auto border border-gray-100 rounded-lg p-2 bg-gray-50">
+          <p class="text-xs text-gray-400 text-center py-2">Loading members…</p>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Payer's share is deducted automatically. Others will owe them.</p>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-gray-100">
+        <button type="button" class="flex-1 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          onclick="document.getElementById('expense-modal').close()">Cancel</button>
+        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">
+          Add Expense
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Budget Settings Modal -->
+<dialog id="budget-settings-modal" class="modal">
+  <div class="modal-box max-w-sm rounded-2xl p-0 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="font-bold text-base text-gray-900">Budget Settings</h3>
+    </div>
+    <form id="budget-settings-form" class="p-5 space-y-3">
+      <input type="hidden" name="tripId" value={tripId} />
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Cost Sharing Method</label>
+        <select name="costSharingMethod" id="settings-method-select" required
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+          {costSharingOptions.map(opt => (
+            <option value={opt.value} selected={costSharingMethod === opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <!-- Per-person amount: shown for event_fee and budget_pool -->
+      <div id="per-person-group" class={`${costSharingMethod === 'event_fee' || costSharingMethod === 'budget_pool' ? '' : 'hidden'}`}>
+        <label class="block text-xs font-semibold text-gray-600 mb-1" id="per-person-label">
+          {costSharingMethod === 'event_fee' ? 'Fee per Person (₱)' : 'Target per Person (₱)'}
+        </label>
+        <input type="number" name="poolPerPerson" step="0.01" min="0"
+          value={poolPerPerson || ''}
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+        <p class="text-xs text-gray-400 mt-1" id="per-person-hint">
+          {costSharingMethod === 'event_fee'
+            ? 'Auto-charged when a member joins.'
+            : 'How much each member contributes to the pool.'}
+        </p>
+      </div>
+
+      <!-- Budget estimate: hidden for event_fee / budget_pool -->
+      <div id="budget-estimate-group" class={`${costSharingMethod === 'event_fee' || costSharingMethod === 'budget_pool' ? 'hidden' : ''}`}>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Budget Estimate (₱)</label>
+        <input type="number" name="budgetEstimate" step="0.01" min="0" placeholder="Optional"
+          value={budgetEstimate || ''}
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-gray-100">
+        <button type="button" class="flex-1 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          onclick="document.getElementById('budget-settings-modal').close()">Cancel</button>
+        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">
+          Save Settings
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Member Owes Modal -->
+<dialog id="owes-modal" class="modal">
+  <div class="modal-box max-w-sm rounded-2xl p-0 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="font-bold text-base text-gray-900" id="owes-modal-title">Owes Details</h3>
+      <button type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        onclick="document.getElementById('owes-modal').close()">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="owes-modal-content" class="p-5">
+      <p class="text-sm text-gray-400 text-center py-4">Loading...</p>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { showToast } from '@/scripts/Toast';
+  import { showConfirmModal } from '@/scripts/NewModal';
+
+  const container = document.querySelector('.budget-container') as HTMLElement;
+  const tripId = container?.dataset.tripId;
+  const isOwner = container?.dataset.isOwner === 'true';
+  const costSharing = container?.dataset.costSharing || 'split_evenly';
+
+  const CATEGORY_COLORS: Record<string, { bar: string; text: string; bg: string }> = {
+    accommodation: { bar: 'bg-purple-400', text: 'text-purple-600', bg: 'bg-purple-50' },
+    food:          { bar: 'bg-orange-400', text: 'text-orange-600', bg: 'bg-orange-50' },
+    transport:     { bar: 'bg-blue-400',   text: 'text-blue-600',   bg: 'bg-blue-50' },
+    activities:    { bar: 'bg-green-400',  text: 'text-green-600',  bg: 'bg-green-50' },
+    misc:          { bar: 'bg-gray-400',   text: 'text-gray-500',   bg: 'bg-gray-50' },
+  };
+
+  const AVATAR_COLORS = [
+    'bg-blue-100 text-blue-700',
+    'bg-purple-100 text-purple-700',
+    'bg-green-100 text-green-700',
+    'bg-amber-100 text-amber-700',
+    'bg-rose-100 text-rose-700',
+    'bg-cyan-100 text-cyan-700',
+  ];
+
+  const initials = (name: string) =>
+    name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+  let currentMembers: Array<{ id: string; name: string }> = [];
+
+  // ── Data loaders ────────────────────────────────────────────────────────────
+
+  async function loadData() {
+    if (!tripId) return;
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Load timeout')), 8000)
+    );
+    const loaders: Promise<any>[] = [loadExpenses()];
+
+    if (costSharing === 'event_fee') {
+      loaders.push(loadFeeCollection());
+    } else if (costSharing === 'budget_pool') {
+      loaders.push(loadPoolContributions());
+    }
+
+    if (['split_evenly', 'custom_split', 'event_fee', 'budget_pool'].includes(costSharing)) {
+      loaders.push(loadMemberBalances());
+    }
+
+    try {
+      await Promise.race([Promise.all(loaders), timeout]);
+    } catch (e) {
+      console.error('Budget data load failed:', e);
+      showToast({ message: 'Failed to load budget data. Please refresh.', type: 'error' });
+    }
+  }
+
+  async function loadExpenses() {
+    if (!tripId) return;
+    try {
+      const result = await actions.budget.getExpenses({ tripId });
+      const expenses = Array.isArray(result) ? result : (result?.data || []);
+      const body = document.getElementById('expenses-body')!;
+      if (!body) return;
+
+      if (expenses.length === 0) {
+        body.innerHTML = `<div class="px-4 py-8 text-center text-sm text-gray-400">No expenses yet</div>`;
+        updateSummaryFromExpenses(0);
+        return;
+      }
+
+      body.innerHTML = expenses.map((exp: any) => {
+        const cat = CATEGORY_COLORS[exp.category] ?? CATEGORY_COLORS.misc;
+        const date = new Date(exp.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors expense-row" data-expense-id="${exp.id}">
+            <div class="w-1 self-stretch rounded-full ${cat.bar} shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">${exp.description || '—'}</p>
+              <p class="text-xs text-gray-400">${date} · ${exp.payer_name}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-sm font-bold text-gray-900">₱${parseFloat(exp.amount).toLocaleString()}</p>
+              <span class="text-xs font-medium ${cat.text}">${exp.category}</span>
+            </div>
+            ${isOwner ? `
+              <button class="delete-expense-btn p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors ml-1" data-expense-id="${exp.id}" title="Delete">
+                <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      const total = expenses.reduce((sum: number, exp: any) => sum + parseFloat(exp.amount), 0);
+      updateSummaryFromExpenses(total);
+
+      body.querySelectorAll('.delete-expense-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const expenseId = (e.currentTarget as HTMLElement).dataset.expenseId;
+          if (!expenseId) return;
+          const confirmed = await showConfirmModal({
+            title: 'Delete Expense',
+            message: 'This expense and its splits will be permanently removed.',
+            confirmText: 'Delete',
+            confirmVariant: 'danger',
+          });
+          if (confirmed) {
+            const result = await actions.budget.deleteExpense({ expenseId, tripId: tripId! });
+            if (!(result as any).error) {
+              showToast({ message: 'Expense deleted', type: 'success' });
+              loadData();
+            }
+          }
+        });
+      });
+    } catch (e) {
+      console.error('Error loading expenses:', e);
+    }
+  }
+
+  function updateSummaryFromExpenses(total: number) {
+    // For event_fee and budget_pool, "Total Spent" tracks expenses (not pool collections)
+    // The pool/fee collection totals are updated by their own loaders.
+    if (costSharing !== 'event_fee' && costSharing !== 'budget_pool') {
+      const totalEl = document.getElementById('total-spent');
+      if (totalEl) totalEl.textContent = `₱${total.toLocaleString()}`;
+    }
+
+    const budgetEl = document.getElementById('budget-estimate');
+    const budget = parseFloat(budgetEl?.textContent?.replace(/[^0-9.]/g, '') || '0');
+    const diffEl = document.getElementById('budget-difference');
+
+    if (costSharing !== 'event_fee' && costSharing !== 'budget_pool') {
+      if (diffEl && budget > 0) {
+        const diff = budget - total;
+        diffEl.textContent = diff >= 0 ? `₱${diff.toLocaleString()}` : `-₱${Math.abs(diff).toLocaleString()}`;
+        diffEl.className = `text-xl font-bold tabular-nums ${diff < 0 ? 'text-red-500' : 'text-green-600'}`;
+      } else if (diffEl) {
+        diffEl.textContent = '—';
+        diffEl.className = 'text-xl font-bold tabular-nums text-gray-300';
+      }
+    }
+
+    const progressBar = document.getElementById('budget-progress-bar') as HTMLElement;
+    const progressText = document.getElementById('budget-progress-text');
+    if (progressBar && budget > 0) {
+      const pct = Math.min((total / budget) * 100, 100);
+      progressBar.style.width = `${pct}%`;
+      progressBar.className = `h-1.5 rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-blue-500'}`;
+      if (progressText) progressText.textContent = `${pct.toFixed(0)}%`;
+    }
+  }
+
+  function renderContribRow(c: any, i: number, isFeeSemantic: boolean): string {
+    const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const amount     = parseFloat(c.amount) || 0;
+    const amountPaid = parseFloat(c.amount_paid ?? 0) || 0;
+    const remaining  = Math.max(amount - amountPaid, 0);
+    const pct        = amount > 0 ? Math.min((amountPaid / amount) * 100, 100) : 0;
+    const paid       = c.status === 'paid';
+    const partial    = c.status === 'partial';
+
+    const statusText = paid
+      ? `<span class="text-green-500">✓ ${isFeeSemantic ? 'Fee paid' : 'Contributed'}</span>`
+      : partial
+        ? `<span class="text-blue-500">₱${amountPaid.toLocaleString()} paid · <span class="text-amber-500">₱${remaining.toLocaleString()} left</span></span>`
+        : `<span class="text-amber-500">₱${amount.toLocaleString()} ${isFeeSemantic ? 'due' : 'pending'}</span>`;
+
+    const progressBar = !paid
+      ? `<div class="w-full bg-gray-100 rounded-full h-1 mt-1 overflow-hidden">
+           <div class="h-1 rounded-full ${partial ? 'bg-blue-400' : 'bg-gray-200'} transition-all" style="width:${pct}%"></div>
+         </div>`
+      : '';
+
+    const paymentBtns = isOwner && !paid
+      ? `<div class="payment-action-area flex items-center gap-1.5 shrink-0">
+           <button class="pay-full-btn text-xs px-2 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 font-semibold transition-colors"
+             data-contribution-id="${c.id}" data-user-name="${c.user_name}" data-amount="${amount}">
+             Full
+           </button>
+           <button class="pay-partial-btn text-xs px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 font-semibold transition-colors"
+             data-contribution-id="${c.id}" data-user-name="${c.user_name}" data-amount="${amount}" data-remaining="${remaining}">
+             Partial
+           </button>
+         </div>`
+      : '';
+
+    return `
+      <div class="px-4 py-3 border-b border-gray-50 last:border-b-0 contribution-row" data-contribution-id="${c.id}">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center text-xs font-bold shrink-0">
+            ${initials(c.user_name || '?')}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-900 truncate">${c.user_name || '—'}</p>
+            <p class="text-xs font-medium">${statusText}</p>
+            ${progressBar}
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            ${paymentBtns}
+            <span class="text-sm font-bold tabular-nums ${paid ? 'text-green-600' : partial ? 'text-blue-600' : 'text-gray-300'}">
+              ₱${amount.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Effective paid: if status='paid' but amount_paid=0 (legacy rows marked with old RPC),
+  // treat the full amount as paid.
+  const effectivePaid = (c: any) => {
+    const ap = parseFloat(c.amount_paid ?? 0) || 0;
+    return c.status === 'paid' && ap === 0 ? (parseFloat(c.amount) || 0) : ap;
+  };
+
+  function updateContribSummary(
+    contribs: any[],
+    badgeId: string,
+    badgeLabel: string,
+    barId: string,
+    statusId: string,
+  ) {
+    const totalExpected  = contribs.reduce((s: number, c: any) => s + (parseFloat(c.amount) || 0), 0);
+    const totalCollected = contribs.reduce((s: number, c: any) => s + effectivePaid(c), 0);
+    const totalPending   = Math.max(totalExpected - totalCollected, 0);
+    const paidFull       = contribs.filter((c: any) => c.status === 'paid').length;
+    const pct            = totalExpected > 0 ? Math.min((totalCollected / totalExpected) * 100, 100) : 0;
+    const allPaid        = paidFull === contribs.length && contribs.length > 0;
+
+    // Badge
+    const badge = document.getElementById(badgeId);
+    if (badge) badge.textContent = `${paidFull}/${contribs.length} ${badgeLabel}`;
+
+    // Summary cards
+    const totalEl = document.getElementById('total-spent');
+    if (totalEl) totalEl.textContent = `₱${totalCollected.toLocaleString()}`;
+
+    const expectedEl = document.getElementById('budget-estimate');
+    if (expectedEl) expectedEl.textContent = `₱${totalExpected.toLocaleString()}`;
+
+    const diffEl = document.getElementById('budget-difference');
+    if (diffEl) {
+      diffEl.textContent = totalPending > 0 ? `₱${totalPending.toLocaleString()}` : '—';
+      diffEl.className = `text-xl font-bold tabular-nums ${totalPending > 0 ? 'text-amber-500' : 'text-green-600'}`;
+    }
+
+    // Section progress bar
+    const bar = document.getElementById(barId) as HTMLElement;
+    if (bar) {
+      bar.style.width = `${pct}%`;
+      bar.className = `h-1.5 rounded-full transition-all duration-500 ${allPaid ? 'bg-green-500' : 'bg-blue-500'}`;
+    }
+
+    const statusEl = document.getElementById(statusId);
+    if (statusEl) {
+      statusEl.textContent = allPaid
+        ? `All collected — ₱${totalCollected.toLocaleString()} total`
+        : `₱${totalCollected.toLocaleString()} of ₱${totalExpected.toLocaleString()} collected (${pct.toFixed(0)}%)`;
+      statusEl.className = `text-xs mt-1.5 font-medium ${allPaid ? 'text-green-500' : 'text-gray-400'}`;
+    }
+  }
+
+  async function loadFeeCollection() {
+    if (!tripId) return;
+    try {
+      const res = await actions.budget.getPoolContributions({ tripId });
+      const contribs: any[] = Array.isArray(res) ? res : (res?.data || []);
+      const body = document.getElementById('fee-collection-body')!;
+      if (!body) return;
+
+      if (contribs.length === 0) {
+        body.innerHTML = `<div class="px-4 py-6 text-center text-sm text-gray-400">No members yet</div>`;
+        return;
+      }
+
+      updateContribSummary(contribs, 'fee-summary-badge', 'paid', 'fee-collection-bar', 'fee-collection-status');
+      body.innerHTML = contribs.map((c, i) => renderContribRow(c, i, true)).join('');
+      setupPaymentHandlers(body, loadFeeCollection);
+    } catch (e) {
+      console.error('Error loading fee collection:', e);
+    }
+  }
+
+  async function loadPoolContributions() {
+    if (!tripId) return;
+    try {
+      const res = await actions.budget.getPoolContributions({ tripId });
+      const contribs: any[] = Array.isArray(res) ? res : (res?.data || []);
+      const body = document.getElementById('pool-contributions-body')!;
+      if (!body) return;
+
+      if (contribs.length === 0) {
+        body.innerHTML = `<div class="px-4 py-6 text-center text-sm text-gray-400">No members yet</div>`;
+        return;
+      }
+
+      updateContribSummary(contribs, 'pool-summary-badge', 'contributed', 'pool-collection-bar', 'pool-collection-status');
+      body.innerHTML = contribs.map((c, i) => renderContribRow(c, i, false)).join('');
+      setupPaymentHandlers(body, loadPoolContributions);
+    } catch (e) {
+      console.error('Error loading pool contributions:', e);
+    }
+  }
+
+  async function loadMemberBalances() {
+    if (!tripId) return;
+    try {
+      const balanceRes = await actions.budget.getMemberBalances({ tripId });
+      const balances = Array.isArray(balanceRes) ? balanceRes : (balanceRes?.data || []);
+
+      currentMembers = balances.map((b: any) => ({ id: b.user_id, name: b.user_name }));
+
+      const select = document.getElementById('payer-select') as unknown as HTMLSelectElement;
+      if (select) {
+        select.innerHTML = '<option value="">Select who paid</option>' +
+          currentMembers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+      }
+
+      renderMemberCheckboxes();
+
+      const section = document.getElementById('member-balances-body')?.closest('.mb-4') as HTMLElement | null;
+      const body = document.getElementById('member-balances-body')!;
+      if (!body) return;
+
+      if (balances.length === 0) {
+        body.innerHTML = `<div class="px-4 py-6 text-center text-sm text-gray-400">No members yet</div>`;
+        return;
+      }
+
+      // For event_fee / budget_pool, hide this section entirely when no one owes anything
+      const hasActivity = balances.some((b: any) =>
+        parseFloat(b.net_balance) !== 0 || parseFloat(b.total_owed) !== 0 || parseFloat(b.total_paid) !== 0
+      );
+      if ((costSharing === 'event_fee' || costSharing === 'budget_pool') && !hasActivity) {
+        if (section) section.classList.add('hidden');
+        return;
+      }
+      if (section) section.classList.remove('hidden');
+
+      body.innerHTML = balances.map((b: any, i: number) => {
+        const balance = parseFloat(b.net_balance) || 0;
+        const owes = parseFloat(b.total_owed) || 0;
+        const paid = parseFloat(b.total_paid) || 0;
+        const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const balancePositive = balance >= 0;
+
+        return `
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0">
+            <div class="w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center text-xs font-bold shrink-0">
+              ${initials(b.user_name)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">${b.user_name}</p>
+              <p class="text-xs text-gray-400">Paid ₱${paid.toLocaleString()}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              ${owes > 0
+                ? `<button class="owes-btn text-xs px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-semibold hover:bg-orange-100 transition-colors"
+                     data-user-id="${b.user_id}" data-user-name="${b.user_name}">
+                     owes ₱${owes.toLocaleString()}
+                   </button>`
+                : `<span class="text-xs text-gray-300">settled</span>`
+              }
+              <span class="text-sm font-bold tabular-nums min-w-[4rem] text-right ${balancePositive ? 'text-green-600' : 'text-red-500'}">
+                ${balancePositive ? '+' : ''}₱${Math.abs(balance).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      setupOwesHandlers(body);
+    } catch (e) {
+      console.error('Error loading balances:', e);
+    }
+  }
+
+  // ── Member checkboxes ────────────────────────────────────────────────────────
+
+  function renderMemberCheckboxes() {
+    const container = document.getElementById('member-checkboxes');
+    if (!container) return;
+
+    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement | null;
+    const payerId = payerSelect?.value || '';
+
+    if (currentMembers.length === 0) {
+      container.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">No members yet</p>`;
+      return;
+    }
+
+    container.innerHTML = currentMembers.map((m, i) => {
+      const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
+      const isPayer = m.id === payerId;
+      return `
+        <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+          <input type="checkbox" class="member-checkbox rounded w-3.5 h-3.5 accent-blue-600"
+            value="${m.id}" ${isPayer ? 'checked data-is-payer="true"' : 'checked'} />
+          <div class="w-6 h-6 rounded-full ${avatarColor} flex items-center justify-center text-[10px] font-bold shrink-0">
+            ${initials(m.name)}
+          </div>
+          <span class="text-xs font-medium text-gray-700 flex-1 truncate">${m.name}</span>
+          ${isPayer ? `<span class="text-[10px] text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded-full">Paid</span>` : ''}
+        </label>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.member-checkbox').forEach(cb => {
+      cb.addEventListener('change', updatePerPersonCalc);
+    });
+
+    updatePerPersonCalc();
+  }
+
+  function updatePerPersonCalc() {
+    const amountInput = document.querySelector('#expense-form [name="amount"]') as HTMLInputElement;
+    const amount = parseFloat(amountInput?.value || '0') || 0;
+    const checked = document.querySelectorAll('#member-checkboxes .member-checkbox:checked');
+    const count = checked.length;
+    const calcEl = document.getElementById('per-person-calc');
+    if (!calcEl) return;
+
+    if (amount > 0 && count > 0) {
+      const perPerson = amount / count;
+      calcEl.textContent = `₱${perPerson.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each · ${count} covered`;
+    } else if (count > 0) {
+      calcEl.textContent = `${count} covered`;
+    } else {
+      calcEl.textContent = '';
+    }
+  }
+
+  // ── Shared handlers ──────────────────────────────────────────────────────────
+
+  function setupPaymentHandlers(body: HTMLElement, reload: () => Promise<void>) {
+    // Full payment — inline two-step confirm
+    body.querySelectorAll('.pay-full-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const el = e.currentTarget as HTMLElement;
+        const contributionId = el.dataset.contributionId;
+        const userName = el.dataset.userName;
+        const area = el.closest('.payment-action-area') as HTMLElement;
+        if (!contributionId || !area) return;
+
+        const original = area.innerHTML;
+        area.innerHTML = `
+          <span class="text-xs text-gray-600">Paid in full?</span>
+          <button class="confirm-full-yes text-xs px-2 py-1 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">Yes</button>
+          <button class="confirm-full-no text-xs text-gray-400 hover:text-gray-600 font-semibold transition-colors">No</button>
+        `;
+        area.querySelector('.confirm-full-no')?.addEventListener('click', () => { area.innerHTML = original; setupPaymentHandlers(body, reload); });
+        area.querySelector('.confirm-full-yes')?.addEventListener('click', async () => {
+          const res = await actions.budget.recordPoolPayment({ contributionId, tripId: tripId!, paymentAmount: 0, fullPayment: true });
+          if (!(res as any).error) {
+            showToast({ message: `Full payment recorded for ${userName}`, type: 'success' });
+            await reload();
+          }
+        });
+      });
+    });
+
+    // Partial payment — inline amount input
+    body.querySelectorAll('.pay-partial-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const el = e.currentTarget as HTMLElement;
+        const contributionId = el.dataset.contributionId;
+        const userName = el.dataset.userName;
+        const remaining = parseFloat(el.dataset.remaining || '0');
+        const area = el.closest('.payment-action-area') as HTMLElement;
+        if (!contributionId || !area) return;
+
+        const original = area.innerHTML;
+        area.innerHTML = `
+          <input type="number" class="partial-amount-input w-20 px-2 py-1 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="₱ amount" min="1" max="${remaining}" step="1" />
+          <button class="confirm-partial-yes text-xs px-2 py-1 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">OK</button>
+          <button class="confirm-partial-no text-xs text-gray-400 hover:text-gray-600 font-semibold transition-colors">✕</button>
+        `;
+        const input = area.querySelector('.partial-amount-input') as HTMLInputElement;
+        input?.focus();
+        area.querySelector('.confirm-partial-no')?.addEventListener('click', () => { area.innerHTML = original; setupPaymentHandlers(body, reload); });
+        area.querySelector('.confirm-partial-yes')?.addEventListener('click', async () => {
+          const amt = parseFloat(input?.value || '0');
+          if (!amt || amt <= 0) { input?.focus(); return; }
+          const res = await actions.budget.recordPoolPayment({ contributionId, tripId: tripId!, paymentAmount: amt, fullPayment: false });
+          if (!(res as any).error) {
+            showToast({ message: `₱${amt.toLocaleString()} recorded for ${userName}`, type: 'success' });
+            await reload();
+          }
+        });
+      });
+    });
+  }
+
+  function setupOwesHandlers(body: HTMLElement) {
+    body.querySelectorAll('.owes-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const uid = target.dataset.userId;
+        const userName = target.dataset.userName;
+        if (!uid || !tripId) return;
+
+        const modalTitle = document.getElementById('owes-modal-title');
+        if (modalTitle) modalTitle.textContent = `${userName} owes`;
+
+        const modalContent = document.getElementById('owes-modal-content')!;
+        modalContent.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">Loading...</p>`;
+        (document.getElementById('owes-modal') as HTMLDialogElement)?.showModal();
+
+        try {
+          const result = await actions.budget.getMemberOwes({ tripId, userId: uid });
+          const owes = Array.isArray(result) ? result : (result?.data || []);
+
+          if (owes.length === 0) {
+            modalContent.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">No outstanding balances</p>`;
+          } else {
+            modalContent.innerHTML = `
+              <div class="space-y-2">
+                ${owes.map((o: any) => `
+                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl owes-item" data-split-id="${o.split_id}">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-gray-900 truncate">${o.expense_description || '—'}</p>
+                      <p class="text-xs text-gray-400">${new Date(o.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · to ${o.payer_name}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                      <p class="text-sm font-bold text-gray-900">₱${parseFloat(o.share_amount).toLocaleString()}</p>
+                      <button class="settle-expense-btn text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors mt-0.5"
+                        data-split-id="${o.split_id}"
+                        data-expense-desc="${o.expense_description}"
+                        data-amount="${o.share_amount}"
+                        data-payer="${o.payer_name}">
+                        Settle →
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+
+            modalContent.querySelectorAll('.settle-expense-btn').forEach(settleBtn => {
+              settleBtn.addEventListener('click', async (e) => {
+                const btn = e.currentTarget as HTMLElement;
+                const splitId = btn.dataset.splitId;
+                if (!splitId) return;
+
+                const item = btn.closest('.owes-item') as HTMLElement;
+                const amount = btn.dataset.amount || '0';
+                const originalContent = item.innerHTML;
+
+                item.innerHTML = `
+                  <div class="flex items-center justify-between w-full gap-3">
+                    <p class="text-sm text-gray-600">Settle ₱${parseFloat(amount).toLocaleString()}?</p>
+                    <div class="flex gap-2 shrink-0">
+                      <button class="confirm-settle-no px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
+                      <button class="confirm-settle-yes px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Confirm</button>
+                    </div>
+                  </div>
+                `;
+
+                item.querySelector('.confirm-settle-no')?.addEventListener('click', () => {
+                  item.innerHTML = originalContent;
+                  item.querySelector('.settle-expense-btn')?.addEventListener('click', () => btn.click());
+                });
+
+                item.querySelector('.confirm-settle-yes')?.addEventListener('click', async () => {
+                  const result = await actions.budget.settleExpenseSplit({ splitId, tripId: tripId! });
+                  if (!(result as any).error) {
+                    showToast({ message: 'Settled!', type: 'success' });
+                    item.remove();
+                    await loadMemberBalances();
+                    const remaining = modalContent?.querySelectorAll('.owes-item');
+                    if (!remaining || remaining.length === 0) {
+                      modalContent.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">No outstanding balances</p>`;
+                    }
+                  }
+                });
+              });
+            });
+          }
+        } catch (err) {
+          console.error('Error loading owes:', err);
+          modalContent.innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error loading details</p>`;
+        }
+      });
+    });
+  }
+
+  // ── Event listeners ──────────────────────────────────────────────────────────
+
+  document.getElementById('add-expense-btn')?.addEventListener('click', () => {
+    (document.getElementById('expense-modal') as HTMLDialogElement)?.showModal();
+  });
+
+  document.getElementById('budget-settings-btn')?.addEventListener('click', () => {
+    (document.getElementById('budget-settings-modal') as HTMLDialogElement)?.showModal();
+  });
+
+  // Settings method change → toggle per-person / budget-estimate fields
+  document.getElementById('settings-method-select')?.addEventListener('change', (e) => {
+    const method = (e.target as HTMLSelectElement).value;
+    const needsPerPerson = method === 'event_fee' || method === 'budget_pool';
+    document.getElementById('per-person-group')?.classList.toggle('hidden', !needsPerPerson);
+    document.getElementById('budget-estimate-group')?.classList.toggle('hidden', needsPerPerson);
+
+    const label = document.getElementById('per-person-label');
+    const hint = document.getElementById('per-person-hint');
+    if (label) label.textContent = method === 'event_fee' ? 'Fee per Person (₱)' : 'Target per Person (₱)';
+    if (hint) hint.textContent = method === 'event_fee'
+      ? 'Auto-charged when a member joins.'
+      : 'How much each member contributes to the pool.';
+  });
+
+  // Show payment source toggle for budget_pool
+  if (costSharing === 'budget_pool') {
+    document.getElementById('payment-source-group')?.classList.remove('hidden');
+  }
+
+  function updatePaymentSourceStyles() {
+    const isPool = (document.querySelector('[name="paymentSource"]:checked') as HTMLInputElement)?.value === 'pool';
+    const personalLabel = document.getElementById('ps-personal-label');
+    const poolLabel = document.getElementById('ps-pool-label');
+    if (personalLabel) {
+      personalLabel.className = personalLabel.className.replace(/border-(blue-500|gray-200)/g, isPool ? 'border-gray-200' : 'border-blue-500');
+      personalLabel.classList.toggle('bg-blue-50', !isPool);
+    }
+    if (poolLabel) {
+      poolLabel.className = poolLabel.className.replace(/border-(blue-500|gray-200)/g, isPool ? 'border-blue-500' : 'border-gray-200');
+      poolLabel.classList.toggle('bg-blue-50', isPool);
+    }
+    // Hide payer select and covered members when paying from pool
+    const payerGroup = document.getElementById('payer-select-group');
+    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement;
+    if (payerGroup) payerGroup.classList.toggle('hidden', isPool);
+    if (payerSelect) payerSelect.required = !isPool;
+    document.getElementById('covered-members-section')?.classList.toggle('hidden', isPool);
+  }
+
+  document.querySelectorAll('[name="paymentSource"]').forEach(radio => {
+    radio.addEventListener('change', updatePaymentSourceStyles);
+  });
+
+  // Payer change → refresh member checkboxes (update "Paid" badge)
+  document.getElementById('payer-select')?.addEventListener('change', () => {
+    renderMemberCheckboxes();
+  });
+
+  // Select all / unselect all members
+  document.getElementById('select-all-members')?.addEventListener('click', () => {
+    document.querySelectorAll('#member-checkboxes .member-checkbox').forEach(cb => {
+      (cb as HTMLInputElement).checked = true;
+    });
+    updatePerPersonCalc();
+  });
+
+  document.getElementById('unselect-all-members')?.addEventListener('click', () => {
+    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement;
+    const payerId = payerSelect?.value || '';
+    document.querySelectorAll('#member-checkboxes .member-checkbox').forEach(cb => {
+      const input = cb as HTMLInputElement;
+      // Keep payer checked (they're always included)
+      if (input.value !== payerId) input.checked = false;
+    });
+    updatePerPersonCalc();
+  });
+
+  // Amount change → update per-person calc
+  document.querySelector('#expense-form [name="amount"]')?.addEventListener('input', updatePerPersonCalc);
+
+  // Reset form state when modal closes
+  document.getElementById('expense-modal')?.addEventListener('close', () => {
+    // Reset payment source to personal
+    const personalRadio = document.querySelector('[name="paymentSource"][value="personal"]') as HTMLInputElement;
+    if (personalRadio) { personalRadio.checked = true; updatePaymentSourceStyles(); }
+    renderMemberCheckboxes();
+  });
+
+  // Expense form submit
+  const expenseForm = document.getElementById('expense-form') as HTMLFormElement;
+  expenseForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(expenseForm);
+    const submitBtn = expenseForm.querySelector('[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding...';
+
+    const paymentSource = (formData.get('paymentSource') as string) || 'personal';
+    const fromPool = paymentSource === 'pool';
+
+    const checkedBoxes = document.querySelectorAll('#member-checkboxes .member-checkbox:checked');
+    const recipientIds = Array.from(checkedBoxes).map(cb => (cb as HTMLInputElement).value);
+
+    const currentUserId = container?.dataset.userId || '';
+    const payerId = fromPool ? currentUserId : (formData.get('payerId') as string);
+
+    try {
+      const result = await actions.budget.addExpense({
+        tripId: tripId!,
+        payerId,
+        amount: parseFloat(formData.get('amount') as string),
+        description: formData.get('description') as string,
+        category: formData.get('category') as any,
+        date: formData.get('date') as string,
+        isShared: fromPool ? false : recipientIds.length > 1,
+        recipientIds: fromPool ? undefined : (recipientIds.length > 0 ? recipientIds : undefined),
+      });
+
+      if (!(result as any).error) {
+        showToast({ message: 'Expense added!', type: 'success' });
+        (document.getElementById('expense-modal') as HTMLDialogElement)?.close();
+        expenseForm.reset();
+        renderMemberCheckboxes();
+        loadData();
+      }
+    } catch (err) {
+      console.error('Error adding expense:', err);
+      showToast({ message: 'Error adding expense', type: 'error' });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Add Expense';
+    }
+  });
+
+  // Settings form submit
+  const settingsForm = document.getElementById('budget-settings-form') as HTMLFormElement;
+  settingsForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(settingsForm);
+    const method = formData.get('costSharingMethod') as string;
+    const submitBtn = settingsForm.querySelector('[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    const needsPool = method === 'event_fee' || method === 'budget_pool';
+
+    try {
+      const result = await actions.budget.updateSettings({
+        tripId: tripId!,
+        costSharingMethod: method as any,
+        budgetEstimate: !needsPool && formData.get('budgetEstimate')
+          ? parseFloat(formData.get('budgetEstimate') as string)
+          : null,
+        poolEnabled: needsPool,
+        poolPerPerson: needsPool && formData.get('poolPerPerson')
+          ? parseFloat(formData.get('poolPerPerson') as string)
+          : null,
+      });
+
+      if (!(result as any).error) {
+        showToast({ message: 'Settings saved!', type: 'success' });
+        (document.getElementById('budget-settings-modal') as HTMLDialogElement)?.close();
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      showToast({ message: 'Error saving settings', type: 'error' });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save Settings';
+    }
+  });
+
+  loadData();
+</script>

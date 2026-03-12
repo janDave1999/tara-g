@@ -15,6 +15,8 @@ const { costSharing, estimatedBudget, tripId } = Astro.props;
         <option value="organizer_shoulders_cost" selected={costSharing === 'organizer_shoulders_cost'}>Organizer Shoulders All Costs</option>
         <option value="pay_own_expenses" selected={costSharing === 'pay_own_expenses'}>Everyone Pays Own Expenses</option>
         <option value="custom_split" selected={costSharing === 'custom_split'}>Custom Split</option>
+        <option value="event_fee" selected={costSharing === 'event_fee'}>Event Fee (fixed fee per person)</option>
+        <option value="budget_pool" selected={costSharing === 'budget_pool'}>Budget Pool (shared fund)</option>
       </select>
     </div>
     <div>

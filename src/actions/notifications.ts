@@ -7,7 +7,7 @@ async function getInternalUserId(authId: string): Promise<string | null> {
     .from('users')
     .select('user_id')
     .eq('auth_id', authId)
-    .single();
+    .maybeSingle();
 
   if (error || !data?.user_id) {
     console.error(`[NOTIF:getInternalUserId] lookup failed for auth_id=${authId}`, error ?? 'no row');

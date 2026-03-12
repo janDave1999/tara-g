@@ -5,6 +5,7 @@ interface Props {
   userId?: string;
   costSharingMethod?: string;
   budgetEstimate?: number;
+  poolEnabled?: boolean;
   poolPerPerson?: number;
   allowMembersToLog?: boolean;
 }
@@ -15,6 +16,7 @@ const {
   userId,
   costSharingMethod = 'split_evenly',
   budgetEstimate,
+  poolEnabled = false,
   poolPerPerson,
   allowMembersToLog = true,
 } = Astro.props;
@@ -1004,7 +1006,7 @@ const costSharingOptions = [
     }
     // Hide payer select and covered members when paying from pool
     const payerGroup = document.getElementById('payer-select-group');
-    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement;
+    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement | null;
     if (payerGroup) payerGroup.classList.toggle('hidden', isPool);
     if (payerSelect) payerSelect.required = !isPool;
     document.getElementById('covered-members-section')?.classList.toggle('hidden', isPool);
@@ -1028,7 +1030,7 @@ const costSharingOptions = [
   });
 
   document.getElementById('unselect-all-members')?.addEventListener('click', () => {
-    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement;
+    const payerSelect = document.getElementById('payer-select') as HTMLSelectElement | null;
     const payerId = payerSelect?.value || '';
     document.querySelectorAll('#member-checkboxes .member-checkbox').forEach(cb => {
       const input = cb as HTMLInputElement;

@@ -17,15 +17,6 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  "triggers": {
-    "crons": [
-      "5 23 * * *",  // daily: trip status check (run 1)
-      "10 23 * * *", // daily: trip status check (run 2)
-      "11 23 * * *", // daily: trip status check (run 3)
-      "30 23 * * *", // daily: trip status check (run 4)
-      "0 9 * * 1"    // weekly (Monday 09:00 UTC): budget payment reminders
-    ]
-  },
   "ai": {
     "binding": "AI"
   },
@@ -52,6 +43,12 @@
         }
       ],
       "name": "project-nomad-tara-g",
+      "triggers": {
+        "crons": [
+          "0 23 * * *", // daily (23:00 UTC): trip status check
+          "0 9 * * 1"   // weekly (Monday 09:00 UTC): budget payment reminders
+        ]
+      },
       "ai": {
         "binding": "AI"
       }

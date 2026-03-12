@@ -26,19 +26,13 @@ const trip = tripData;
 const {
   trip_id,
   title,
-  description,
-  status,
   user_role,
   trip_details,
   trip_locations,
-  trip_members,
-  trip_visibility,
 } = trip;
 
 const isVisitor = user_role === 'visitor';
-const isPublicTrip = trip_visibility?.visibility === 'public';
 const isOwner = user_role === 'owner';
-const isMember = user_role === 'member';
 
 if (isVisitor) {
   return Astro.redirect(`/trips/${slug}`);
@@ -47,7 +41,6 @@ if (isVisitor) {
 const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
 const destination = primaryLocation?.location?.name || primaryLocation?.location_name || 'No destination set';
 
-const joinedMembers = trip_members?.filter((m: any) => m.member_status === 'joined') || [];
 
 let budgetSettings: any = null;
 try {
@@ -57,32 +50,6 @@ try {
   console.log('No budget settings yet, using defaults');
 }
 
-const tripProps = {
-  tripId: trip_id,
-  title,
-  description: trip_details?.description || description,
-  tripStatus: status,
-  userRole: user_role,
-  visibility: trip_visibility?.visibility || 'private',
-  
-  destination,
-  tripStart: trip_details?.start_date,
-  tripEnd: trip_details?.end_date,
-  joinedBy: trip_details?.join_by 
-    ? `${trip_details.join_by}T${trip_details.join_by_time || '23:59:00'}`
-    : null,
-  
-  currentPax: joinedMembers.length,
-  maxPax: trip_details?.max_pax || 0,
-  members: trip_members || [],
-  
-  genderPref: trip_details?.gender_pref || 'any',
-  costSharing: trip_details?.cost_sharing || 'split_evenly',
-  estimatedBudget: trip_details?.estimated_budget,
-  
-  tags: trip_details?.tags || [],
-  locations: trip_locations || [],
-};
 ---
 
 <Layout
@@ -95,18 +62,17 @@ const tripProps = {
   }}
 >
   <div class="bg-white min-h-screen">
-    <section class="max-w-5xl mx-auto pb-24">
+    <section class="max-w-5xl mx-auto pb-8">
       <div class="mb-6">
-        <a href={`/trips/${trip_id}`} class="btn btn-ghost btn-sm gap-2 mb-4">
+        <a href={`/trips/${trip_id}`} class="btn btn-ghost btn-sm gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
           Back to Trip
         </a>
-        <TripHeader {...tripProps} isAuthenticated={!!user} />
       </div>
 
-      <div class="border-t border-base-200 pt-6">
+      <div class="border-t border-base-200">
         <BudgetTab
           tripId={trip_id}
           isOwner={isOwner}

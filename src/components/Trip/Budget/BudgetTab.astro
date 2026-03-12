@@ -63,6 +63,7 @@ const costSharingOptions = [
   data-is-owner={isOwner}
   data-user-id={userId}
   data-cost-sharing={costSharingMethod}
+  data-budget-estimate={budgetEstimate || 0}
 >
 
   <!-- Header -->
@@ -94,39 +95,73 @@ const costSharingOptions = [
     </div>
   </div>
 
-  <!-- Summary Cards -->
-  <div class="grid grid-cols-3 gap-2 mb-4">
-    <div class="bg-white rounded-xl p-3 border border-gray-100">
-      <p class="text-xs text-gray-400 mb-1">
-        {showFeeSection ? 'Fees Collected' : showPoolSection ? 'Pool Collected' : 'Total Spent'}
-      </p>
-      <p class="text-xl font-bold text-gray-900 tabular-nums" id="total-spent">₱0</p>
-    </div>
-    <div class="bg-white rounded-xl p-3 border border-gray-100">
-      <p class="text-xs text-gray-400 mb-1" id="card-label-expected">
-        {showFeeSection ? 'Total Expected' : showPoolSection ? 'Total Expected' : 'Budget'}
-      </p>
-      <p class="text-xl font-bold text-gray-900 tabular-nums" id="budget-estimate">
-        {showFeeSection || showPoolSection ? '—' : (budgetEstimate ? `₱${budgetEstimate.toLocaleString()}` : '—')}
-      </p>
-    </div>
-    <div class="bg-white rounded-xl p-3 border border-gray-100">
-      <p class="text-xs text-gray-400 mb-1">
-        {showFeeSection || showPoolSection ? 'Still Pending' : 'Remaining'}
-      </p>
-      <p class="text-xl font-bold tabular-nums" id="budget-difference">—</p>
-    </div>
-  </div>
-
-  <!-- Budget Progress Bar (split_evenly, custom_split, organizer_shoulders_all, everyone_pays_own) -->
-  {showBudgetBar && (
-    <div class="mb-5 bg-white rounded-xl p-3 border border-gray-100">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-xs font-medium text-gray-500">Budget used</span>
-        <span class="text-xs font-bold text-gray-700" id="budget-progress-text">0%</span>
+  <!-- Expense Summary (standard methods: split_evenly, custom_split, etc.) -->
+  {!showFeeSection && !showPoolSection && (
+    <div class="mb-4 bg-white rounded-xl p-4 border border-gray-100">
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <p class="text-xs text-gray-400 mb-0.5">Total Spent</p>
+          <p class="text-3xl font-bold text-gray-900 tabular-nums" id="hero-spent">₱0</p>
+        </div>
+        <div id="per-person-badge" class="hidden text-right shrink-0">
+          <p class="text-xs text-gray-400 mb-0.5">Per Person</p>
+          <p class="text-sm font-bold text-gray-500 tabular-nums" id="per-person-amount">—</p>
+        </div>
       </div>
-      <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-        <div id="budget-progress-bar" class="h-1.5 rounded-full bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+
+      <!-- Budget bar — shown by JS when budget estimate is set -->
+      <div id="budget-bar-section" class="hidden mt-3 pt-3 border-t border-gray-50">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs text-gray-400" id="budget-bar-label">Budget</span>
+          <span class="text-xs font-bold tabular-nums" id="budget-bar-pct">0%</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div id="budget-progress-bar" class="h-2 rounded-full bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p class="text-xs font-semibold mt-1.5" id="budget-status-line"></p>
+      </div>
+
+      <!-- No budget set hint — shown by JS when no estimate -->
+      <div id="no-budget-hint" class="hidden mt-3 pt-3 border-t border-gray-50">
+        <p class="text-xs text-gray-300">
+          No budget estimate set
+          {isOwner && (
+            <> · <button type="button" id="set-budget-shortcut" class="text-gray-400 hover:text-blue-500 transition-colors">Set one →</button></>
+          )}
+        </p>
+      </div>
+    </div>
+  )}
+
+  <!-- Collection Summary (event_fee / budget_pool) -->
+  {(showFeeSection || showPoolSection) && (
+    <div class={`grid grid-cols-2 gap-2 ${showPoolSection ? 'mb-2' : 'mb-4'}`}>
+      <div class="bg-white rounded-xl p-3 border border-gray-100">
+        <p class="text-xs text-gray-400 mb-1">{showFeeSection ? 'Fees Collected' : 'Pool Collected'}</p>
+        <p class="text-xl font-bold text-gray-900 tabular-nums" id="pool-collected">₱0</p>
+        <p class="text-xs text-gray-500 mt-0.5" id="collected-sub">—</p>
+      </div>
+      <div class="bg-white rounded-xl p-3 border border-gray-100">
+        <p class="text-xs text-gray-400 mb-1">Still Pending</p>
+        <p class="text-xl font-bold tabular-nums text-gray-300" id="pool-pending">—</p>
+        <p class="text-xs mt-0.5" id="pending-sub">—</p>
+      </div>
+    </div>
+  )}
+
+  <!-- Pool Balance Card (budget_pool only — updated by JS) -->
+  {showPoolSection && (
+    <div id="pool-balance-card" class="hidden mb-4 bg-white rounded-xl p-3 border border-blue-100">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs text-blue-400 mb-0.5">Available Balance</p>
+          <p class="text-xl font-bold tabular-nums" id="pool-balance-amount">—</p>
+          <p class="text-xs mt-0.5" id="pool-balance-sub">—</p>
+        </div>
+        <div class="text-right shrink-0">
+          <p class="text-xs text-gray-400 mb-0.5">Spent from Pool</p>
+          <p class="text-sm font-bold text-gray-500 tabular-nums" id="pool-spent-amount">—</p>
+        </div>
       </div>
     </div>
   )}
@@ -185,6 +220,20 @@ const costSharingOptions = [
       </div>
     </div>
   )}
+
+  <!-- Pending Refunds (shown by JS when non-pool method has paid contributions) -->
+  <div id="pending-refunds-section" class="hidden mb-4 bg-white rounded-xl border border-red-100 overflow-hidden">
+    <div class="px-4 py-3 border-b border-red-50 flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-bold text-gray-800">Pending Refunds</h3>
+        <p class="text-xs text-gray-400">Members who paid into the previous pool</p>
+      </div>
+      <span id="refunds-badge" class="text-xs font-semibold text-red-500"></span>
+    </div>
+    <div id="pending-refunds-body">
+      <div class="px-4 py-6 text-center text-sm text-gray-400">Loading...</div>
+    </div>
+  </div>
 
   <!-- Expenses List (always) -->
   <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -315,6 +364,9 @@ const costSharingOptions = [
         </select>
       </div>
 
+      <!-- Method-change reconciliation warnings (rendered by JS) -->
+      <div id="method-change-warnings" class="hidden space-y-3"></div>
+
       <!-- Per-person amount: shown for event_fee and budget_pool -->
       <div id="per-person-group" class={`${costSharingMethod === 'event_fee' || costSharingMethod === 'budget_pool' ? '' : 'hidden'}`}>
         <label class="block text-xs font-semibold text-gray-600 mb-1" id="per-person-label">
@@ -378,6 +430,12 @@ const costSharingOptions = [
   const tripId = container?.dataset.tripId;
   const isOwner = container?.dataset.isOwner === 'true';
   const costSharing = container?.dataset.costSharing || 'split_evenly';
+  const budgetEstimate = parseFloat(container?.dataset.budgetEstimate || '0') || 0;
+
+  // Wire up "Set one →" shortcut to open settings modal
+  document.getElementById('set-budget-shortcut')?.addEventListener('click', () => {
+    (document.getElementById('budget-settings-modal') as HTMLDialogElement)?.showModal();
+  });
 
   const CATEGORY_COLORS: Record<string, { bar: string; text: string; bg: string }> = {
     accommodation: { bar: 'bg-purple-400', text: 'text-purple-600', bg: 'bg-purple-50' },
@@ -414,6 +472,9 @@ const costSharingOptions = [
       loaders.push(loadFeeCollection());
     } else if (costSharing === 'budget_pool') {
       loaders.push(loadPoolContributions());
+    } else {
+      // Non-pool method: check for paid contributions that still need refunding
+      loaders.push(loadPendingRefunds());
     }
 
     if (['split_evenly', 'custom_split', 'event_fee', 'budget_pool'].includes(costSharing)) {
@@ -445,16 +506,17 @@ const costSharingOptions = [
       body.innerHTML = expenses.map((exp: any) => {
         const cat = CATEGORY_COLORS[exp.category] ?? CATEGORY_COLORS.misc;
         const date = new Date(exp.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const fromPool = exp.paid_from_pool === true;
         return `
           <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors expense-row" data-expense-id="${exp.id}">
             <div class="w-1 self-stretch rounded-full ${cat.bar} shrink-0"></div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold text-gray-900 truncate">${exp.description || '—'}</p>
-              <p class="text-xs text-gray-400">${date} · ${exp.payer_name}</p>
+              <p class="text-xs text-gray-400">${date} · ${fromPool ? '🏦 Pool' : exp.payer_name}</p>
             </div>
             <div class="text-right shrink-0">
               <p class="text-sm font-bold text-gray-900">₱${parseFloat(exp.amount).toLocaleString()}</p>
-              <span class="text-xs font-medium ${cat.text}">${exp.category}</span>
+              <span class="text-xs font-medium ${fromPool ? 'text-blue-500' : cat.text}">${fromPool ? 'from pool' : exp.category}</span>
             </div>
             ${isOwner ? `
               <button class="delete-expense-btn p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors ml-1" data-expense-id="${exp.id}" title="Delete">
@@ -495,39 +557,60 @@ const costSharingOptions = [
   }
 
   function updateSummaryFromExpenses(total: number) {
-    // For event_fee and budget_pool, "Total Spent" tracks expenses (not pool collections)
-    // The pool/fee collection totals are updated by their own loaders.
-    if (costSharing !== 'event_fee' && costSharing !== 'budget_pool') {
-      const totalEl = document.getElementById('total-spent');
-      if (totalEl) totalEl.textContent = `₱${total.toLocaleString()}`;
-    }
+    if (costSharing === 'event_fee' || costSharing === 'budget_pool') return;
 
-    const budgetEl = document.getElementById('budget-estimate');
-    const budget = parseFloat(budgetEl?.textContent?.replace(/[^0-9.]/g, '') || '0');
-    const diffEl = document.getElementById('budget-difference');
+    const heroEl = document.getElementById('hero-spent');
+    if (heroEl) heroEl.textContent = `₱${total.toLocaleString()}`;
 
-    if (costSharing !== 'event_fee' && costSharing !== 'budget_pool') {
-      if (diffEl && budget > 0) {
-        const diff = budget - total;
-        diffEl.textContent = diff >= 0 ? `₱${diff.toLocaleString()}` : `-₱${Math.abs(diff).toLocaleString()}`;
-        diffEl.className = `text-xl font-bold tabular-nums ${diff < 0 ? 'text-red-500' : 'text-green-600'}`;
-      } else if (diffEl) {
-        diffEl.textContent = '—';
-        diffEl.className = 'text-xl font-bold tabular-nums text-gray-300';
+    const barSection   = document.getElementById('budget-bar-section');
+    const noBudgetHint = document.getElementById('no-budget-hint');
+    const progressBar  = document.getElementById('budget-progress-bar') as HTMLElement;
+    const barPct       = document.getElementById('budget-bar-pct');
+    const barLabel     = document.getElementById('budget-bar-label');
+    const statusLine   = document.getElementById('budget-status-line');
+
+    if (budgetEstimate > 0) {
+      barSection?.classList.remove('hidden');
+      noBudgetHint?.classList.add('hidden');
+
+      const rawPct  = total / budgetEstimate * 100;
+      const dispPct = Math.min(rawPct, 100); // bar is capped — percentage text is real
+      const isOver  = total > budgetEstimate;
+      const isNear  = rawPct >= 80 && !isOver;
+
+      if (progressBar) {
+        progressBar.style.width = `${dispPct}%`;
+        progressBar.className = `h-2 rounded-full transition-all duration-500 ${
+          isOver ? 'bg-red-500' : isNear ? 'bg-amber-400' : 'bg-blue-500'
+        }`;
       }
-    }
-
-    const progressBar = document.getElementById('budget-progress-bar') as HTMLElement;
-    const progressText = document.getElementById('budget-progress-text');
-    if (progressBar && budget > 0) {
-      const pct = Math.min((total / budget) * 100, 100);
-      progressBar.style.width = `${pct}%`;
-      progressBar.className = `h-1.5 rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-blue-500'}`;
-      if (progressText) progressText.textContent = `${pct.toFixed(0)}%`;
+      if (barLabel) barLabel.textContent = `vs ₱${budgetEstimate.toLocaleString()} budget`;
+      if (barPct) {
+        barPct.textContent = `${rawPct.toFixed(0)}%`;
+        barPct.className = `text-xs font-bold tabular-nums ${isOver ? 'text-red-500' : isNear ? 'text-amber-500' : 'text-gray-500'}`;
+      }
+      if (statusLine) {
+        if (isOver) {
+          const over = total - budgetEstimate;
+          statusLine.textContent = `₱${over.toLocaleString()} over budget`;
+          statusLine.className = 'text-xs font-semibold mt-1.5 text-red-500';
+        } else if (isNear) {
+          const left = budgetEstimate - total;
+          statusLine.textContent = `₱${left.toLocaleString()} left — approaching limit`;
+          statusLine.className = 'text-xs font-semibold mt-1.5 text-amber-500';
+        } else {
+          const left = budgetEstimate - total;
+          statusLine.textContent = total === 0 ? '' : `₱${left.toLocaleString()} remaining`;
+          statusLine.className = 'text-xs font-semibold mt-1.5 text-green-500';
+        }
+      }
+    } else {
+      barSection?.classList.add('hidden');
+      noBudgetHint?.classList.remove('hidden');
     }
   }
 
-  function renderContribRow(c: any, i: number, isFeeSemantic: boolean): string {
+  function renderContribRow(c: any, i: number, isFeeSemantic: boolean, refundableAmount?: number): string {
     const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
     const amount     = parseFloat(c.amount) || 0;
     const amountPaid = parseFloat(c.amount_paid ?? 0) || 0;
@@ -535,20 +618,30 @@ const costSharingOptions = [
     const pct        = amount > 0 ? Math.min((amountPaid / amount) * 100, 100) : 0;
     const paid       = c.status === 'paid';
     const partial    = c.status === 'partial';
+    const refunded   = c.status === 'refunded';
 
-    const statusText = paid
-      ? `<span class="text-green-500">✓ ${isFeeSemantic ? 'Fee paid' : 'Contributed'}</span>`
-      : partial
-        ? `<span class="text-blue-500">₱${amountPaid.toLocaleString()} paid · <span class="text-amber-500">₱${remaining.toLocaleString()} left</span></span>`
-        : `<span class="text-amber-500">₱${amount.toLocaleString()} ${isFeeSemantic ? 'due' : 'pending'}</span>`;
+    // Show refundable hint when: paid pool member, refundable > 0 (pool has remaining balance),
+    // and refundable differs from amount paid (i.e. something was spent from pool)
+    const showRefundable = paid && !refunded && !isFeeSemantic
+      && refundableAmount !== undefined
+      && refundableAmount > 0
+      && Math.abs(refundableAmount - amountPaid) > 0.009;
 
-    const progressBar = !paid
+    const statusText = refunded
+      ? `<span class="text-gray-400">↩ Refunded</span>`
+      : paid
+        ? `<span class="text-green-500">✓ ${isFeeSemantic ? 'Fee paid' : 'Contributed'}</span>${showRefundable ? ` · <span class="text-blue-500 text-xs">est. refund ₱${refundableAmount!.toLocaleString()}</span>` : ''}`
+        : partial
+          ? `<span class="text-blue-500">₱${amountPaid.toLocaleString()} paid · <span class="text-amber-500">₱${remaining.toLocaleString()} left</span></span>`
+          : `<span class="text-amber-500">₱${amount.toLocaleString()} ${isFeeSemantic ? 'due' : 'pending'}</span>`;
+
+    const progressBar = !paid && !refunded
       ? `<div class="w-full bg-gray-100 rounded-full h-1 mt-1 overflow-hidden">
            <div class="h-1 rounded-full ${partial ? 'bg-blue-400' : 'bg-gray-200'} transition-all" style="width:${pct}%"></div>
          </div>`
       : '';
 
-    const paymentBtns = isOwner && !paid
+    const paymentBtns = isOwner && !paid && !refunded
       ? `<div class="payment-action-area flex items-center gap-1.5 shrink-0">
            <button class="pay-full-btn text-xs px-2 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 font-semibold transition-colors"
              data-contribution-id="${c.id}" data-user-name="${c.user_name}" data-amount="${amount}">
@@ -559,7 +652,18 @@ const costSharingOptions = [
              Partial
            </button>
          </div>`
-      : '';
+      // Show "Mark Refunded" only when there's something to refund:
+      //   - refundableAmount undefined → non-pool context (pending-refunds section), always show
+      //   - refundableAmount > 0       → pool has remaining balance, show
+      //   - refundableAmount === 0     → pool fully spent, nothing to refund, hide
+      : isOwner && paid && (refundableAmount === undefined || refundableAmount > 0)
+        ? `<div class="payment-action-area flex items-center gap-1.5 shrink-0">
+             <button class="mark-refunded-btn text-xs px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 font-semibold transition-colors"
+               data-contribution-id="${c.id}" data-user-name="${c.user_name}" data-amount="${refundableAmount !== undefined ? refundableAmount : amountPaid}">
+               Mark Refunded
+             </button>
+           </div>`
+        : '';
 
     return `
       <div class="px-4 py-3 border-b border-gray-50 last:border-b-0 contribution-row" data-contribution-id="${c.id}">
@@ -604,21 +708,35 @@ const costSharingOptions = [
     const pct            = totalExpected > 0 ? Math.min((totalCollected / totalExpected) * 100, 100) : 0;
     const allPaid        = paidFull === contribs.length && contribs.length > 0;
 
-    // Badge
+    // Badge (inside the fee/pool section header)
     const badge = document.getElementById(badgeId);
     if (badge) badge.textContent = `${paidFull}/${contribs.length} ${badgeLabel}`;
 
-    // Summary cards
-    const totalEl = document.getElementById('total-spent');
-    if (totalEl) totalEl.textContent = `₱${totalCollected.toLocaleString()}`;
+    // Collection summary cards (pool / fee methods)
+    const collectedEl = document.getElementById('pool-collected');
+    if (collectedEl) collectedEl.textContent = `₱${totalCollected.toLocaleString()}`;
 
-    const expectedEl = document.getElementById('budget-estimate');
-    if (expectedEl) expectedEl.textContent = `₱${totalExpected.toLocaleString()}`;
+    const collectedSub = document.getElementById('collected-sub');
+    if (collectedSub) {
+      collectedSub.textContent = allPaid
+        ? `All ${contribs.length} paid ✓`
+        : `${paidFull} of ${contribs.length} paid`;
+      collectedSub.className = `text-xs mt-0.5 font-medium ${allPaid ? 'text-green-500' : 'text-gray-400'}`;
+    }
 
-    const diffEl = document.getElementById('budget-difference');
-    if (diffEl) {
-      diffEl.textContent = totalPending > 0 ? `₱${totalPending.toLocaleString()}` : '—';
-      diffEl.className = `text-xl font-bold tabular-nums ${totalPending > 0 ? 'text-amber-500' : 'text-green-600'}`;
+    const pendingEl = document.getElementById('pool-pending');
+    if (pendingEl) {
+      pendingEl.textContent = totalPending > 0 ? `₱${totalPending.toLocaleString()}` : '—';
+      pendingEl.className = `text-xl font-bold tabular-nums ${totalPending > 0 ? 'text-amber-500' : 'text-green-600'}`;
+    }
+
+    const pendingSub = document.getElementById('pending-sub');
+    if (pendingSub) {
+      const pendingCount = contribs.filter((c: any) => c.status !== 'paid' && c.status !== 'refunded').length;
+      pendingSub.textContent = pendingCount > 0
+        ? `${pendingCount} member${pendingCount > 1 ? 's' : ''} outstanding`
+        : allPaid ? 'Fully collected' : '—';
+      pendingSub.className = `text-xs mt-0.5 font-medium ${pendingCount > 0 ? 'text-amber-500' : 'text-green-500'}`;
     }
 
     // Section progress bar
@@ -661,10 +779,77 @@ const costSharingOptions = [
   async function loadPoolContributions() {
     if (!tripId) return;
     try {
-      const res = await actions.budget.getPoolContributions({ tripId });
-      const contribs: any[] = Array.isArray(res) ? res : (res?.data || []);
+      const [contribRes, balanceRes] = await Promise.all([
+        actions.budget.getPoolContributions({ tripId }),
+        actions.budget.getPoolBalance({ tripId }),
+      ]);
+
+      const contribs: any[] = Array.isArray(contribRes) ? contribRes : (contribRes?.data || []);
+      const balance = (balanceRes as any)?.data ?? balanceRes;
+
       const body = document.getElementById('pool-contributions-body')!;
       if (!body) return;
+
+      // Update pool balance card
+      const balanceCard = document.getElementById('pool-balance-card');
+      const balanceAmountEl = document.getElementById('pool-balance-amount');
+      const balanceSubEl = document.getElementById('pool-balance-sub');
+      const spentEl = document.getElementById('pool-spent-amount');
+
+      if (balance && (balance.collected > 0 || balance.spent > 0)) {
+        balanceCard?.classList.remove('hidden');
+        const bal = parseFloat(balance.balance) || 0;
+        const spent = parseFloat(balance.spent) || 0;
+        const collected = parseFloat(balance.collected) || 0;
+        const overdrawn = bal < 0;
+
+        // Card border: red when overdrawn, blue otherwise
+        if (balanceCard) {
+          balanceCard.classList.toggle('border-red-200', overdrawn);
+          balanceCard.classList.toggle('border-blue-100', !overdrawn);
+        }
+
+        if (balanceAmountEl) {
+          if (overdrawn) {
+            balanceAmountEl.textContent = `−₱${Math.abs(bal).toLocaleString()}`;
+            balanceAmountEl.className = 'text-xl font-bold tabular-nums text-red-600';
+          } else {
+            balanceAmountEl.textContent = `₱${bal.toLocaleString()}`;
+            balanceAmountEl.className = `text-xl font-bold tabular-nums ${bal === 0 ? 'text-gray-400' : 'text-blue-700'}`;
+          }
+        }
+
+        const labelEl = balanceCard?.querySelector('p.text-xs.text-blue-400');
+        if (labelEl) {
+          labelEl.textContent = overdrawn ? 'Pool Overdrawn' : 'Available Balance';
+          labelEl.className = `text-xs mb-0.5 ${overdrawn ? 'text-red-400' : 'text-blue-400'}`;
+        }
+
+        if (balanceSubEl) {
+          if (overdrawn) {
+            balanceSubEl.textContent = `Overdrawn by ₱${Math.abs(bal).toLocaleString()} · consider topping up`;
+            balanceSubEl.className = 'text-xs mt-0.5 text-red-400';
+          } else {
+            balanceSubEl.textContent = spent > 0
+              ? `₱${collected.toLocaleString()} collected · ₱${spent.toLocaleString()} used`
+              : 'No pool expenses yet';
+            balanceSubEl.className = `text-xs mt-0.5 ${spent > 0 ? 'text-gray-400' : 'text-gray-300'}`;
+          }
+        }
+        if (spentEl) {
+          spentEl.textContent = spent > 0 ? `₱${spent.toLocaleString()}` : '—';
+        }
+      } else {
+        balanceCard?.classList.add('hidden');
+      }
+
+      // Build auth_id → refundable map for per-member display
+      const refundableMap: Record<string, number> = {};
+      if (balance?.members) {
+        for (const m of balance.members) {
+          refundableMap[m.auth_id] = parseFloat(m.refundable) || 0;
+        }
+      }
 
       if (contribs.length === 0) {
         body.innerHTML = `<div class="px-4 py-6 text-center text-sm text-gray-400">No members yet</div>`;
@@ -672,10 +857,37 @@ const costSharingOptions = [
       }
 
       updateContribSummary(contribs, 'pool-summary-badge', 'contributed', 'pool-collection-bar', 'pool-collection-status');
-      body.innerHTML = contribs.map((c, i) => renderContribRow(c, i, false)).join('');
+      body.innerHTML = contribs.map((c, i) => renderContribRow(c, i, false, refundableMap[c.user_id])).join('');
       setupPaymentHandlers(body, loadPoolContributions);
     } catch (e) {
       console.error('Error loading pool contributions:', e);
+    }
+  }
+
+  async function loadPendingRefunds() {
+    if (!tripId) return;
+    try {
+      const res = await actions.budget.getPoolContributions({ tripId });
+      const contribs: any[] = Array.isArray(res) ? res : (res?.data || []);
+      const paid = contribs.filter(c => c.status === 'paid');
+
+      const section = document.getElementById('pending-refunds-section');
+      const body = document.getElementById('pending-refunds-body');
+      const badge = document.getElementById('refunds-badge');
+      if (!section || !body) return;
+
+      if (paid.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      if (badge) badge.textContent = `${paid.length} pending`;
+
+      body.innerHTML = paid.map((c, i) => renderContribRow(c, i, false)).join('');
+      setupPaymentHandlers(body, loadPendingRefunds);
+    } catch (e) {
+      console.error('Error loading pending refunds:', e);
     }
   }
 
@@ -686,6 +898,19 @@ const costSharingOptions = [
       const balances = Array.isArray(balanceRes) ? balanceRes : (balanceRes?.data || []);
 
       currentMembers = balances.map((b: any) => ({ id: b.user_id, name: b.user_name }));
+
+      // Per-person breakdown (standard methods only)
+      if (costSharing !== 'event_fee' && costSharing !== 'budget_pool' && balances.length > 1) {
+        const heroEl = document.getElementById('hero-spent');
+        const totalSpent = parseFloat(heroEl?.textContent?.replace(/[^0-9.]/g, '') || '0') || 0;
+        if (totalSpent > 0) {
+          const perPerson = totalSpent / balances.length;
+          const badge = document.getElementById('per-person-badge');
+          const amountEl = document.getElementById('per-person-amount');
+          if (badge) badge.classList.remove('hidden');
+          if (amountEl) amountEl.textContent = `₱${perPerson.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+        }
+      }
 
       const select = document.getElementById('payer-select') as unknown as HTMLSelectElement;
       if (select) {
@@ -867,6 +1092,33 @@ const costSharingOptions = [
         });
       });
     });
+
+    // Mark Refunded — inline two-step confirm
+    body.querySelectorAll('.mark-refunded-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const el = e.currentTarget as HTMLElement;
+        const contributionId = el.dataset.contributionId;
+        const userName = el.dataset.userName;
+        const amount = parseFloat(el.dataset.amount || '0');
+        const area = el.closest('.payment-action-area') as HTMLElement;
+        if (!contributionId || !area) return;
+
+        const original = area.innerHTML;
+        area.innerHTML = `
+          <span class="text-xs text-gray-500">Refunded ₱${amount.toLocaleString()} to ${userName}?</span>
+          <button class="confirm-refund-yes text-xs px-2 py-1 rounded-lg bg-gray-600 text-white font-semibold hover:bg-gray-700 transition-colors">Yes</button>
+          <button class="confirm-refund-no text-xs text-gray-400 hover:text-gray-600 font-semibold transition-colors">✕</button>
+        `;
+        area.querySelector('.confirm-refund-no')?.addEventListener('click', () => { area.innerHTML = original; setupPaymentHandlers(body, reload); });
+        area.querySelector('.confirm-refund-yes')?.addEventListener('click', async () => {
+          const res = await actions.budget.markContributionRefunded({ contributionId, tripId: tripId! });
+          if (!(res as any).error) {
+            showToast({ message: `Marked ₱${amount.toLocaleString()} as refunded to ${userName}`, type: 'success' });
+            await reload();
+          }
+        });
+      });
+    });
   }
 
   function setupOwesHandlers(body: HTMLElement) {
@@ -969,23 +1221,194 @@ const costSharingOptions = [
   });
 
   document.getElementById('budget-settings-btn')?.addEventListener('click', () => {
+    // Reset method select and warnings to current state before opening
+    const select = document.getElementById('settings-method-select') as HTMLElement as HTMLSelectElement;
+    if (select) select.value = costSharing;
+    const warningBox = document.getElementById('method-change-warnings');
+    if (warningBox) { warningBox.innerHTML = ''; warningBox.classList.add('hidden'); }
     (document.getElementById('budget-settings-modal') as HTMLDialogElement)?.showModal();
   });
 
-  // Settings method change → toggle per-person / budget-estimate fields
-  document.getElementById('settings-method-select')?.addEventListener('change', (e) => {
+  // Helpers
+  const isPoolMethod = (m: string) => m === 'event_fee' || m === 'budget_pool';
+  const fmt = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Settings method change → toggle fields + fetch reconciliation warnings
+  document.getElementById('settings-method-select')?.addEventListener('change', async (e) => {
     const method = (e.target as HTMLSelectElement).value;
-    const needsPerPerson = method === 'event_fee' || method === 'budget_pool';
+    const needsPerPerson = isPoolMethod(method);
     document.getElementById('per-person-group')?.classList.toggle('hidden', !needsPerPerson);
     document.getElementById('budget-estimate-group')?.classList.toggle('hidden', needsPerPerson);
 
     const label = document.getElementById('per-person-label');
-    const hint = document.getElementById('per-person-hint');
+    const hint  = document.getElementById('per-person-hint');
     if (label) label.textContent = method === 'event_fee' ? 'Fee per Person (₱)' : 'Target per Person (₱)';
-    if (hint) hint.textContent = method === 'event_fee'
+    if (hint)  hint.textContent  = method === 'event_fee'
       ? 'Auto-charged when a member joins.'
       : 'How much each member contributes to the pool.';
+
+    const warningBox = document.getElementById('method-change-warnings');
+    if (!warningBox) return;
+
+    if (method === costSharing) {
+      // No method change — no warnings needed
+      warningBox.innerHTML = '';
+      warningBox.classList.add('hidden');
+      return;
+    }
+
+    // Fetch unsettled obligations
+    warningBox.innerHTML = `<p class="text-xs text-gray-400 animate-pulse">Checking existing obligations…</p>`;
+    warningBox.classList.remove('hidden');
+
+    const res = await actions.budget.getUnsettledSummary({ tripId: tripId! });
+    if (res.error || !res.data) {
+      warningBox.innerHTML = '';
+      warningBox.classList.add('hidden');
+      return;
+    }
+
+    const s = res.data;
+    const hasSplits    = s.splits.count > 0;
+    const hasPool      = s.pool.count > 0;
+    const hasPaidPool  = s.pool.paid_total > 0;
+    const hasRefundable = (s.refundable?.count ?? 0) > 0;
+    const fromPool     = isPoolMethod(costSharing);
+    const toPool       = isPoolMethod(method);
+
+    let html = '';
+
+    // ── Warning A: unsettled expense splits ─────────────────────────────
+    if (hasSplits) {
+      const memberList = s.splits.members.map(m =>
+        `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">${m.display_name} ₱${fmt(m.amount_owed)}</span>`
+      ).join(' ');
+      html += `
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+          <p class="text-xs font-semibold text-amber-800">
+            ⚠️ ${s.splits.count} member${s.splits.count > 1 ? 's have' : ' has'} ₱${fmt(s.splits.total)} in unsettled splits
+          </p>
+          <div class="flex flex-wrap gap-1">${memberList}</div>
+          <p class="text-xs text-amber-700">
+            These were calculated under <strong>${costSharing.replace(/_/g, ' ')}</strong> and will carry over unless written off.
+          </p>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" id="write-off-splits" name="writeOffSplits" class="mt-0.5 accent-amber-600" />
+            <span class="text-xs text-amber-800 font-medium">
+              Write off all unsettled splits — mark everyone as settled (no one owes anything from past expenses)
+            </span>
+          </label>
+        </div>`;
+    }
+
+    // ── Warning B: pool contributions, switching AWAY from pool ─────────
+    if ((hasPool || hasPaidPool) && fromPool && !toPool) {
+      const memberList = s.pool.members.map(m =>
+        `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">${m.display_name} ₱${fmt(m.amount_remaining)} left</span>`
+      ).join(' ');
+      html += `
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+          <p class="text-xs font-semibold text-blue-800">
+            💰 ${s.pool.count} member${s.pool.count > 1 ? 's have' : ' has'} unpaid contributions
+            (₱${fmt(s.pool.pending_total)} remaining · ₱${fmt(s.pool.paid_total)} already collected)
+          </p>
+          <div class="flex flex-wrap gap-1">${memberList}</div>
+          <p class="text-xs text-blue-700 font-medium mt-1">What to do with pending contributions?</p>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="poolAction" value="keep" checked class="mt-0.5 accent-blue-600" />
+            <span class="text-xs text-blue-800">Keep pending — members still owe their contribution</span>
+          </label>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="poolAction" value="cancel" class="mt-0.5 accent-blue-600" />
+            <span class="text-xs text-blue-800">
+              Cancel unpaid — remove fully-pending; close partial payments at amount already paid
+              <span class="text-blue-500">(paid credit preserved, remaining forgiven)</span>
+            </span>
+          </label>
+        </div>`;
+    }
+
+    // ── Warning C: pool contributions, switching BETWEEN pool methods ───
+    if ((hasPool || hasPaidPool) && fromPool && toPool) {
+      const memberList = s.pool.members.map(m =>
+        `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">${m.display_name} paid ₱${fmt(m.amount_paid)}</span>`
+      ).join(' ');
+      html += `
+        <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-2">
+          <p class="text-xs font-semibold text-purple-800">
+            🔄 ${s.pool.members.length + (hasPaidPool ? 1 : 0)} member(s) have existing contributions
+            (₱${fmt(s.pool.paid_total)} collected so far)
+          </p>
+          <div class="flex flex-wrap gap-1">${memberList}</div>
+          <p class="text-xs text-purple-700 font-medium mt-1">How to handle existing contributions?</p>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="poolAction" value="transfer" checked class="mt-0.5 accent-purple-600" />
+            <span class="text-xs text-purple-800">
+              Transfer to new method — adjust target to the new per-person amount.
+              Members who overpaid will be marked as paid (refund offline).
+            </span>
+          </label>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="poolAction" value="cancel" class="mt-0.5 accent-purple-600" />
+            <span class="text-xs text-purple-800">
+              Cancel all unpaid — remove pending; close partial at amount paid
+            </span>
+          </label>
+        </div>`;
+    }
+
+    // ── Warning D: fully-paid contributions that need refunding (away from pool)
+    if (hasRefundable && fromPool && !toPool) {
+      const memberList = (s.refundable?.members ?? []).map(m =>
+        `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">${m.display_name} ₱${fmt(m.amount_paid)}</span>`
+      ).join(' ');
+      html += `
+        <div class="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+          <p class="text-xs font-semibold text-red-800">
+            💸 ${s.refundable!.count} member${s.refundable!.count > 1 ? 's have' : ' has'} already paid ₱${fmt(s.refundable!.total)} into the pool
+          </p>
+          <div class="flex flex-wrap gap-1">${memberList}</div>
+          <p class="text-xs text-red-700">
+            These members need to be reimbursed manually (cash, bank transfer, etc.).<br/>
+            Use <strong>Mark Refunded</strong> on each contribution after you've paid them back.
+          </p>
+        </div>`;
+    }
+
+    if (!html) {
+      // Nothing outstanding — clean transition
+      html = `<p class="text-xs text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+        ✅ No outstanding obligations. This is a clean transition.
+      </p>`;
+    }
+
+    warningBox.innerHTML = html;
+    warningBox.classList.remove('hidden');
   });
+
+  // Per-person input: show a live hint when owner adjusts target on same pool method
+  // (e.g. raising target to cover an overdrawn pool)
+  {
+    const poolPerPersonInput = document.querySelector('#budget-settings-form [name="poolPerPerson"]') as HTMLInputElement | null;
+    const perPersonHint      = document.getElementById('per-person-hint');
+
+    poolPerPersonInput?.addEventListener('input', () => {
+      const methodSelect = document.getElementById('settings-method-select') as HTMLSelectElement;
+      const currentMethod = methodSelect?.value || costSharing;
+      if (!isPoolMethod(currentMethod) || currentMethod !== costSharing) return;
+
+      const newTarget = parseFloat(poolPerPersonInput.value) || 0;
+      const hint = perPersonHint;
+      if (!hint || newTarget <= 0) {
+        if (hint) hint.textContent = 'How much each member contributes to the pool.';
+        return;
+      }
+
+      // Show a preview: "Saving will recalculate all contributions to ₱X/person."
+      hint.textContent = `Saving will recalculate all contributions to ₱${newTarget.toLocaleString()}/person. Members who paid less will owe the difference.`;
+      hint.className = 'text-xs mt-1 text-blue-600';
+    });
+  }
 
   // Show payment source toggle for budget_pool
   if (costSharing === 'budget_pool') {
@@ -1079,6 +1502,7 @@ const costSharingOptions = [
         date: formData.get('date') as string,
         isShared: fromPool ? false : recipientIds.length > 1,
         recipientIds: fromPool ? undefined : (recipientIds.length > 0 ? recipientIds : undefined),
+        paidFromPool: fromPool,
       });
 
       if (!(result as any).error) {
@@ -1098,32 +1522,50 @@ const costSharingOptions = [
   });
 
   // Settings form submit
+  // Uses changeCostSharing (which handles reconciliation atomically) for ALL saves.
   const settingsForm = document.getElementById('budget-settings-form') as HTMLFormElement;
   settingsForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(settingsForm);
-    const method = formData.get('costSharingMethod') as string;
-    const submitBtn = settingsForm.querySelector('[type="submit"]') as HTMLButtonElement;
+    const formData   = new FormData(settingsForm);
+    const method     = formData.get('costSharingMethod') as string;
+    const needsPool  = isPoolMethod(method);
+    const submitBtn  = settingsForm.querySelector('[type="submit"]') as HTMLButtonElement;
+
+    // Read reconciliation options (only present when warnings were shown)
+    const writeOffSplits = (document.getElementById('write-off-splits') as HTMLInputElement)?.checked ?? false;
+
+    // When staying on a pool method and just adjusting the per-person target,
+    // auto-transfer so all existing contributions are recalculated to the new amount.
+    // This lets the owner top-up an overdrawn pool by raising the target.
+    const poolAction: 'keep' | 'cancel' | 'transfer' = (needsPool && method === costSharing)
+      ? 'transfer'
+      : ((formData.get('poolAction') as 'keep' | 'cancel' | 'transfer') ?? 'keep');
+
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
 
-    const needsPool = method === 'event_fee' || method === 'budget_pool';
-
     try {
-      const result = await actions.budget.updateSettings({
-        tripId: tripId!,
-        costSharingMethod: method as any,
-        budgetEstimate: !needsPool && formData.get('budgetEstimate')
-          ? parseFloat(formData.get('budgetEstimate') as string)
-          : null,
-        poolEnabled: needsPool,
-        poolPerPerson: needsPool && formData.get('poolPerPerson')
-          ? parseFloat(formData.get('poolPerPerson') as string)
-          : null,
+      const result = await actions.budget.changeCostSharing({
+        tripId:            tripId!,
+        newMethod:         method as any,
+        budgetEstimate:    !needsPool && formData.get('budgetEstimate')
+                             ? parseFloat(formData.get('budgetEstimate') as string)
+                             : null,
+        poolPerPerson:     needsPool && formData.get('poolPerPerson')
+                             ? parseFloat(formData.get('poolPerPerson') as string)
+                             : null,
+        allowMembersToLog: true,
+        writeOffSplits,
+        poolAction,
       });
 
-      if (!(result as any).error) {
-        showToast({ message: 'Settings saved!', type: 'success' });
+      if (!result.error) {
+        const d = result.data;
+        const parts: string[] = ['Settings saved!'];
+        if (d?.splits_written_off)  parts.push(`${d.splits_written_off} split(s) written off.`);
+        if (d?.pool_cancelled)      parts.push(`${d.pool_cancelled} contribution(s) cancelled.`);
+        if (d?.pool_transferred)    parts.push(`${d.pool_transferred} contribution(s) recalculated to new target.`);
+        showToast({ message: parts.join(' '), type: 'success' });
         (document.getElementById('budget-settings-modal') as HTMLDialogElement)?.close();
         window.location.reload();
       }

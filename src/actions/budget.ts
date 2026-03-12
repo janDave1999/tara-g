@@ -133,7 +133,8 @@ export const budget = {
       isShared: z.boolean().default(true),
       receiptUrl: z.string().optional(),
       stopId: z.string().uuid().optional(),
-      recipientIds: z.array(z.string().uuid()).optional()
+      recipientIds: z.array(z.string().uuid()).optional(),
+      paidFromPool: z.boolean().default(false),
     }),
     handler: async (input, { cookies }) => {
       const user = await getAuthUser(cookies);
@@ -148,7 +149,8 @@ export const budget = {
         p_is_shared: input.isShared,
         p_receipt_url: input.receiptUrl ?? null,
         p_stop_id: input.stopId ?? null,
-        p_recipient_ids: input.recipientIds ?? null
+        p_recipient_ids: input.recipientIds ?? null,
+        p_paid_from_pool: input.paidFromPool ?? false,
       });
       if (error) throw error;
       return data;
@@ -233,6 +235,23 @@ export const budget = {
     }
   }),
 
+  // Get current pool balance (collected − spent from pool) and per-member refundable amounts
+  getPoolBalance: defineAction({
+    input: z.object({ tripId: z.string().uuid() }),
+    handler: async ({ tripId }, { cookies }) => {
+      const user = await getAuthUser(cookies);
+      await verifyTripMember(user.id, tripId);
+      const { data, error } = await supabaseAdmin.rpc('get_pool_balance', { p_trip_id: tripId });
+      if (error) throw error;
+      return data as {
+        collected: number;
+        spent:     number;
+        balance:   number;
+        members:   Array<{ auth_id: string; display_name: string; amount_paid: number; refundable: number }>;
+      };
+    }
+  }),
+
   // Contribute to pool (as user)
   contributeToPool: defineAction({
     input: z.object({
@@ -249,6 +268,20 @@ export const budget = {
       });
       if (error) throw error;
       return data;
+    }
+  }),
+
+  // Mark contribution as refunded (owner only) — for when a paid member is reimbursed offline
+  markContributionRefunded: defineAction({
+    input: z.object({ contributionId: z.string().uuid(), tripId: z.string().uuid() }),
+    handler: async ({ contributionId, tripId }, { cookies }) => {
+      const user = await getAuthUser(cookies);
+      await verifyTripOwner(user.id, tripId);
+      const { error } = await supabaseAdmin.rpc('mark_contribution_refunded', {
+        p_contribution_id: contributionId,
+      });
+      if (error) throw error;
+      return { success: true };
     }
   }),
 
@@ -305,5 +338,67 @@ export const budget = {
       if (error) throw error;
       return data;
     }
-  })
+  }),
+
+  // Get a snapshot of unsettled obligations (splits + pool) for the owner's
+  // awareness before changing the cost-sharing method.
+  getUnsettledSummary: defineAction({
+    input: z.object({ tripId: z.string().uuid() }),
+    handler: async ({ tripId }, { cookies }) => {
+      const user = await getAuthUser(cookies);
+      await verifyTripOwner(user.id, tripId);
+      const { data, error } = await supabaseAdmin.rpc('get_unsettled_summary', { p_trip_id: tripId });
+      if (error) throw error;
+      return data as {
+        current_method: string;
+        splits:     { count: number; total: number; members: Array<{ auth_id: string; display_name: string; amount_owed: number }> };
+        pool:       { count: number; pending_total: number; paid_total: number; members: Array<{ auth_id: string; display_name: string; amount_paid: number; amount_remaining: number; status: string }> };
+        refundable: { count: number; total: number; members: Array<{ auth_id: string; display_name: string; amount_paid: number }> };
+      };
+    }
+  }),
+
+  // Atomically change the cost-sharing method with reconciliation options.
+  // Always use this instead of updateSettings when the method itself is changing.
+  //
+  // writeOffSplits:
+  //   false (default) — existing unsettled splits remain as-is
+  //   true            — mark all unsettled splits as settled (owner absorbs debts)
+  //
+  // poolAction (for pending/partial pool_contributions):
+  //   'keep'     — leave them untouched (default)
+  //   'cancel'   — delete fully-pending; close partial at amount already paid
+  //   'transfer' — adjust contribution targets to new poolPerPerson amount
+  //                (only valid when new method is event_fee or budget_pool)
+  changeCostSharing: defineAction({
+    input: z.object({
+      tripId:              z.string().uuid(),
+      newMethod:           costSharingMethod,
+      budgetEstimate:      z.number().nullable().optional(),
+      poolPerPerson:       z.number().nullable().optional(),
+      allowMembersToLog:   z.boolean().optional(),
+      writeOffSplits:      z.boolean().default(false),
+      poolAction:          z.enum(['keep', 'cancel', 'transfer']).default('keep'),
+    }),
+    handler: async (input, { cookies }) => {
+      const user = await getAuthUser(cookies);
+      await verifyTripOwner(user.id, input.tripId);
+      const { data, error } = await supabaseAdmin.rpc('change_cost_sharing_method', {
+        p_trip_id:              input.tripId,
+        p_new_method:           input.newMethod,
+        p_budget_estimate:      input.budgetEstimate ?? null,
+        p_pool_per_person:      input.poolPerPerson  ?? null,
+        p_allow_members_to_log: input.allowMembersToLog ?? true,
+        p_write_off_splits:     input.writeOffSplits,
+        p_pool_action:          input.poolAction,
+      });
+      if (error) throw error;
+      return data as {
+        new_method:         string;
+        splits_written_off: number;
+        pool_cancelled:     number;
+        pool_transferred:   number;
+      };
+    }
+  }),
 };

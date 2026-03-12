@@ -17,7 +17,7 @@ async function getInternalUserId(authId: string): Promise<string | null> {
   return data.user_id;
 }
 
-export type NotificationType = 
+export type NotificationType =
   | 'trip_invite'
   | 'trip_join_request'
   | 'trip_join_approved'
@@ -28,9 +28,13 @@ export type NotificationType =
   | 'trip_member_removed'
   | 'trip_update'
   | 'trip_reminder'
+  | 'trip_tomorrow'
+  | 'trip_needs_status'
   | 'friend_request'
   | 'friend_accepted'
-  | 'system_announcement';
+  | 'system_announcement'
+  | 'budget_payment_reminder'
+  | 'budget_pool_reminder';
 
 export interface Notification {
   notification_id: string;
@@ -204,9 +208,10 @@ export const notificationActions = {
       userId: z.string().uuid(),
       type: z.enum([
         'trip_invite', 'trip_join_request', 'trip_join_approved', 'trip_join_declined',
-        'trip_invite_accepted', 'trip_invite_declined', 'trip_member_added', 
-        'trip_member_removed', 'trip_update', 'trip_reminder',
-        'friend_request', 'friend_accepted', 'system_announcement'
+        'trip_invite_accepted', 'trip_invite_declined', 'trip_member_added',
+        'trip_member_removed', 'trip_update', 'trip_reminder', 'trip_tomorrow',
+        'trip_needs_status', 'friend_request', 'friend_accepted', 'system_announcement',
+        'budget_payment_reminder', 'budget_pool_reminder',
       ]),
       title: z.string(),
       message: z.string(),

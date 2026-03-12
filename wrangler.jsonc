@@ -18,7 +18,13 @@
     "head_sampling_rate": 1
   },
   "triggers": {
-    "crons": ["5 23 * * *", "10 23 * * *", "11 23 * * *", "30 23 * * *"]
+    "crons": [
+      "5 23 * * *",  // daily: trip status check (run 1)
+      "10 23 * * *", // daily: trip status check (run 2)
+      "11 23 * * *", // daily: trip status check (run 3)
+      "30 23 * * *", // daily: trip status check (run 4)
+      "0 9 * * 1"    // weekly (Monday 09:00 UTC): budget payment reminders
+    ]
   },
   "ai": {
     "binding": "AI"

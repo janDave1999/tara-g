@@ -89,7 +89,8 @@ export const onboarding = defineMiddleware(async (ctx, next) => {
     micromatch.isMatch(pathname, protectedAPIRoutes) &&
     !locals.user_id &&
     !micromatch.isMatch(pathname, "/api/auth/**") &&
-    !micromatch.isMatch(pathname, "/api/mapbox-token")
+    !micromatch.isMatch(pathname, "/api/mapbox-token") &&
+    !micromatch.isMatch(pathname, "/api/cron/**")
   ) {
     return createErrorResponse("Authentication required", 401);
   }

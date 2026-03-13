@@ -201,7 +201,7 @@
 
       if (!res.ok) throw new Error(await res.text());
 
-      const { visit } = await res.json();
+      const { visit } = await res.json() as { visit: any };
       window.dispatchEvent(new CustomEvent('province-visit-saved', {
         detail: {
           province_key: currentProvince.province_key,

@@ -55,7 +55,9 @@ export const POST: APIRoute = async ({ locals, request }) => {
     const authId = locals.user_id;
     if (!authId) return json({ error: "Unauthorized" }, 401);
 
+    console.error("[sync] POST called, authId=", authId);
     const userId = await resolveUserId(authId);
+    console.error("[sync] resolveUserId returned:", userId);
     if (!userId) return json({ error: "User not found" }, 404);
 
     // 1. Load province geometry cache

@@ -49,8 +49,6 @@ export const GET: APIRoute = async ({ locals, url }) => {
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-    console.log(visits);
-    console.log(error);
   if (error) {
     return json({ error: "Failed to fetch visits" }, 500);
   }

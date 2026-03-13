@@ -1,0 +1,124 @@
+---
+import PagePlate from "@/layouts/PagePlate.astro";
+import ProvinceMap from "@/components/Project82/ProvinceMap.astro";
+import ProgressBar from "@/components/Project82/ProgressBar.astro";
+import VisitModal from "@/components/Project82/VisitModal.astro";
+
+const user_id = Astro.locals.user_id;
+const pathname = new URL(Astro.request.url).pathname;
+if (!user_id) {
+  return Astro.redirect("/signin?next=" + encodeURIComponent(pathname));
+}
+---
+
+<PagePlate
+  title="Project 82 — Tara G!"
+  noContainer
+  description={{
+    title: "Project 82 — Tara G!",
+    description: "Track your journey across all 82 provinces of the Philippines.",
+    author: "Tara G!",
+    authorIs: "Organization",
+  }}
+>
+  <div class="flex flex-col h-[calc(100vh-64px)]">
+    <!-- Header bar -->
+    <div class="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-4 shrink-0">
+      <div class="shrink-0">
+        <h1 class="text-sm font-bold text-gray-900 leading-none">Project 82</h1>
+        <p class="text-[10px] text-gray-400 leading-none mt-0.5">PH Province Tracker</p>
+      </div>
+      <ProgressBar count={0} />
+      <div class="flex flex-col items-end shrink-0">
+        <button
+          id="sync-btn"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition-colors disabled:opacity-50"
+          title="Detect provinces from your completed trips"
+        >
+          <svg id="sync-icon" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span id="sync-label">Sync Trips</span>
+        </button>
+        <span id="sync-timestamp" class="text-[10px] text-gray-400 mt-0.5 hidden"></span>
+      </div>
+    </div>
+
+    <!-- Map fills remaining height -->
+    <div class="flex-1 overflow-hidden">
+      <ProvinceMap visits={[]} />
+    </div>
+  </div>
+
+  <VisitModal />
+</PagePlate>
+
+<script>
+  const syncBtn       = document.getElementById('sync-btn')       as HTMLButtonElement;
+  const syncLabel     = document.getElementById('sync-label')     as HTMLElement;
+  const syncIcon      = document.getElementById('sync-icon')      as HTMLElement;
+  const syncTimestamp = document.getElementById('sync-timestamp') as HTMLElement;
+
+  const LS_VISITS = 'project82_visits';
+  const LS_SYNC   = 'project82_last_sync';
+
+  function formatAgo(ts: number): string {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60)    return 'just now';
+    if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  // Load cached visits on page load
+  const cachedVisits = JSON.parse(localStorage.getItem(LS_VISITS) || '[]');
+  if (cachedVisits.length > 0) {
+    window.dispatchEvent(new CustomEvent('province-sync-complete', {
+      detail: { visits: cachedVisits },
+    }));
+  }
+
+  // Show last synced timestamp
+  const lastSync = Number(localStorage.getItem(LS_SYNC) || '0');
+  if (lastSync) {
+    syncTimestamp.textContent = `Synced ${formatAgo(lastSync)}`;
+    syncTimestamp.classList.remove('hidden');
+  }
+
+  // Manual sync
+  syncBtn?.addEventListener('click', async () => {
+    syncBtn.disabled = true;
+    syncLabel.textContent = 'Syncing…';
+    syncIcon.classList.add('animate-spin');
+
+    try {
+      const res = await fetch('/api/project82/sync', { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+
+      const { added, updated, visits } = await res.json() as { added: number; updated: number; visits: unknown[] };
+
+      const now = Date.now();
+      localStorage.setItem(LS_VISITS, JSON.stringify(visits));
+      localStorage.setItem(LS_SYNC, String(now));
+      syncTimestamp.textContent = `Synced ${formatAgo(now)}`;
+      syncTimestamp.classList.remove('hidden');
+
+      window.dispatchEvent(new CustomEvent('province-sync-complete', {
+        detail: { visits, added, updated },
+      }));
+
+      const msg = added + updated > 0
+        ? `Found ${added + updated} province${added + updated !== 1 ? 's' : ''}!`
+        : 'Already up to date.';
+      syncLabel.textContent = msg;
+      setTimeout(() => { syncLabel.textContent = 'Sync Trips'; }, 3000);
+    } catch (err) {
+      console.error('Sync failed:', err);
+      syncLabel.textContent = 'Error';
+      setTimeout(() => { syncLabel.textContent = 'Sync Trips'; }, 3000);
+    } finally {
+      syncBtn.disabled = false;
+      syncIcon.classList.remove('animate-spin');
+    }
+  });
+</script>

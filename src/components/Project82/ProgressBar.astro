@@ -1,0 +1,56 @@
+---
+interface Props {
+  count: number;
+}
+
+const { count } = Astro.props;
+const pct = Math.round((count / 82) * 100);
+---
+
+<div class="flex items-center gap-2">
+  <div class="flex flex-col gap-1">
+    <div class="bg-gray-100 rounded-full h-2 w-28 overflow-hidden">
+      <div
+        id="province-pct-bar"
+        class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+        style={`width: ${pct}%`}
+      ></div>
+    </div>
+    <p class="text-[10px] text-gray-400 leading-none">
+      <span id="province-count">{count}</span>/82 &middot; <span id="province-pct">{pct}</span>% explored
+    </p>
+  </div>
+</div>
+
+<script>
+  function setProgress(count: number) {
+    const countEl = document.getElementById('province-count');
+    const pctEl   = document.getElementById('province-pct');
+    const barEl   = document.getElementById('province-pct-bar') as HTMLElement | null;
+    if (!countEl || !pctEl || !barEl) return;
+    const pct = Math.round((count / 82) * 100);
+    countEl.textContent = String(count);
+    pctEl.textContent   = String(pct);
+    barEl.style.width   = `${pct}%`;
+  }
+
+  function updateProgress(delta: number) {
+    const countEl = document.getElementById('province-count');
+    if (!countEl) return;
+    const current = parseInt(countEl.textContent || '0');
+    setProgress(Math.max(0, Math.min(82, current + delta)));
+  }
+
+  window.addEventListener('province-visit-saved', ((e: CustomEvent) => {
+    if (e.detail.isNew) updateProgress(1);
+  }) as EventListener);
+
+  window.addEventListener('province-visit-deleted', (() => {
+    updateProgress(-1);
+  }) as EventListener);
+
+  // After sync: set exact count from full visits list
+  window.addEventListener('province-sync-complete', ((e: CustomEvent) => {
+    setProgress(e.detail.visits.length);
+  }) as EventListener);
+</script>

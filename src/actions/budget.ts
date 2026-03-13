@@ -358,6 +358,29 @@ export const budget = {
     }
   }),
 
+  // Get unified transaction log for the budget tab
+  getTransactionLog: defineAction({
+    input: z.object({ tripId: z.string().uuid() }),
+    handler: async ({ tripId }, { cookies }) => {
+      const user = await getAuthUser(cookies);
+      await verifyTripMember(user.id, tripId);
+      const { data, error } = await supabaseAdmin.rpc('get_transaction_log', { p_trip_id: tripId });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        event_id:        string;
+        event_type:      'contribution' | 'refund' | 'pool_expense' | 'expense' | 'settlement';
+        event_at:        string;
+        actor_name:      string | null;
+        actor_avatar:    string | null;
+        direction:       'in' | 'out' | 'neutral';
+        amount:          number;
+        label:           string;
+        sub_label:       string;
+        running_balance: number | null;
+      }>;
+    }
+  }),
+
   // Atomically change the cost-sharing method with reconciliation options.
   // Always use this instead of updateSettings when the method itself is changing.
   //

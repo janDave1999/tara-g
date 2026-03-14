@@ -1,0 +1,21 @@
+---
+const profiles = [
+  { id: 'driving', label: '🚗', title: 'Driving' },
+  { id: 'walking', label: '🚶', title: 'Walking' },
+  { id: 'cycling', label: '🚴', title: 'Cycling' },
+];
+const defaultProfile = 'driving';
+---
+
+<div class="flex gap-1" id="route-selector" data-route-profile={defaultProfile}>
+  {profiles.map(p => (
+    <button
+      class={`route-profile-btn px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1 ${p.id === defaultProfile ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100 text-gray-600'}`}
+      data-profile={p.id}
+      title={p.title}
+    >
+      <span>{p.label}</span>
+      <span class="hidden sm:inline">{p.title}</span>
+    </button>
+  ))}
+</div>

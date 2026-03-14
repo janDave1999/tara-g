@@ -1,0 +1,37 @@
+---
+---
+
+<div class="flex gap-0.5 sm:gap-1 bg-gray-100 p-0.5 sm:p-1 rounded-lg">
+  <button 
+    id="view-map-btn" 
+    class="view-btn px-3 sm:px-4 py-1.5 sm:py-1 rounded-md bg-white shadow-sm text-sm sm:text-sm font-medium text-gray-900 transition-all min-w-[44px]"
+    data-view="map"
+  >
+    <span class="flex items-center gap-1.5">
+      <svg class="w-4 h-4 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+      </svg>
+      <span class="hidden sm:inline">Map</span>
+    </span>
+  </button>
+  <button 
+    id="view-timeline-btn" 
+    class="view-btn px-3 sm:px-4 py-1.5 sm:py-1 rounded-md text-gray-500 hover:bg-gray-50 text-sm sm:text-sm font-medium transition-all min-w-[44px]"
+    data-view="timeline"
+  >
+    <span class="flex items-center gap-1.5">
+      <svg class="w-4 h-4 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+      </svg>
+      <span class="hidden sm:inline">Timeline</span>
+    </span>
+  </button>
+</div>
+
+<script>
+  import { initViewToggle } from '@/scripts/Itinerary/ItineraryMap';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    initViewToggle();
+  });
+</script>

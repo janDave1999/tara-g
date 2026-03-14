@@ -1,0 +1,148 @@
+---
+import Layout from '@/layouts/PagePlate.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+import ItineraryMap from '@/components/Trip/Itinerary/ItineraryMap.astro';
+import ItineraryTimeline from '@/components/Trip/Itinerary/ItineraryTimeline.astro';
+import ViewToggle from '@/components/Trip/Itinerary/ViewToggle.astro';
+import TripHeader from '@/components/Trip/TripHeader.astro';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+const slug = Astro.params.trip_id || '';
+const user = Astro.locals.user_id;
+
+const shareCode = Astro.url.searchParams.get('invite');
+
+const rpcArgs: Record<string, unknown> = {
+  p_trip_id: slug,
+  p_current_user_id: user ?? null,
+};
+if (shareCode) rpcArgs.p_share_code = shareCode;
+
+const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details', rpcArgs as any);
+
+if (error || !tripData) {
+  return Astro.redirect('/404');
+}
+
+const trip = tripData;
+
+const {
+  trip_id,
+  title,
+  description,
+  status,
+  user_role,
+  trip_details,
+  trip_locations,
+  trip_members,
+  trip_visibility,
+} = trip;
+
+const isVisitor = user_role === 'visitor';
+const isPublicTrip = trip_visibility?.visibility === 'public';
+const isOwner = user_role === 'owner';
+const isMember = user_role === 'member';
+
+// If user is owner or member, they can always view the itinerary
+const hasTripAccess = isOwner || isMember;
+
+// If no trip access, check if itinerary is public or trip is public
+const canShowItinerary = hasTripAccess || trip_visibility?.itinerary_public || isPublicTrip;
+
+if (!canShowItinerary) {
+  // Allow access but hide content for non-members on private trips
+  // They can see the page but not the itinerary content
+}
+
+const canEdit = isOwner;
+
+const primaryLocation = trip_locations?.find((loc: any) => loc.is_primary);
+const destination = primaryLocation?.location?.name || primaryLocation?.location_name || 'No destination set';
+
+const { data: itineraryStops } = await supabaseAdmin
+  .from('trip_location')
+  .select('*, location:locations(*), activities:stop_activities(*)')
+  .eq('trip_id', trip_id)
+  .not('location_type', 'in', '(destination)')
+  .order('scheduled_start', { ascending: true, nullsFirst: false });
+
+const stops = itineraryStops || [];
+---
+
+<Layout
+  title={`${title} - Itinerary | Tara G`}
+  noHeader={false}
+  noFooter={false}
+  description={{
+    title: `${title} - Itinerary | Tara G`,
+    description: `View and manage the itinerary for your trip to ${destination}`,
+  }}
+>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-2 sm:px-4">
+        <div class="flex items-center justify-between h-14 sm:h-16">
+          <div class="flex items-center gap-2 sm:gap-4">
+            <a href={`/trips/${trip_id}`} class="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-gray-900">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span class="hidden sm:inline text-sm font-medium">Back</span>
+            </a>
+            <div class="h-5 sm:h-6 w-px bg-gray-300"></div>
+            <div class="min-w-0">
+              <h1 class="text-base sm:text-lg font-bold text-gray-900 truncate max-w-[150px] sm:max-w-none">{title}</h1>
+              <p class="text-xs sm:text-sm text-gray-500 hidden sm:block">Itinerary</p>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <ViewToggle />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map View -->
+    <div id="map-view" class="view-section">
+      <ItineraryMap 
+        tripId={trip_id} 
+        stops={stops} 
+        canEdit={canEdit}
+        destination={destination}
+        tripDetails={trip_details}
+      />
+    </div>
+
+    <!-- Timeline View -->
+    <div id="timeline-view" class="view-section hidden">
+      <div class="max-w-4xl mx-auto px-4 py-8">
+        <ItineraryTimeline
+          tripId={trip_id}
+          stops={stops}
+          isOwner={canEdit}
+          destination={destination}
+          tripStart={trip_details?.start_date}
+          tripEnd={trip_details?.end_date}
+        />
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .view-section {
+    display: block;
+  }
+  .view-section.hidden {
+    display: none;
+  }
+</style>
+
+<script>
+  import { initViewToggle } from '@/scripts/Itinerary/ItineraryMap';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    initViewToggle();
+  });
+</script>

@@ -4,13 +4,15 @@ export async function mapboxSuggest({
   sessionToken,
   country = "PH",
   language = "en",
-  limit = 5,
+  limit = 10,
+  types,
 }: {
   query: string;
   sessionToken: string; // unique per search session (important!)
   country?: string;
   language?: string;
   limit?: number;
+  types?: string; // POI types: poi, address, place, region, locality, neighborhood
 }) {
   const params = new URLSearchParams({
     q: query,
@@ -20,6 +22,10 @@ export async function mapboxSuggest({
     session_token: sessionToken,
     access_token: PUBLIC_MAPBOX_TOKEN,
   });
+
+  if (types) {
+    params.set('types', types);
+  }
 
   const url = `https://api.mapbox.com/search/searchbox/v1/suggest?${params.toString()}`;
   const response = await fetch(url);

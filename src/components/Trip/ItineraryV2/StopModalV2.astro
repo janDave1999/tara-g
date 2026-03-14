@@ -1,0 +1,170 @@
+---
+interface Props {
+  tripId: string;
+}
+const { tripId } = Astro.props;
+
+const STOP_TYPES = [
+  { value: 'activity',      icon: '🏃', label: 'Activity' },
+  { value: 'meal_break',    icon: '🍽️', label: 'Meal' },
+  { value: 'rest_stop',     icon: '😴', label: 'Rest' },
+  { value: 'accommodation', icon: '🏨', label: 'Stay' },
+  { value: 'checkpoint',    icon: '📍', label: 'Checkpoint' },
+  { value: 'pickup',        icon: '⬆️', label: 'Pickup' },
+  { value: 'dropoff',       icon: '⬇️', label: 'Dropoff' },
+  { value: 'boat',          icon: '⛵', label: 'Boat' },
+  { value: 'ferry',         icon: '🚢', label: 'Ferry' },
+];
+---
+
+<dialog id="stop-modal-v2" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box w-full max-w-sm p-5 rounded-t-2xl sm:rounded-2xl">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h3 class="font-bold text-base" id="stop-modal-title-v2">Add Stop</h3>
+        <span id="stop-order-badge-v2" class="text-xs text-gray-400"></span>
+      </div>
+      <button type="button" onclick="document.getElementById('stop-modal-v2').close()"
+        class="btn btn-ghost btn-sm btn-circle text-gray-400">✕</button>
+    </div>
+
+    <form method="post" id="stop-form-v2">
+      <input type="hidden" name="trip_id" value={tripId} />
+      <input type="hidden" name="stop_id" value="" />
+      <input type="hidden" name="latitude" value="" />
+      <input type="hidden" name="longitude" value="" />
+      <input type="hidden" name="location_type" value="activity" id="location-type-hidden" />
+      <input type="hidden" name="selected_date" id="selected-date-hidden" value="" />
+
+      <!-- Location Name -->
+      <div class="mb-4">
+        <input type="text" name="name" placeholder="Location name"
+          class="input input-bordered w-full" required />
+      </div>
+
+      <!-- Stop Type pills -->
+      <div class="mb-5">
+        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Type</p>
+        <div class="flex flex-wrap gap-1.5" id="type-pill-group">
+          {STOP_TYPES.map((t, i) => (
+            <button type="button"
+              class={`type-pill btn btn-xs ${i === 0 ? 'btn-primary' : 'btn-ghost border border-gray-200'}`}
+              data-value={t.value}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <!-- Notes (collapsed) -->
+      <div class="mb-5">
+        <button type="button" id="notes-toggle"
+          class="text-xs text-blue-500 hover:text-blue-700 transition-colors">
+          + Add notes
+        </button>
+        <textarea name="notes" id="notes-field" placeholder="Optional notes…"
+          class="textarea textarea-bordered w-full mt-2 text-sm hidden" rows="2"></textarea>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="button" onclick="document.getElementById('stop-modal-v2').close()"
+          class="btn btn-ghost flex-1">Cancel</button>
+        <button type="submit" class="btn btn-primary flex-1">Save Stop</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { toUTCISO } from '@/utility/dateFormatter';
+
+  const modal = document.getElementById('stop-modal-v2') as HTMLDialogElement | null;
+  const form  = document.getElementById('stop-form-v2') as HTMLFormElement | null;
+
+  // ── Type pills ────────────────────────────────────────────────────────────
+  const typeHidden = document.getElementById('location-type-hidden') as HTMLInputElement | null;
+  document.getElementById('type-pill-group')?.addEventListener('click', e => {
+    const btn = (e.target as HTMLElement).closest('.type-pill') as HTMLButtonElement | null;
+    if (!btn) return;
+    document.querySelectorAll('.type-pill').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-ghost', 'border', 'border-gray-200');
+    });
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-ghost', 'border', 'border-gray-200');
+    if (typeHidden) typeHidden.value = btn.dataset.value || 'activity';
+  });
+
+  // ── Notes toggle ──────────────────────────────────────────────────────────
+  document.getElementById('notes-toggle')?.addEventListener('click', () => {
+    const field  = document.getElementById('notes-field') as HTMLTextAreaElement | null;
+    const toggle = document.getElementById('notes-toggle') as HTMLButtonElement | null;
+    if (!field || !toggle) return;
+    const hidden = field.classList.toggle('hidden');
+    toggle.textContent = hidden ? '+ Add notes' : '− Hide notes';
+    if (!hidden) field.focus();
+  });
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fd           = new FormData(form);
+    const stopId       = fd.get('stop_id') as string;
+    const tripId       = fd.get('trip_id') as string;
+    const locationName = fd.get('name') as string;
+    const locationType = (typeHidden?.value || 'activity') as any;
+    const latitude     = parseFloat(fd.get('latitude') as string);
+    const longitude    = parseFloat(fd.get('longitude') as string);
+    const selectedDate = fd.get('selected_date') as string;
+    const notes        = (fd.get('notes') as string) || '';
+
+    if (!locationName) { alert('Please enter a location name'); return; }
+    if (isNaN(latitude) || isNaN(longitude)) { alert('Please pick a location on the map'); return; }
+
+    // Use selected date (midnight local → UTC)
+    const dateStr = selectedDate || new Date().toISOString().split('T')[0];
+    const scheduledStart = toUTCISO(`${dateStr}T00:00:00`) ?? new Date().toISOString();
+
+    // Determine order_index = current stop count + 1
+    const mapContainer = document.getElementById('itinerary-map-v2');
+    const stopsStr = mapContainer?.dataset.stops;
+    let orderIndex = 1;
+    if (stopsStr) {
+      try {
+        const raw: any[] = JSON.parse(stopsStr);
+        orderIndex = raw.length + 1;
+      } catch (_) {}
+    }
+
+    try {
+      if (stopId) {
+        const { error } = await actions.stops.updateStop({
+          stop_id: stopId, location_name: locationName, location_type: locationType,
+          latitude, longitude,
+          scheduled_start: scheduledStart,
+          notes: notes || undefined,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await actions.stops.createStop({
+          trip_id: tripId, location_name: locationName, location_type: locationType,
+          latitude, longitude,
+          scheduled_start: scheduledStart,
+          notes: notes || undefined,
+          order_index: orderIndex,
+        });
+        if (error) throw error;
+      }
+      modal?.close();
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to save stop:', err);
+      alert('Failed to save stop');
+    }
+  });
+</script>

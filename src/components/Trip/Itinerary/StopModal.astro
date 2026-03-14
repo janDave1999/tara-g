@@ -1,0 +1,220 @@
+---
+import { actions } from 'astro:actions';
+
+interface Props {
+  tripId: string;
+  stopCount?: number;
+}
+
+const { tripId, stopCount = 0 } = Astro.props;
+const nextStopNumber = stopCount + 1;
+
+const locationTypes = [
+  { value: 'activity', label: 'Activity' },
+  { value: 'meal_break', label: 'Meal Break' },
+  { value: 'rest_stop', label: 'Rest Stop' },
+  { value: 'accommodation', label: 'Accommodation' },
+  { value: 'checkpoint', label: 'Checkpoint' },
+  { value: 'pickup', label: 'Pickup Point' },
+  { value: 'dropoff', label: 'Drop-off Point' },
+  { value: 'boat', label: 'Boat' },
+  { value: 'ferry', label: 'Ferry' },
+];
+---
+
+<dialog id="stop-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <div class="h-1 -mt-6 -mx-6 mb-5 rounded-t-2xl bg-linear-to-r from-blue-500 to-indigo-500"></div>
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg text-gray-900" id="stop-modal-title">Add New Stop</h3>
+      <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium" id="stop-order-badge">
+        Stop #{nextStopNumber}
+      </span>
+    </div>
+    
+    <form id="stop-form" method="POST">
+      <input type="hidden" name="trip_id" value={tripId} />
+      <input type="hidden" name="stop_id" />
+      
+      <div class="space-y-4">
+        <!-- Stop Name -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Location Name</label>
+          <input 
+            type="text" 
+            name="name" 
+            placeholder="e.g., Manila Bay Walk"
+            class="input input-bordered w-full"
+            required
+          />
+        </div>
+        
+        <!-- Insert Position -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Add After</label>
+          <select name="insert_after" class="select select-bordered w-full" id="insert-after-select">
+            {stopCount === 0 ? (
+              <option value="-1">First stop</option>
+            ) : (
+              <>
+                <option value="-1">Add as first stop</option>
+                {Array.from({ length: stopCount }, (_, i) => (
+                  <option value={i} selected={i === stopCount - 1}>After Stop #{i + 1}</option>
+                ))}
+                <option value={stopCount}>Add as last stop</option>
+              </>
+            )}
+          </select>
+        </div>
+        
+        <!-- Stop Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Stop Type</label>
+          <select name="location_type" class="select select-bordered w-full">
+            {locationTypes.map(t => (
+              <option value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        
+        <!-- Coordinates (hidden, auto-filled) -->
+        <input type="hidden" name="latitude" />
+        <input type="hidden" name="longitude" />
+        
+        <!-- Date/Time -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+            <input 
+              type="datetime-local" 
+              name="scheduled_start" 
+              class="input input-bordered w-full"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+            <input 
+              type="datetime-local" 
+              name="scheduled_end" 
+              class="input input-bordered w-full"
+            />
+          </div>
+        </div>
+        
+        <!-- Notes -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea 
+            name="notes" 
+            placeholder="Optional notes about this stop..."
+            class="textarea textarea-bordered w-full"
+            rows="2"
+          ></textarea>
+        </div>
+      </div>
+      
+      <!-- Actions -->
+      <div class="flex justify-end gap-2 mt-6">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('stop-modal').close()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Save Stop
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  import { actions, ActionError } from 'astro:actions';
+  
+  const modal = document.getElementById('stop-modal') as HTMLDialogElement;
+  const form = document.getElementById('stop-form') as HTMLFormElement;
+  
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const stopId = formData.get('stop_id') as string;
+    const tripId = formData.get('trip_id') as string;
+    const locationName = formData.get('name') as string;
+    const locationType = formData.get('location_type') as string;
+    const insertAfter = parseInt(formData.get('insert_after') as string) || -1;
+    const latitude = parseFloat(formData.get('latitude') as string);
+    const longitude = parseFloat(formData.get('longitude') as string);
+    const scheduledStart = formData.get('scheduled_start') as string;
+    const scheduledEnd = formData.get('scheduled_end') as string;
+    const notes = formData.get('notes') as string;
+    
+    if (!locationName) {
+      alert('Please enter a location name');
+      return;
+    }
+    
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      alert('Please select a location on the map');
+      return;
+    }
+    
+    try {
+      let result;
+      
+      if (stopId) {
+        // Update existing stop
+        result = await actions.stops.updateStop({
+          stop_id: stopId,
+          location_name: locationName,
+          location_type: locationType as any,
+          latitude,
+          longitude,
+          scheduled_start: scheduledStart || undefined,
+          scheduled_end: scheduledEnd || undefined,
+          notes: notes || undefined,
+        });
+      } else {
+        // Calculate order_index based on insert position
+        // insertAfter = -1 means first (order_index = 1)
+        // insertAfter = 0 means after stop #1 (order_index = 2), etc.
+        // insertAfter = stopCount means add as last (order_index = stopCount + 1)
+        const orderIndex = insertAfter + 2;
+        
+        // Create new stop
+        result = await actions.stops.createStop({
+          trip_id: tripId,
+          location_name: locationName,
+          location_type: locationType as any,
+          latitude,
+          longitude,
+          scheduled_start: scheduledStart ? scheduledStart : new Date().toISOString(),
+          scheduled_end: scheduledEnd ? scheduledEnd : undefined,
+          notes: notes ? notes : undefined,
+          order_index: orderIndex,
+        });
+      }
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
+      // Close modal and refresh
+      modal.close();
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Failed to save stop:', error);
+      
+      let message = 'Failed to save stop';
+      if (error instanceof ActionError) {
+        message = error.message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      
+      alert(message);
+    }
+  });
+</script>

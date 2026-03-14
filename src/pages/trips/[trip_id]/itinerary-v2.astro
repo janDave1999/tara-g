@@ -1,0 +1,68 @@
+---
+import Layout from '@/layouts/PagePlate.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+import ItineraryMapV2 from '@/components/Trip/ItineraryV2/ItineraryMapV2.astro';
+
+const slug = Astro.params.trip_id || '';
+const user = Astro.locals.user_id;
+
+const shareCode = Astro.url.searchParams.get('invite');
+
+const rpcArgs: Record<string, unknown> = {
+  p_trip_id: slug,
+  p_current_user_id: user ?? null,
+};
+if (shareCode) rpcArgs.p_share_code = shareCode;
+
+const { data: tripData, error } = await supabaseAdmin.rpc('get_trip_full_details', rpcArgs as any);
+
+if (error || !tripData) {
+  return Astro.redirect('/404');
+}
+
+const trip = tripData;
+
+const {
+  trip_id,
+  title,
+  description,
+  status,
+  user_role,
+  trip_details,
+  trip_locations,
+  trip_members,
+  trip_visibility,
+} = trip;
+
+const isOwner = user_role === 'owner';
+const canEdit = isOwner;
+
+const primaryLocation = trip_locations?.find((loc: unknown) => {
+  const l = loc as { is_primary?: boolean; location?: { name?: string } | null; location_name?: string | null };
+  return l.is_primary;
+});
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const destination = (primaryLocation as { location?: { name?: string } | null; location_name?: string | null })?.location?.name || (primaryLocation as { location_name?: string | null })?.location_name || 'No destination set';
+
+const { data: itineraryStops } = await supabaseAdmin
+  .from('trip_location')
+  .select('*, location:locations(*), activities:stop_activities(*)')
+  .eq('trip_id', trip_id)
+  .not('location_type', 'in', '(destination)')
+  .order('scheduled_start', { ascending: true, nullsFirst: false });
+
+const stops = itineraryStops || [];
+---
+
+<Layout
+  title={`${title} - Itinerary v2 | Tara G`}
+  noHeader={true}
+  noFooter={true}
+>
+  <ItineraryMapV2
+    tripId={trip_id}
+    stops={stops}
+    canEdit={canEdit}
+    tripDetails={trip_details}
+  />
+</Layout>

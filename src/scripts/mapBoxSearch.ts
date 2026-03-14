@@ -7,6 +7,7 @@ interface MapboxSearchBoxOptions {
   country?: string;
   language?: string;
   placeholder?: string;
+  types?: string; // POI types: poi, address, place, region, locality, neighborhood
   onSelect?: (result: {
     name: string;
     coordinates: [number, number];
@@ -26,6 +27,7 @@ export function createMapboxSearchBox({
   country = "PH",
   language = "en",
   placeholder = "Search location...",
+  types,
   onSelect,
 }: MapboxSearchBoxOptions): void {
   const target = document.querySelector<HTMLInputElement>(targetSelector);
@@ -74,7 +76,7 @@ export function createMapboxSearchBox({
 
     debounceTimeout = window.setTimeout(async () => {
       try {
-        const results = await mapboxSuggest({ query, sessionToken, country, language });
+        const results = await mapboxSuggest({ query, sessionToken, country, language, types });
         suggestions = results;
 
         // Reuse <li> elements from the pool

@@ -23,13 +23,14 @@
     "migrate:list": "node scripts/migrate.js list"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.6",
+    "@astrojs/check": "^0.9.7",
     "@astrojs/cloudflare": "^12.6.12",
     "@astrojs/react": "^4.4.2",
     "@astrojs/sitemap": "^3.6.0",
     "@aws-sdk/client-s3": "^3.1004.0",
     "@aws-sdk/s3-request-presigner": "^3.1004.0",
     "@cosmicjs/sdk": "^1.5.6",
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@jsarmyknife/native--dom": "^0.1.18-beta.0",
     "@jsarmyknife/native--icon": "^0.1.7-beta.0",
     "@jsarmyknife/native--math": "^0.1.17-beta.0",
@@ -52,6 +53,7 @@
     "schema-dts": "^1.1.5",
     "sortablejs": "^1.15.6",
     "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

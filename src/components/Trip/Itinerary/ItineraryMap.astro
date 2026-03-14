@@ -1,0 +1,161 @@
+---
+import RouteSelector from './RouteSelector.astro';
+import DayFilter from './DayFilter.astro';
+import StopModal from './StopModal.astro';
+
+interface Props {
+  tripId: string;
+  stops: any[];
+  canEdit: boolean;
+  destination?: string;
+  tripDetails?: any;
+}
+
+const { tripId, stops, canEdit, destination, tripDetails } = Astro.props;
+
+const stopsJson = JSON.stringify(stops);
+const tripDetailsJson = JSON.stringify(tripDetails || {});
+---
+
+<div 
+  id="itinerary-map" 
+  class="relative h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] w-full"
+  data-trip-id={tripId}
+  data-stops={stopsJson}
+  data-trip-details={tripDetailsJson}
+  data-can-edit={canEdit.toString()}
+>
+  <div id="map-container" class="h-full w-full"></div>
+  
+  <!-- Mobile: Floating Search & Add Button -->
+  <div class="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 flex flex-col gap-2 z-10">
+    <!-- Search - Full width on mobile -->
+    {canEdit && (
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <input 
+          type="text" 
+          id="location-search-input"
+          placeholder="🔍 Search places..." 
+          class="input input-sm input-bordered w-full text-base"
+          autocomplete="off"
+        />
+      </div>
+    )}
+    
+    <!-- Controls Row -->
+    <div class="flex gap-1 sm:gap-2 items-center">
+      <div class="flex gap-1 sm:gap-2 bg-white rounded-lg shadow px-2 py-1.5 sm:px-2 sm:py-2 flex-1 overflow-x-auto">
+        <RouteSelector />
+        <DayFilter stops={stops} />
+        <button 
+          id="fit-bounds-btn" 
+          class="btn btn-xs sm:btn-sm btn-ghost" 
+          title="Show all stops"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Mobile FAB: Add Stop -->
+  {canEdit && (
+    <button 
+      id="mobile-add-btn"
+      class="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl flex items-center justify-center z-20"
+      title="Add Stop"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+    </button>
+  )}</div>
+  
+
+  <!-- Empty State -->
+  {stops.length === 0 && (
+    <div id="empty-map-state" class="absolute inset-0 flex items-center justify-center bg-gray-50/90 pointer-events-none">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-700 mb-1">No stops yet</h3>
+        <p class="text-sm text-gray-500 max-w-xs">
+          {canEdit 
+            ? 'Search for a location or click on the map to add your first stop.' 
+            : 'The trip organizer hasn\'t added any stops yet.'}
+        </p>
+      </div>
+    </div>
+  )}
+
+  <!-- Add Stop Hint -->
+  {canEdit && stops.length > 0 && (
+    <div id="add-stop-hint" class="hidden sm:block absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur shadow-lg rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 z-10">
+      Search or tap map to add stop
+    </div>
+  )}
+
+  <!-- Stop Modal -->
+  {canEdit && (
+    <StopModal tripId={tripId} stopCount={stops.length} />
+  )}
+</div>
+
+<style is:global>
+  .mapboxgl-popup-content {
+    padding: 12px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  }
+  
+  .stop-marker {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .stop-marker:hover {
+    transform: scale(1.1);
+  }
+  
+  .stop-marker-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+</style>
+
+<script>
+  import { initItineraryMap, openAddStopAtCenter } from '@/scripts/Itinerary/ItineraryMap';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    initItineraryMap();
+    
+    // Mobile FAB button handler
+    const mobileFab = document.getElementById('mobile-add-btn');
+    mobileFab?.addEventListener('click', () => {
+      openAddStopAtCenter();
+    });
+  });
+  
+  document.addEventListener('astro:page-load', () => {
+    initItineraryMap();
+  });
+</script>

@@ -13,7 +13,7 @@
 
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "@/lib/supabase";
-import { loadProvinceCache, findProvince } from "@/lib/project82/geoCache";
+import { findProvince } from "@/lib/project82/geoCache";
 
 // ── Stage helpers ─────────────────────────────────────────────────────────────
 
@@ -50,35 +50,24 @@ async function resolveUserId(authId: string): Promise<string | null> {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
-export const POST: APIRoute = async ({ locals, request }) => {
+export const POST: APIRoute = async ({ locals }) => {
   try {
-    const authId = locals.user_id;
-    if (!authId) return json({ error: "Unauthorized" }, 401);
-
-    console.error("[sync] POST called, authId=", authId);
-    const userId = await resolveUserId(authId);
-    console.error("[sync] resolveUserId returned:", userId);
-    if (!userId) return json({ error: "User not found" }, 404);
-
-    // 1. Load province geometry cache
-    const origin = new URL(request.url).origin;
-    const geoCache = await loadProvinceCache(origin);
-    if (geoCache.size === 0) return json({ error: "Province boundaries unavailable" }, 503);
-
+    const user_id = locals.user_id;
     // 2. Collect all completed trip IDs for this user (owned + approved member)
     const [ownedRes, memberRes] = await Promise.all([
       supabaseAdmin
         .from("trips")
         .select("trip_id")
-        .eq("owner_id", authId)
+        .eq("owner_id", user_id)
         .eq("status", "completed"),
       supabaseAdmin
         .from("trip_members")
         .select("trip_id")
-        .eq("user_id", authId)
+        .eq("user_id", user_id)
         .eq("member_status", "joined"),
     ]);
 
+    console.log(`[sync] Found ${ownedRes.data?.length ?? 0} owned completed trips and ${memberRes.data?.length ?? 0} approved member trips for user_id=${user_id}`);
     // De-duplicate trip IDs
     const tripIdSet = new Set<string>();
     for (const row of ownedRes.data ?? []) tripIdSet.add(row.trip_id);
@@ -135,7 +124,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
     const { data: existingVisits } = await supabaseAdmin
       .from("user_province_visits")
       .select("province_key, stage, is_auto_detected")
-      .eq("user_id", userId);
+      .eq("user_id", user_id);
 
     const manualKeys = new Set(
       (existingVisits ?? []).filter((v) => !v.is_auto_detected).map((v) => v.province_key)
@@ -151,7 +140,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
       const loc = locationMap.get(stop.location_id);
       if (!loc?.latitude || !loc?.longitude) continue;
 
-      const provinceKey = findProvince(Number(loc.longitude), Number(loc.latitude), geoCache);
+      const provinceKey = findProvince(Number(loc.longitude), Number(loc.latitude));
       if (!provinceKey) continue;
 
       const durationDays = durationMap.get(stop.trip_id) ?? 1;
@@ -179,7 +168,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
       }
 
       upsertRows.push({
-        user_id:          userId,
+        user_id:          user_id,
         province_key:     provinceKey,
         stage,
         trip_id:          tripId,
@@ -206,7 +195,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
     const { data: updatedVisits } = await supabaseAdmin
       .from("user_province_visits")
       .select("id, province_key, stage, visit_date, trip_id, notes, is_auto_detected")
-      .eq("user_id", userId);
+      .eq("user_id", user_id);
 
     return json({ added, updated, skipped, tripsScanned: tripIds.length, visits: updatedVisits ?? [] });
 

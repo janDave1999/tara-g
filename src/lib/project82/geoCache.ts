@@ -1,96 +1,42 @@
 /**
- * Server-side province geometry cache + point-in-polygon.
+ * Server-side province detection via nearest-centroid matching.
  *
- * Loads all 82 province GeoJSON files as subrequests (Cloudflare Workers
- * serves them from static assets at the same edge location — very fast).
- * Module-level cache persists across warm Worker instances so the 82 fetches
- * only happen on the first sync call per instance.
+ * Replaces the previous GeoJSON self-fetch + point-in-polygon approach which
+ * failed on Cloudflare Workers (self-fetch subrequests are blocked/limited).
+ *
+ * Nearest centroid is accurate enough for the Philippines — provinces are
+ * geographically distinct and trip locations are typically in major cities.
  */
 
 import { PH_PROVINCES } from "@/data/phProvinces";
 
-type Ring = [number, number][];
-interface Geometry {
-  type: "Polygon" | "MultiPolygon";
-  coordinates: any[];
-}
-
-// ── Slug helpers ─────────────────────────────────────────────────────────────
-
-const SLUG_OVERRIDES: Record<string, string> = {
-  NCO: "north-cotabato",
-};
-
-function getSlug(key: string, name: string): string {
-  if (SLUG_OVERRIDES[key]) return SLUG_OVERRIDES[key];
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "")
-    .replace(/--+/g, "-");
-}
-
-// ── Module-level cache ────────────────────────────────────────────────────────
-
-const _cache = new Map<string, Geometry>(); // province_key → geometry
-let _loaded = false;
-
-export async function loadProvinceCache(origin: string): Promise<Map<string, Geometry>> {
-  if (_loaded) return _cache;
-
-  await Promise.allSettled(
-    PH_PROVINCES.map(async (province) => {
-      const slug = getSlug(province.key, province.name);
-      try {
-        const res = await fetch(`${origin}/geojson/${slug}.geojson`);
-        if (!res.ok) return;
-        const data: any = await res.json();
-        if (data?.geometry) _cache.set(province.key, data.geometry);
-      } catch {
-        // file missing or malformed — skip province
-      }
-    })
-  );
-
-  _loaded = true;
-  return _cache;
-}
-
-// ── Ray-casting point-in-polygon ─────────────────────────────────────────────
-
-function pointInRing(px: number, py: number, ring: Ring): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
-function pointInGeometry(lng: number, lat: number, geometry: Geometry): boolean {
-  const polygons =
-    geometry.type === "MultiPolygon" ? geometry.coordinates : [geometry.coordinates];
-  for (const polygon of polygons) {
-    // Only check the outer ring (index 0); holes are uncommon for province boundaries
-    if (pointInRing(lng, lat, polygon[0] as Ring)) return true;
-  }
-  return false;
-}
+// Max squared distance (~1.5°, roughly 165 km) — filters out locations
+// that are far off the Philippine map (sea, abroad, etc.)
+const MAX_DIST_SQ = 2.25;
 
 /**
- * Returns the province_key for the given coordinates, or null if none matches.
- * `cache` must be pre-loaded via `loadProvinceCache`.
+ * Returns the province_key closest to (lng, lat), or null if no province
+ * centroid is within ~165 km.
  */
-export function findProvince(
-  lng: number,
-  lat: number,
-  cache: Map<string, Geometry>
-): string | null {
-  for (const [key, geometry] of cache) {
-    if (pointInGeometry(lng, lat, geometry)) return key;
+export function findProvince(lng: number, lat: number): string | null {
+  let bestKey: string | null = null;
+  let bestDist = Infinity;
+
+  for (const province of PH_PROVINCES) {
+    const d = (lng - province.lng) ** 2 + (lat - province.lat) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      bestKey = province.key;
+    }
   }
-  return null;
+
+  return bestDist <= MAX_DIST_SQ ? bestKey : null;
+}
+
+// Kept for call-site compatibility — returns a non-empty sentinel so callers
+// that check `cache.size === 0` don't bail out.
+export async function loadProvinceCache(
+  _origin: string
+): Promise<Map<string, true>> {
+  return new Map([["__ready", true as const]]);
 }

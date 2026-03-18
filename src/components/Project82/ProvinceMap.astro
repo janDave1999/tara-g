@@ -36,7 +36,7 @@ const { visits } = Astro.props;
   ></svg>
 
   <!-- Legend -->
-  <div id="map-legend" class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2.5 shadow-md text-xs space-y-1.5 hidden">
+  <div id="map-legend" class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2.5 shadow-md text-xs space-y-1.5 hidden">
     <p class="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1">Visit Stage</p>
     {[
       { label: 'Not visited',          color: '#E5E7EB' },
@@ -116,6 +116,7 @@ const { visits } = Astro.props;
     const results = await Promise.allSettled(
       PH_PROVINCES.map(async province => {
         const slug = getSlug(province);
+        if (!slug) { loaded++; if (progressEl) progressEl.textContent = `${loaded} / ${total}`; throw new Error(`No geojson: ${province.key}`); }
         const res = await fetch(`/geojson/${slug}.geojson`);
         if (!res.ok) throw new Error(`Not found: ${slug}`);
         const data = await res.json();

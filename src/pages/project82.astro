@@ -23,12 +23,14 @@ if (!user_id) {
 >
   <div class="flex flex-col h-[calc(100vh-64px)]">
     <!-- Header bar -->
-    <div class="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-4 shrink-0">
-      <div class="shrink-0">
+    <div class="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0">
+      <div class="shrink-0 whitespace-nowrap">
         <h1 class="text-sm font-bold text-gray-900 leading-none">Project 82</h1>
-        <p class="text-[10px] text-gray-400 leading-none mt-0.5">PH Province Tracker</p>
+        <p class="text-[10px] text-gray-400 leading-none mt-0.5">PH Provinces</p>
       </div>
-      <ProgressBar count={0} />
+      <div class="flex-1 min-w-0">
+        <ProgressBar count={0} />
+      </div>
       <div class="flex flex-col items-end shrink-0">
         <button
           id="sync-btn"
@@ -95,7 +97,7 @@ if (!user_id) {
       const res = await fetch('/api/project82/sync', { method: 'POST' });
       if (!res.ok) throw new Error(await res.text());
 
-      const { added, updated, visits } = await res.json() as { added: number; updated: number; visits: unknown[] };
+      const { added, updated, visits } = await res.json() as { added: number; updated: number; visits: Array<{ province_key: string; stage: string; [k: string]: unknown }> };
 
       const now = Date.now();
       localStorage.setItem(LS_VISITS, JSON.stringify(visits));

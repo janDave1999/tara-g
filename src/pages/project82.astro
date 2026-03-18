@@ -1,6 +1,8 @@
 ---
 import PagePlate from "@/layouts/PagePlate.astro";
 import ProvinceMap from "@/components/Project82/ProvinceMap.astro";
+import ProvinceGrid from "@/components/Project82/ProvinceGrid.astro";
+import ZoomControls from "@/components/Project82/ZoomControls.astro";
 import ProgressBar from "@/components/Project82/ProgressBar.astro";
 import VisitModal from "@/components/Project82/VisitModal.astro";
 
@@ -46,9 +48,15 @@ if (!user_id) {
       </div>
     </div>
 
-    <!-- Map fills remaining height -->
-    <div class="flex-1 overflow-hidden">
+    <!-- Map area — flex-1 when zoomed in, h-[40%] when zoomed out -->
+    <div id="map-area" class="flex-1 overflow-hidden relative transition-all duration-300">
       <ProvinceMap visits={[]} />
+      <ZoomControls />
+    </div>
+
+    <!-- Province grid — hidden until zoom level 3 -->
+    <div id="grid-area" class="hidden h-[60%] border-t border-gray-100 overflow-hidden">
+      <ProvinceGrid />
     </div>
   </div>
 
@@ -56,6 +64,25 @@ if (!user_id) {
 </PagePlate>
 
 <script>
+  // Zoom: show/hide province grid
+  const mapArea  = document.getElementById('map-area');
+  const gridArea = document.getElementById('grid-area');
+
+  window.addEventListener('zoom-changed', ((e: CustomEvent) => {
+    const level = e.detail.level as number;
+    const showGrid = level >= 3;
+    if (!mapArea || !gridArea) return;
+    if (showGrid) {
+      mapArea.classList.remove('flex-1');
+      mapArea.classList.add('h-[40%]');
+      gridArea.classList.remove('hidden');
+    } else {
+      mapArea.classList.add('flex-1');
+      mapArea.classList.remove('h-[40%]');
+      gridArea.classList.add('hidden');
+    }
+  }) as EventListener);
+
   const syncBtn       = document.getElementById('sync-btn')       as HTMLButtonElement;
   const syncLabel     = document.getElementById('sync-label')     as HTMLElement;
   const syncIcon      = document.getElementById('sync-icon')      as HTMLElement;

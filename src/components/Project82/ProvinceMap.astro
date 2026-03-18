@@ -36,20 +36,25 @@ const { visits } = Astro.props;
   ></svg>
 
   <!-- Legend -->
-  <div id="map-legend" class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2.5 shadow-md text-xs space-y-1.5 hidden">
-    <p class="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1">Visit Stage</p>
-    {[
-      { label: 'Not visited',          color: '#E5E7EB' },
-      { label: 'Pass through',         color: '#3B82F6' },
-      { label: 'Short stay',           color: '#FBBF24' },
-      { label: 'Extended stay',        color: '#F97316' },
-      { label: 'Thorough exploration', color: '#EF4444' },
-    ].map(item => (
-      <div class="flex items-center gap-2">
-        <span class="w-3 h-3 rounded-sm shrink-0 border border-white shadow-sm" style={`background:${item.color}`}></span>
-        <span class="text-gray-600">{item.label}</span>
-      </div>
-    ))}
+  <div id="map-legend" class="absolute top-3 left-3 hidden">
+    <div class="flex flex-col gap-1 px-1 py-1">
+      <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Stage</p>
+      {[
+        { label: 'None',      color: '#D1D5DB' },
+        { label: 'Pass',      color: '#3B82F6' },
+        { label: 'Short',     color: '#FBBF24' },
+        { label: 'Extended',  color: '#F97316' },
+        { label: 'Thorough',  color: '#EF4444' },
+      ].map((item, i) => (
+        <>
+          {i > 0 && <span class="w-px h-3 bg-gray-200 shrink-0" />}
+          <div class="flex items-center gap-1 shrink-0">
+            <span class="w-2 h-2 rounded-full shrink-0" style={`background:${item.color}`} />
+            <span class="text-[10px] text-gray-500 font-medium">{item.label}</span>
+          </div>
+        </>
+      ))}
+    </div>
   </div>
 </div>
 

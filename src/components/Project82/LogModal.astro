@@ -1,0 +1,309 @@
+---
+// Opened programmatically via window.openLogModal(data)
+---
+
+<dialog
+  id="log-modal"
+  class="rounded-2xl shadow-2xl p-0 w-full max-w-sm mx-auto backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+>
+  <div>
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-sky-500 to-sky-600 px-5 py-4 flex items-start justify-between rounded-t-2xl">
+      <div>
+        <h2 id="log-modal-heading" class="text-lg font-bold text-white">Travel Log</h2>
+        <p id="log-modal-province" class="text-sky-100 text-xs mt-0.5"></p>
+      </div>
+      <button
+        type="button"
+        id="log-modal-close"
+        class="text-white/70 hover:text-white transition-colors ml-4 mt-0.5"
+        aria-label="Close"
+      >
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-4 space-y-4 bg-white overflow-y-auto max-h-[70vh]">
+
+      <!-- Title -->
+      <div>
+        <label for="log-title" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Title <span class="text-red-400">*</span>
+        </label>
+        <input
+          type="text"
+          id="log-title"
+          maxlength="200"
+          placeholder="e.g. Explored Chocolate Hills"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+        />
+        <p id="log-title-error" class="text-xs text-red-500 mt-1 hidden">Title is required.</p>
+      </div>
+
+      <!-- Activity Type -->
+      <div>
+        <label for="log-activity-type" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Activity Type <span class="text-red-400">*</span>
+        </label>
+        <select
+          id="log-activity-type"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white"
+        >
+          <option value="">Select type…</option>
+          <option value="sightseeing">Sightseeing</option>
+          <option value="dining">Dining</option>
+          <option value="shopping">Shopping</option>
+          <option value="entertainment">Entertainment</option>
+          <option value="adventure">Adventure</option>
+          <option value="cultural">Cultural</option>
+          <option value="relaxation">Relaxation</option>
+          <option value="other">Other</option>
+        </select>
+        <p id="log-type-error" class="text-xs text-red-500 mt-1 hidden">Activity type is required.</p>
+      </div>
+
+      <!-- Location -->
+      <div>
+        <label for="log-location" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Location <span class="font-normal normal-case text-gray-400">(optional)</span>
+        </label>
+        <input
+          type="text"
+          id="log-location"
+          maxlength="200"
+          placeholder="e.g. Chocolate Hills, Carmen"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+        />
+      </div>
+
+      <!-- Date & Time -->
+      <div>
+        <label for="log-visited-at" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Date & Time <span class="font-normal normal-case text-gray-400">(optional)</span>
+        </label>
+        <input
+          type="datetime-local"
+          id="log-visited-at"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+        />
+      </div>
+
+      <!-- Trip link -->
+      <div>
+        <label for="log-trip" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Linked Trip <span class="font-normal normal-case text-gray-400">(optional)</span>
+        </label>
+        <select
+          id="log-trip"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white"
+        >
+          <option value="">Loading trips…</option>
+        </select>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <label for="log-description" class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+          Notes <span class="font-normal normal-case text-gray-400">(optional)</span>
+        </label>
+        <textarea
+          id="log-description"
+          rows="3"
+          placeholder="What happened? What did you feel?"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-400"
+        ></textarea>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 pt-2 bg-white rounded-b-2xl flex gap-2">
+      <button
+        type="button"
+        id="log-modal-delete"
+        class="hidden px-4 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
+      >Delete</button>
+      <button
+        type="button"
+        id="log-modal-save"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+      >Save Log</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  type LogData = {
+    id?: string;
+    province_key: string;
+    province_name: string;
+    title?: string;
+    description?: string | null;
+    activity_type?: string;
+    location?: string | null;
+    visited_at?: string | null;
+    trip_id?: string | null;
+  };
+
+  type TripOption = { id: string; title: string; };
+
+  const dialog    = document.getElementById('log-modal')         as HTMLDialogElement;
+  const saveBtn   = document.getElementById('log-modal-save')    as HTMLButtonElement;
+  const deleteBtn = document.getElementById('log-modal-delete')  as HTMLButtonElement;
+  const closeBtn  = document.getElementById('log-modal-close')   as HTMLButtonElement;
+  const titleErr  = document.getElementById('log-title-error')   as HTMLElement;
+  const typeErr   = document.getElementById('log-type-error')    as HTMLElement;
+  const tripSel   = document.getElementById('log-trip')          as unknown as HTMLSelectElement;
+
+  let current: LogData | null = null;
+  let tripsLoaded = false;
+
+  // Load trips once into the select
+  async function loadTrips(selectedId?: string | null) {
+    if (tripsLoaded) {
+      if (selectedId) tripSel.value = selectedId;
+      return;
+    }
+    try {
+      const res  = await fetch('/api/profile/trips?filter=all');
+      const data = await res.json() as { trips?: TripOption[] };
+      const trips = data.trips ?? [];
+
+      tripSel.innerHTML = '<option value="">— No trip —</option>';
+      for (const t of trips) {
+        const opt = document.createElement('option');
+        opt.value       = t.id;
+        opt.textContent = t.title;
+        tripSel.appendChild(opt);
+      }
+      if (!trips.length) {
+        tripSel.innerHTML = '<option value="">No trips found</option>';
+      }
+      tripsLoaded = true;
+      if (selectedId) tripSel.value = selectedId;
+    } catch {
+      tripSel.innerHTML = '<option value="">Failed to load trips</option>';
+    }
+  }
+
+  // Converts ISO string → datetime-local value (YYYY-MM-DDTHH:mm)
+  function toDatetimeLocal(iso?: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    // Format as local time for the input
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  (window as any).openLogModal = (data: LogData) => {
+    current = data;
+    const isEdit = !!data.id;
+
+    (document.getElementById('log-modal-heading') as HTMLElement).textContent =
+      isEdit ? 'Edit Log' : 'Add Log';
+    (document.getElementById('log-modal-province') as HTMLElement).textContent =
+      data.province_name;
+
+    (document.getElementById('log-title') as HTMLInputElement).value          = data.title ?? '';
+    (document.getElementById('log-activity-type') as unknown as HTMLSelectElement).value = data.activity_type ?? '';
+    (document.getElementById('log-location') as HTMLInputElement).value       = data.location ?? '';
+    (document.getElementById('log-visited-at') as HTMLInputElement).value     = toDatetimeLocal(data.visited_at);
+    (document.getElementById('log-description') as HTMLTextAreaElement).value = data.description ?? '';
+
+    titleErr.classList.add('hidden');
+    typeErr.classList.add('hidden');
+    saveBtn.textContent = 'Save Log';
+    saveBtn.disabled    = false;
+    deleteBtn.disabled  = false;
+    deleteBtn.classList.toggle('hidden', !isEdit);
+
+    loadTrips(data.trip_id);
+    dialog.showModal();
+  };
+
+  closeBtn.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+
+  saveBtn.addEventListener('click', async () => {
+    if (!current) return;
+
+    const title         = (document.getElementById('log-title') as HTMLInputElement).value.trim();
+    const activity_type = (document.getElementById('log-activity-type') as HTMLSelectElement).value;
+    const location      = (document.getElementById('log-location') as HTMLInputElement).value.trim();
+    const visited_at    = (document.getElementById('log-visited-at') as HTMLInputElement).value;
+    const description   = (document.getElementById('log-description') as HTMLTextAreaElement).value.trim();
+    const trip_id       = tripSel.value || null;
+
+    let valid = true;
+    if (!title)         { titleErr.classList.remove('hidden'); valid = false; }
+    else                { titleErr.classList.add('hidden'); }
+    if (!activity_type) { typeErr.classList.remove('hidden'); valid = false; }
+    else                { typeErr.classList.add('hidden'); }
+    if (!valid) return;
+
+    saveBtn.disabled    = true;
+    saveBtn.textContent = 'Saving…';
+
+    const isEdit = !!current.id;
+    const url    = isEdit
+      ? `/api/project82/${current.province_key}/logs/${current.id}`
+      : `/api/project82/${current.province_key}/logs`;
+
+    try {
+      const res = await fetch(url, {
+        method:  isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          title,
+          activity_type,
+          location:    location || null,
+          visited_at:  visited_at ? new Date(visited_at).toISOString() : null,
+          description: description || null,
+          trip_id,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const { log } = await res.json() as { log: any };
+      // Attach trip title for UI display
+      if (trip_id) {
+        const opt = tripSel.querySelector<HTMLOptionElement>(`option[value="${trip_id}"]`);
+        log._trip_title = opt?.textContent ?? null;
+      }
+      window.dispatchEvent(new CustomEvent(
+        isEdit ? 'province-log-updated' : 'province-log-created',
+        { detail: { log } }
+      ));
+      dialog.close();
+    } catch (err) {
+      console.error('Failed to save log:', err);
+      saveBtn.textContent = 'Error — try again';
+      saveBtn.disabled    = false;
+    }
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!current?.id) return;
+    if (!confirm('Delete this travel log?')) return;
+
+    deleteBtn.disabled = true;
+    try {
+      const res = await fetch(
+        `/api/project82/${current.province_key}/logs/${current.id}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      window.dispatchEvent(new CustomEvent('province-log-deleted', {
+        detail: { log_id: current.id },
+      }));
+      dialog.close();
+    } catch (err) {
+      console.error('Failed to delete log:', err);
+      deleteBtn.disabled = false;
+    }
+  });
+</script>

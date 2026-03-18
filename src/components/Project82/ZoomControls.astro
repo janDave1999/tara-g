@@ -1,0 +1,60 @@
+---
+---
+
+<!-- Toggle pill: map-only ↔ map+list -->
+<div class="absolute top-3 right-3 z-10">
+  <button
+    id="view-toggle-btn"
+    aria-label="Toggle province list"
+    aria-pressed="false"
+    class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md text-gray-500 hover:text-gray-800 transition-all text-[11px] font-semibold select-none border border-gray-100 hover:border-gray-200"
+  >
+    <!-- Grid icon -->
+    <svg id="toggle-icon-grid" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" class="shrink-0">
+      <rect x="0" y="0" width="6" height="6" rx="1"/>
+      <rect x="10" y="0" width="6" height="6" rx="1"/>
+      <rect x="0" y="10" width="6" height="6" rx="1"/>
+      <rect x="10" y="10" width="6" height="6" rx="1"/>
+    </svg>
+    <!-- Map icon (shown when grid is active) -->
+    <svg id="toggle-icon-map" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 hidden">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+      <line x1="8" y1="2" x2="8" y2="18"/>
+      <line x1="16" y1="6" x2="16" y2="22"/>
+    </svg>
+    <span id="toggle-label">List</span>
+  </button>
+</div>
+
+<script>
+  const btn       = document.getElementById('view-toggle-btn') as HTMLButtonElement;
+  const iconGrid  = document.getElementById('toggle-icon-grid') as SVGElement;
+  const iconMap   = document.getElementById('toggle-icon-map')  as SVGElement;
+  const label     = document.getElementById('toggle-label')     as HTMLElement;
+
+  let listVisible = false;
+
+  btn?.addEventListener('click', () => {
+    listVisible = !listVisible;
+
+    // Update button appearance
+    btn.setAttribute('aria-pressed', String(listVisible));
+    if (listVisible) {
+      btn.classList.add('text-emerald-600', 'border-emerald-200', 'bg-emerald-50/90');
+      btn.classList.remove('text-gray-500', 'border-gray-100', 'bg-white/90');
+      iconGrid.classList.add('hidden');
+      iconMap.classList.remove('hidden');
+      label.textContent = 'Map';
+    } else {
+      btn.classList.remove('text-emerald-600', 'border-emerald-200', 'bg-emerald-50/90');
+      btn.classList.add('text-gray-500', 'border-gray-100', 'bg-white/90');
+      iconGrid.classList.remove('hidden');
+      iconMap.classList.add('hidden');
+      label.textContent = 'List';
+    }
+
+    window.dispatchEvent(new CustomEvent('zoom-changed', {
+      detail: { level: listVisible ? 3 : 1 },
+    }));
+  });
+</script>

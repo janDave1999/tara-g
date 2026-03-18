@@ -1,0 +1,143 @@
+---
+import { PH_PROVINCES } from "@/data/phProvinces";
+import BucketIcon from "@/features/navbar/BucketIcon.astro";
+
+// Visited-first sort is applied client-side after visits load.
+// Build-time: just alphabetical as the initial render order.
+const sortedProvinces = [...PH_PROVINCES].sort((a, b) =>
+  a.name.localeCompare(b.name)
+);
+---
+
+<div
+  id="province-grid"
+  class="grid grid-cols-4 gap-2 p-4 overflow-y-auto h-full bg-white"
+>
+  {sortedProvinces.map((province) => (
+    <button
+      class="province-bucket flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-300 transition-all"
+      data-key={province.key}
+      data-name={province.name}
+      data-region={province.region}
+    >
+      <div class="relative">
+        <BucketIcon class="bucket-icon w-9 h-9 text-gray-200 transition-colors" />
+        <span class="checkmark hidden absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full items-center justify-center shadow-sm">
+          <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="text-emerald-500">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+          </svg>
+        </span>
+      </div>
+      <span class="province-name text-[10px] text-center text-gray-300 font-medium leading-tight">{province.name}</span>
+    </button>
+  ))}
+</div>
+
+<script>
+  const STAGE_COLORS: Record<string, string> = {
+    pass_through:         '#3B82F6',
+    short_stay:           '#FBBF24',
+    extended_stay:        '#F97316',
+    thorough_exploration: '#EF4444',
+  };
+
+  type Visit = {
+    id: string;
+    province_key: string;
+    stage: string;
+    visit_date: string | null;
+    notes: string | null;
+    [k: string]: unknown;
+  };
+
+  const visitMap = new Map<string, Visit>();
+
+  function getBucket(key: string): HTMLButtonElement | null {
+    return document.querySelector<HTMLButtonElement>(
+      `#province-grid [data-key="${key}"]`
+    );
+  }
+
+  function applyVisit(key: string, visit: Visit) {
+    const btn = getBucket(key);
+    if (!btn) return;
+    const color = STAGE_COLORS[visit.stage] ?? '#E5E7EB';
+    const icon = btn.querySelector<SVGElement>('.bucket-icon');
+    const check = btn.querySelector<HTMLElement>('.checkmark');
+    const label = btn.querySelector<HTMLElement>('.province-name');
+
+    if (icon) icon.style.color = color;
+    btn.style.borderColor = color;
+    btn.style.borderStyle = 'solid';
+    if (check) {
+      check.classList.remove('hidden');
+      check.classList.add('flex');
+    }
+    if (label) label.style.color = '#374151';
+  }
+
+  function clearVisit(key: string) {
+    const btn = getBucket(key);
+    if (!btn) return;
+    const icon = btn.querySelector<SVGElement>('.bucket-icon');
+    const check = btn.querySelector<HTMLElement>('.checkmark');
+    const label = btn.querySelector<HTMLElement>('.province-name');
+
+    if (icon) icon.style.color = '';
+    btn.style.borderColor = '';
+    btn.style.borderStyle = '';
+    if (check) {
+      check.classList.add('hidden');
+      check.classList.remove('flex');
+    }
+    if (label) label.style.color = '';
+  }
+
+  function reorderGrid() {
+    const grid = document.getElementById('province-grid');
+    if (!grid) return;
+    const buckets = Array.from(grid.querySelectorAll<HTMLButtonElement>('.province-bucket'));
+    const visited   = buckets.filter(b => visitMap.has(b.dataset.key ?? ''));
+    const unvisited = buckets.filter(b => !visitMap.has(b.dataset.key ?? ''));
+    for (const btn of [...visited, ...unvisited]) grid.appendChild(btn);
+  }
+
+  // Click → navigate to province detail page
+  document.querySelectorAll<HTMLButtonElement>('#province-grid .province-bucket').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key ?? '';
+      if (key) window.location.href = `/bucket/${key}`;
+    });
+  });
+
+  // Sync complete — repaint all
+  window.addEventListener('province-sync-complete', ((e: CustomEvent) => {
+    const visits: Visit[] = e.detail.visits ?? [];
+    visitMap.clear();
+    // Clear all first
+    document.querySelectorAll<HTMLButtonElement>('#province-grid .province-bucket').forEach(btn => {
+      clearVisit(btn.dataset.key ?? '');
+    });
+    for (const v of visits) {
+      visitMap.set(v.province_key, v);
+      applyVisit(v.province_key, v);
+    }
+    reorderGrid();
+  }) as EventListener);
+
+  // Single visit saved
+  window.addEventListener('province-visit-saved', ((e: CustomEvent) => {
+    const { province_key, visit } = e.detail;
+    visitMap.set(province_key, visit);
+    applyVisit(province_key, visit);
+    reorderGrid();
+  }) as EventListener);
+
+  // Visit deleted
+  window.addEventListener('province-visit-deleted', ((e: CustomEvent) => {
+    const { province_key } = e.detail;
+    visitMap.delete(province_key);
+    clearVisit(province_key);
+    reorderGrid();
+  }) as EventListener);
+</script>

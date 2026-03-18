@@ -230,9 +230,9 @@
 
   saveBtn.addEventListener('click', async () => {
     if (!current) return;
-
+    const activityType = document.getElementById('log-activity-type') as unknown as HTMLSelectElement;
     const title         = (document.getElementById('log-title') as HTMLInputElement).value.trim();
-    const activity_type = (document.getElementById('log-activity-type') as HTMLSelectElement).value;
+    const activity_type = activityType.value;
     const location      = (document.getElementById('log-location') as HTMLInputElement).value.trim();
     const visited_at    = (document.getElementById('log-visited-at') as HTMLInputElement).value;
     const description   = (document.getElementById('log-description') as HTMLTextAreaElement).value.trim();
